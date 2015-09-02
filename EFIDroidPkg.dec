@@ -1,0 +1,6 @@
+[Defines]
+  DEC_SPECIFICATION              = 0x00010005
+  PACKAGE_NAME                   = EFIDroidPkg
+  PACKAGE_GUID                   = D0EE39ED-6165-4541-BE82-3928356C4204
+  PACKAGE_VERSION                = 0.1
+
