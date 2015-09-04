@@ -4,3 +4,6 @@
   PACKAGE_GUID                   = D0EE39ED-6165-4541-BE82-3928356C4204
   PACKAGE_VERSION                = 0.1
 
+[Includes]
+  Library/Freetype2Lib/freetype2/include
+  Include
