@@ -47,7 +47,7 @@ px2dp (
   UINTN px
 )
 {
-  return (px * 160 / mDPI);
+  return (px / (mDPI / 160));
 }
 
 EFI_STATUS
