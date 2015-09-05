@@ -63,6 +63,11 @@ SetColor (
 );
 
 VOID
+SetDensity (
+  UINTN Density
+);
+
+VOID
 SetFontSize (
   UINTN Size,
   UINTN LineHeight

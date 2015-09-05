@@ -3,8 +3,16 @@
 UINT8 mColorRed   = 0xff;
 UINT8 mColorGreen = 0xff;
 UINT8 mColorBlue  = 0xff;
-UINTN mDPI = 320;
+UINTN mDPI = 160;
 BOOLEAN mAutoFlush = FALSE;
+
+VOID
+SetDensity (
+  UINTN Density
+)
+{
+  mDPI = Density;
+}
 
 VOID
 SetColor (

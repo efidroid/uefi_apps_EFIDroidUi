@@ -183,6 +183,8 @@ EFIDroidEnterFrontPage (
   // set mode to initialize HW
   mGop->SetMode(mGop, 0);
 
+  SetDensity(mLKApi->lcd_get_density());
+
   // initialize text engine
   TextInit();
 
