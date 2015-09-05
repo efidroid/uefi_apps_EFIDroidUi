@@ -82,15 +82,15 @@ DrawGlyph (
 
       // performance improvement: set alpha as color if alpha is 255
       if (Alpha==0xff){
-        Pixel[0] = mColorRed;
+        Pixel[0] = mColorBlue;
         Pixel[1] = mColorGreen;
-        Pixel[2] = mColorBlue;
+        Pixel[2] = mColorRed;
       }
       // apply alpha to current color otherwise
       else if (Alpha>0){
-        Pixel[0] = calc_alpha(Pixel[0], mColorRed, Alpha);
+        Pixel[0] = calc_alpha(Pixel[0], mColorBlue, Alpha);
         Pixel[1] = calc_alpha(Pixel[1], mColorGreen, Alpha);
-        Pixel[2] = calc_alpha(Pixel[2], mColorBlue, Alpha);
+        Pixel[2] = calc_alpha(Pixel[2], mColorRed, Alpha);
       }
     }
   }
