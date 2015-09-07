@@ -19,9 +19,9 @@
   INF_VERSION                    = 0x00010005
   BASE_NAME                      = EFIDroidMenuLib
   FILE_GUID                      = 1f4a0a7b-b387-4b86-acfc-20252882ded8
-  MODULE_TYPE                    = DXE_DRIVER
+  MODULE_TYPE                    = UEFI_APPLICATION
   VERSION_STRING                 = 1.0
-  LIBRARY_CLASS                  = EFIDroidMenuLib|DXE_DRIVER
+  LIBRARY_CLASS                  = EFIDroidMenuLib|UEFI_APPLICATION
   CONSTRUCTOR                    = MenuLibConstructor
 
 #
