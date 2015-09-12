@@ -38,7 +38,7 @@ dp2px (
   UINTN dp
 )
 {
-  return (dp * (mDPI / 160));
+  return ((dp * mDPI) / 160);
 }
 
 STATIC inline
@@ -47,7 +47,7 @@ px2dp (
   UINTN px
 )
 {
-  return (px / (mDPI / 160));
+  return ((px * 160) / mDPI);
 }
 
 EFI_STATUS
