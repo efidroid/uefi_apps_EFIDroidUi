@@ -86,26 +86,34 @@ RenderActiveMenu(
   VOID
 )
 {
-  UINTN LineHeight;
+  UINTN LineHeight, TitleBottom;
 
   BOOT_MENU_ENTRY* mEntry = mActiveMenu;
   if(mEntry==NULL)
     return;
 
   ClearScreen();
-  
+
+  // draw title
   SetFontSize(56, 60);
   SetColor(0xff, 0xff, 0xff);
   LineHeight = TextLineHeight();
   CONST CHAR8 *Title = "EFIDroid";
   UINTN TitleWidth = TextLineWidth(Title);
   TextDrawAscii(Title, GetScreenWidth()/2 - TitleWidth/2, LineHeight);
+  TitleBottom = LineHeight*2;
 
+  // calculate item height
   SetFontSize(34, 40);
   LineHeight = TextLineHeight();
 
-  // calculate vertical start position
+  // calculate vertical start position (put the center of the menu to the center of the screen)
   UINTN y = GetScreenHeight()/2 - (mActiveMenuSize*LineHeight)/2 + LineHeight;
+
+  // move the active item to the screen's center
+  if(mActiveMenuSize*LineHeight > GetScreenHeight()) {
+    y += (mActiveMenuSize/2 - mActiveMenuPosition)*LineHeight;
+  }
 
   // render all entries
   UINTN Count;
@@ -120,7 +128,8 @@ RenderActiveMenu(
       SetColor(0xff, 0xff, 0xff);
 
     // draw text
-    TextDrawAscii(mActiveMenu[Count].Description, x, y);
+    if(y>=TitleBottom && y<=GetScreenHeight())
+      TextDrawAscii(mActiveMenu[Count].Description, x, y);
 
     y += LineHeight;
   }
