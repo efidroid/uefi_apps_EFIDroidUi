@@ -60,7 +60,7 @@ MenuFinish (
 
   return EFI_SUCCESS;
 }
-  
+
 
 VOID
 SetActiveMenu (
@@ -145,7 +145,7 @@ RenderBootScreen(
   UINTN LineHeight;
 
   ClearScreen();
-  
+
   SetFontSize(56, 60);
   SetColor(0xff, 0xff, 0xff);
   LineHeight = TextLineHeight();
