@@ -86,7 +86,7 @@ AlignMemoryRange (
 {
   // align range
   UINT32 AddrAligned = ROUNDDOWN(Addr, EFI_PAGE_SIZE);
-  
+
   // calculate offset
   UINTN Offset = Addr - AddrAligned;
   if (AddrOffset!=NULL)
@@ -106,7 +106,7 @@ FreeAlignedMemoryRange (
 {
   UINTN      AlignedSize = Size;
   UINTN      AddrOffset = 0;
-  
+
   EFI_PHYSICAL_ADDRESS AllocationAddress = AlignMemoryRange(Address, &AlignedSize, &AddrOffset);
 
   return gBS->FreePages(AllocationAddress, EFI_SIZE_TO_PAGES(AlignedSize));
@@ -211,6 +211,11 @@ AndroidBootFromBlockIo (
     goto FREEBUFFER;
   }
 
+  // load cmdline
+  Status = AndroidLoadCmdline(&Parsed);
+  if (EFI_ERROR(Status))
+    goto FREEBUFFER;
+
   // update addresses if necessary
   LKApi->boot_update_addrs(&AndroidHdr->kernel_addr, &AndroidHdr->ramdisk_addr, &AndroidHdr->tags_addr);
 
@@ -220,11 +225,8 @@ AndroidBootFromBlockIo (
   UINTN off_second  = off_ramdisk + ALIGN_VALUE(AndroidHdr->ramdisk_size, AndroidHdr->page_size);
   UINTN off_tags    = off_second  + ALIGN_VALUE(AndroidHdr->second_size,  AndroidHdr->page_size);
 
-  // load images
+  // load kernel
   Status = AndroidLoadImage(BlockIo, off_kernel, AndroidHdr->kernel_size, &Parsed.Kernel, AndroidHdr->kernel_addr);
-  if (EFI_ERROR(Status))
-    goto FREEBUFFER;
-  Status = AndroidLoadImage(BlockIo, off_ramdisk, AndroidHdr->ramdisk_size, &Parsed.Ramdisk, AndroidHdr->ramdisk_addr);
   if (EFI_ERROR(Status))
     goto FREEBUFFER;
 
@@ -235,13 +237,17 @@ AndroidBootFromBlockIo (
     off_tags = 0;
   }
 
-  // load tags
+  // allocate tag memory and load dtb if available
   Status = AndroidLoadImage(BlockIo, off_tags, TagsSize, &Parsed.Tags, AndroidHdr->tags_addr);
   if (EFI_ERROR(Status))
     goto FREEBUFFER;
 
-  // load cmdline
-  AndroidLoadCmdline(&Parsed);
+  // load ramdisk
+  Status = AndroidLoadImage(BlockIo, off_ramdisk, AndroidHdr->ramdisk_size, &Parsed.Ramdisk, AndroidHdr->ramdisk_addr);
+  if (EFI_ERROR(Status))
+    goto FREEBUFFER;
+
+  // TODO: patch ramdisk
 
   // generate Atags
   if(LKApi->boot_create_tags(Parsed.Cmdline, AndroidHdr->ramdisk_addr, AndroidHdr->ramdisk_size, AndroidHdr->tags_addr, TagsSize))
