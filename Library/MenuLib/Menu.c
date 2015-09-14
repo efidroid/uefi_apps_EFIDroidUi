@@ -103,6 +103,13 @@ RenderActiveMenu(
   TextDrawAscii(Title, GetScreenWidth()/2 - TitleWidth/2, LineHeight);
   TitleBottom = LineHeight*2;
 
+  if(gErrorStr) {
+    SetFontSize(20, 25);
+    SetColor(0xff, 0x00, 0x0);
+    LineHeight = TextLineHeight();
+    TextDrawAscii(gErrorStr, GetScreenWidth()/2 - TextLineWidth(gErrorStr)/2, TitleBottom);
+  }
+
   // calculate item height
   SetFontSize(34, 40);
   LineHeight = TextLineHeight();

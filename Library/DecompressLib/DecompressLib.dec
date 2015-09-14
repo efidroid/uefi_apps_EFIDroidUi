@@ -1,0 +1,8 @@
+[Defines]
+  DEC_SPECIFICATION              = 0x00010005
+  PACKAGE_NAME                   = DecompressLibPkg
+  PACKAGE_GUID                   = c2f7abb3-cac1-48bd-aee0-11bb8f9a5fef
+  PACKAGE_VERSION                = 0.5
+
+[Includes.common]
+  include

@@ -1,0 +1,76 @@
+## @file
+#  NULL instance of Timer Library as a template.
+#
+#  A non-functional instance of the Timer Library that can be used as a template
+#  for the implementation of a functional timer library instance. This library instance can
+#  also be used to test build DXE, Runtime, DXE SAL, and DXE SMM modules that require timer
+#  services as well as EBC modules that require timer services.
+#
+#  Copyright (c) 2007 - 2014, Intel Corporation. All rights reserved.<BR>
+#
+#  This program and the accompanying materials
+#  are licensed and made available under the terms and conditions of the BSD License
+#  which accompanies this distribution. The full text of the license may be found at
+#  http://opensource.org/licenses/bsd-license.php.
+#  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+#
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = DecompressLib
+  FILE_GUID                      = 03836d99-52c1-41f6-8d62-4abf3f4e1dec
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = DecompressLib
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
+#
+
+[Sources]
+  decompress.c
+  decompress_bunzip2.c
+  decompress_inflate.c
+  decompress_unlz4.c
+  decompress_unlzma.c
+  decompress_unlzo.c
+  decompress_unxz.c
+
+  zlib_inflate/inffast.c
+  zlib_inflate/inflate.c
+  zlib_inflate/infutil.c
+  zlib_inflate/inftrees.c
+  zlib_inflate/inflate_syms.c
+
+  xz/xz_dec_syms.c
+  xz/xz_dec_stream.c
+  xz/xz_dec_lzma2.c
+  xz/xz_dec_bcj.c
+  xz/xz_crc32.c
+
+  lz4/lz4_decompress.c
+
+  lzo/lzo1x_decompress_safe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  EFIDroidPkg/EFIDroidPkg.dec
+  EFIDroidPkg/Library/DecompressLib/DecompressLib.dec
+
+[LibraryClasses]
+  BaseLib
+  UefiBootServicesTableLib
+  UefiLib
+  PrintLib
+
+[Depex]
+  TRUE
+
+[BuildOptions.ARM]
+  GCC:*_*_*_CC_FLAGS     = -DCONFIG_ARM=y -D__LITTLE_ENDIAN
+[BuildOptions]
+  GCC:*_*_*_CC_FLAGS     = -D__KERNEL__ -Wno-error -DCONFIG_DECOMPRESS_GZIP=y -DCONFIG_DECOMPRESS_BZIP2=y -DCONFIG_DECOMPRESS_LZMA=y -DCONFIG_DECOMPRESS_XZ=y -DCONFIG_DECOMPRESS_LZO=y -DCONFIG_DECOMPRESS_LZ4=y -DCONFIG_LZ4_DECOMPRESS=y -DCONFIG_LZO_DECOMPRESS=y -DCONFIG_ZLIB_INFLATE=y -DCONFIG_XZ_DEC=y -DCONFIG_XZ_DEC_BCJ=y -DXZ_INTERNAL_CRC32

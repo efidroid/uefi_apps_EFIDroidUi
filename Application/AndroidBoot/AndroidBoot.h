@@ -37,6 +37,8 @@
 #include <Library/GenericBdsLib.h>
 #include <Library/DevicePathLib.h>
 #include <Library/EFIDroid.h>
+#include <Library/Cpio.h>
+#include <Library/Decompress.h>
 
 #include <LittleKernel.h>
 

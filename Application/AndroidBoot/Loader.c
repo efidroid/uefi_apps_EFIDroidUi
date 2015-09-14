@@ -133,7 +133,7 @@ AndroidLoadImage (
     return EFI_INVALID_PARAMETER;
   }
 
-  Status = gBS->AllocatePages (AllocateAddress, EfiBootServicesData, EFI_SIZE_TO_PAGES(AlignedSize), &AllocationAddress);
+  Status = gBS->AllocatePages (Address?AllocateAddress:AllocateAnyPages, EfiBootServicesData, EFI_SIZE_TO_PAGES(AlignedSize), &AllocationAddress);
   if (EFI_ERROR(Status)) {
     return Status;
   }
@@ -174,6 +174,14 @@ PreparePlatformHardware (
   ArmDisableMmu ();
 }
 
+extern UINT8 MultibootBin[];
+extern UINTN MultibootSize;
+
+VOID DecompError(CHAR8* Str)
+{
+  DEBUG((EFI_D_ERROR, "%a\n", Str));
+}
+
 EFI_STATUS
 AndroidBootFromBlockIo (
   IN VOID *Private
@@ -187,6 +195,8 @@ AndroidBootFromBlockIo (
   LINUX_KERNEL              LinuxKernel;
   UINTN                     TagsSize;
   lkapi_t                   *LKApi = GetLKApi();
+  VOID                      *OriginalRamdisk = NULL;
+  UINT32                    RamdiskUncompressedLen = 0;
 
   // initialize parsed data
   SetMem(&Parsed, sizeof(Parsed), 0);
@@ -194,27 +204,34 @@ AndroidBootFromBlockIo (
   // allocate a buffer for the android header aligned on the block size
   BufferSize = ALIGN_VALUE(sizeof(boot_img_hdr_t), BlockIo->Media->BlockSize);
   AndroidHdr = AllocatePool(BufferSize);
-  if (AndroidHdr == NULL)
+  if (AndroidHdr == NULL) {
+    gErrorStr = "Error allocating bootimg header";
     return EFI_OUT_OF_RESOURCES;
+  }
 
   // read and verify the android header
   BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, 0, BufferSize, AndroidHdr);
   Status = AndroidVerify(AndroidHdr);
-  if (EFI_ERROR(Status))
+  if (EFI_ERROR(Status)) {
+    gErrorStr = "Not a boot image";
     goto FREEBUFFER;
+  }
   Parsed.Hdr = AndroidHdr;
 
   // this is not supported
   // actually I've never seen a device using this so it's not even clear how this would work
   if (AndroidHdr->second_size > 0) {
+    gErrorStr = "second_size > 0";
     Status = EFI_UNSUPPORTED;
     goto FREEBUFFER;
   }
 
   // load cmdline
   Status = AndroidLoadCmdline(&Parsed);
-  if (EFI_ERROR(Status))
+  if (EFI_ERROR(Status)) {
+    gErrorStr = "Error loading cmdline";
     goto FREEBUFFER;
+  }
 
   // update addresses if necessary
   LKApi->boot_update_addrs(&AndroidHdr->kernel_addr, &AndroidHdr->ramdisk_addr, &AndroidHdr->tags_addr);
@@ -227,8 +244,10 @@ AndroidBootFromBlockIo (
 
   // load kernel
   Status = AndroidLoadImage(BlockIo, off_kernel, AndroidHdr->kernel_size, &Parsed.Kernel, AndroidHdr->kernel_addr);
-  if (EFI_ERROR(Status))
+  if (EFI_ERROR(Status)) {
+    gErrorStr = "Error loading kernel";
     goto FREEBUFFER;
+  }
 
   // compute tag size
   TagsSize = AndroidHdr->dt_size;
@@ -239,26 +258,71 @@ AndroidBootFromBlockIo (
 
   // allocate tag memory and load dtb if available
   Status = AndroidLoadImage(BlockIo, off_tags, TagsSize, &Parsed.Tags, AndroidHdr->tags_addr);
-  if (EFI_ERROR(Status))
+  if (EFI_ERROR(Status)) {
+    gErrorStr = "Error loading tags";
     goto FREEBUFFER;
+  }
 
-  // load ramdisk
-  Status = AndroidLoadImage(BlockIo, off_ramdisk, AndroidHdr->ramdisk_size, &Parsed.Ramdisk, AndroidHdr->ramdisk_addr);
-  if (EFI_ERROR(Status))
+  // load ramdisk into UEFI memory
+  Status = AndroidLoadImage(BlockIo, off_ramdisk, AndroidHdr->ramdisk_size, &OriginalRamdisk, 0);
+  if (EFI_ERROR(Status)) {
+    gErrorStr = "Error loading ramdisk";
     goto FREEBUFFER;
+  }
 
-  // TODO: patch ramdisk
+  // get decompressor
+  CONST CHAR8 *DecompName;
+  decompress_fn Decompressor = decompress_method(OriginalRamdisk, AndroidHdr->ramdisk_size, &DecompName);
+  if(Decompressor==NULL) {
+    gErrorStr = "no decompressor found";
+    goto FREEBUFFER;
+  }
+  else {
+    DEBUG((EFI_D_INFO, "decompressor: %a\n", DecompName));
+  }
+
+  // get uncompressed size
+  // since the Linux decompressor doesn't support predicting the length we hardcode this to 10MB
+  RamdiskUncompressedLen = 10*1024*1024;
+
+  // add multiboot binary size to uncompressed ramdisk size
+  CONST CHAR8 *cpio_name_mbinit = "/init.multiboot";
+  UINTN objsize = CpioPredictObjSize(AsciiStrLen(cpio_name_mbinit), MultibootSize);
+  RamdiskUncompressedLen += objsize;
+
+  // allocate uncompressed ramdisk memory in boot memory
+  Status = AndroidLoadImage(BlockIo, 0, RamdiskUncompressedLen, &Parsed.Ramdisk, AndroidHdr->ramdisk_addr);
+  if (EFI_ERROR(Status)) {
+    gErrorStr = "Error allocating decompressed ramdisk memory";
+    goto FREEBUFFER;
+  }
+
+  // decompress ramdisk
+  if(Decompressor(OriginalRamdisk, AndroidHdr->ramdisk_size, NULL, NULL, Parsed.Ramdisk, NULL, DecompError)) {
+    gErrorStr = "Error decompressing ramdisk";
+    goto FREEBUFFER;
+  }
+
+  // add multiboot binary
+  CPIO_NEWC_HEADER *cpiohd = (CPIO_NEWC_HEADER *) Parsed.Ramdisk;
+  cpiohd = CpioGetLast (cpiohd);
+  cpiohd = CpioCreateObj (cpiohd, cpio_name_mbinit, MultibootBin, MultibootSize);
+  cpiohd = CpioCreateObj (cpiohd, CPIO_TRAILER, NULL, 0);
+  ASSERT((UINT32)cpiohd <= (UINT32)Parsed.Ramdisk+RamdiskUncompressedLen);
 
   // generate Atags
-  if(LKApi->boot_create_tags(Parsed.Cmdline, AndroidHdr->ramdisk_addr, AndroidHdr->ramdisk_size, AndroidHdr->tags_addr, TagsSize))
+  if(LKApi->boot_create_tags(Parsed.Cmdline, (UINT32)Parsed.Ramdisk, ((UINT32)cpiohd)-((UINT32)Parsed.Ramdisk), AndroidHdr->tags_addr, TagsSize)) {
+    gErrorStr = "Error creating tags";
     goto FREEBUFFER;
+  }
 
   // Shut down UEFI boot services. ExitBootServices() will notify every driver that created an event on
   // ExitBootServices event. Example the Interrupt DXE driver will disable the interrupts on this event.
   Status = ShutdownUefiBootServices ();
   if (EFI_ERROR (Status)) {
+    gErrorStr = "Error shutting down boot services";
     DEBUG ((EFI_D_ERROR, "ERROR: Can not shutdown UEFI boot services. Status=0x%X\n", Status));
-    return Status;
+    goto FREEBUFFER;
   }
 
   //
@@ -285,9 +349,11 @@ FREEBUFFER:
   if(Parsed.Kernel)
     FreeAlignedMemoryRange((UINT32)Parsed.Kernel, AndroidHdr->kernel_size);
   if(Parsed.Ramdisk)
-    FreeAlignedMemoryRange((UINT32)Parsed.Ramdisk, AndroidHdr->ramdisk_size);
+    FreeAlignedMemoryRange((UINT32)Parsed.Ramdisk, RamdiskUncompressedLen);
   if(Parsed.Tags)
     FreeAlignedMemoryRange((UINT32)Parsed.Tags, AndroidHdr->dt_size);
+  if(OriginalRamdisk)
+    FreeAlignedMemoryRange((UINT32)OriginalRamdisk, AndroidHdr->ramdisk_size);
 
   FreePool(AndroidHdr);
 

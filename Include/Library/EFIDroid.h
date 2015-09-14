@@ -9,6 +9,8 @@ typedef struct {
   VOID *Private;
 } BOOT_MENU_ENTRY;
 
+extern CONST CHAR8                 *gErrorStr;
+
 VOID
 EFIDroidEnterFrontPage (
   IN UINT16                 TimeoutDefault,

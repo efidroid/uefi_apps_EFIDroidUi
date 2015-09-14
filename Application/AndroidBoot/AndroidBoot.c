@@ -22,6 +22,7 @@
 
 BOOT_MENU_ENTRY             *mBootMenuMain = NULL;
 UINTN                       mBootMenuMainCount = 0;
+CONST CHAR8                 *gErrorStr = NULL;
 
 // Type definitions
 //
