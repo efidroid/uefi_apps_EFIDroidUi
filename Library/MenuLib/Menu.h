@@ -33,21 +33,21 @@ extern UINTN mDPI;
 extern BOOLEAN mAutoFlush;
 
 STATIC inline
-UINTN
+INT32
 dp2px (
-  UINTN dp
+  INT32 dp
 )
 {
-  return ((dp * mDPI) / 160);
+  return ((dp * (INT32)mDPI) / 160);
 }
 
 STATIC inline
-UINTN
+INT32
 px2dp (
-  UINTN px
+  INT32 px
 )
 {
-  return ((px * 160) / mDPI);
+  return ((px * 160) / (INT32)mDPI);
 }
 
 EFI_STATUS
@@ -76,8 +76,8 @@ SetFontSize (
 VOID
 TextDrawAscii (
   CONST CHAR8 *Str,
-  UINTN       DestinationX,
-  UINTN       DestinationY
+  INT32       DestinationX,
+  INT32       DestinationY
 );
 
 UINTN

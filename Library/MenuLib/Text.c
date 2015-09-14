@@ -99,8 +99,8 @@ DrawGlyph (
 VOID
 TextDrawAscii (
   CONST CHAR8 *Str,
-  UINTN       DestinationX,
-  UINTN       DestinationY
+  INT32       DestinationX,
+  INT32       DestinationY
 )
 {
   FT_GlyphSlot  slot = mFace->glyph;
