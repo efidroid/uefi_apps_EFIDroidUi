@@ -23,7 +23,6 @@
 [Sources]
   AndroidBoot.c
   Loader.c
-  MultibootBin.c
 
 [Packages]
   ArmPkg/ArmPkg.dec
@@ -55,5 +54,5 @@
   gEfiShellParametersProtocolGuid
   gEfiPartitionNameProtocolGuid
 
-[BuildOptions]
-  GCC:*_*_*_CC_FLAGS = -DEFIDROID_MULTIBOOT_BINARY=\"$(WORKSPACE)/Build/EFIDROID/multiboot_bin\"
+[FixedPcd]
+  gLittleKernelTokenSpaceGuid.PcdMultibootBin

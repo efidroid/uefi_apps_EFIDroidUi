@@ -15,7 +15,7 @@
 #ifndef __LINUX_LOADER_H__
 #define __LINUX_LOADER_H__
 
-#include <Pi/PiBootMode.h>
+#include <PiDxe.h>
 #include <Protocol/BlockIo.h>
 #include <Protocol/PartitionName.h>
 #include <Protocol/EfiShellParameters.h>
@@ -39,6 +39,8 @@
 #include <Library/EFIDroid.h>
 #include <Library/Cpio.h>
 #include <Library/Decompress.h>
+#include <Library/PcdLib.h>
+#include <Library/DxeServicesLib.h>
 
 #include <LittleKernel.h>
 

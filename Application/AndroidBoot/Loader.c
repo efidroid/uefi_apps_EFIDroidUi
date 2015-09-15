@@ -174,9 +174,6 @@ PreparePlatformHardware (
   ArmDisableMmu ();
 }
 
-extern UINT8 MultibootBin[];
-extern UINTN MultibootSize;
-
 VOID DecompError(CHAR8* Str)
 {
   DEBUG((EFI_D_ERROR, "%a\n", Str));
@@ -284,6 +281,14 @@ AndroidBootFromBlockIo (
   // get uncompressed size
   // since the Linux decompressor doesn't support predicting the length we hardcode this to 10MB
   RamdiskUncompressedLen = 10*1024*1024;
+
+  UINT8 *MultibootBin;
+  UINTN MultibootSize;
+  Status = GetSectionFromAnyFv (PcdGetPtr(PcdMultibootBin), EFI_SECTION_RAW, 0, (VOID **) &MultibootBin, &MultibootSize);
+  if (EFI_ERROR (Status)) {
+    gErrorStr = "Multiboot binary not found";
+    goto FREEBUFFER;
+  }
 
   // add multiboot binary size to uncompressed ramdisk size
   CONST CHAR8 *cpio_name_mbinit = "/init.multiboot";
