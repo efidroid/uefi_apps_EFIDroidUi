@@ -19,6 +19,9 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define ROUNDUP(a, b)   (((a) + ((b)-1)) & ~((b)-1))
 #define ROUNDDOWN(a, b) ((a) & ~((b)-1))
 
+CONST CHAR8* CMDLINE_MULTIBOOTPATH = " multibootpath=";
+CONST CHAR8* CMDLINE_RDINIT        = " rdinit=/init.multiboot";
+
 typedef VOID (*LINUX_KERNEL)(UINT32 Zero, UINT32 Arch, UINTN ParametersBase);
 
 typedef struct {
@@ -54,10 +57,56 @@ AndroidVerify (
 
 STATIC EFI_STATUS
 AndroidLoadCmdline (
-  android_parsed_bootimg_t* Parsed
+  android_parsed_bootimg_t  *Parsed,
+  IN multiboot_handle_t     *mbhandle
 )
 {
   boot_img_hdr_t* Hdr = Parsed->Hdr;
+  EFI_DEVICE_PATH_PROTOCOL  *DevPath;
+  CHAR8 *DevPathString;
+  UINTN Len;
+
+  // check mbhandle
+  if(mbhandle) {
+    // get devpath
+    DevPath = DevicePathFromHandle(mbhandle->DeviceHandle);
+    if (DevPath == NULL)
+      return EFI_INVALID_PARAMETER;
+
+    // get HD devpath
+    EFI_DEVICE_PATH_PROTOCOL *Node = DevPath;
+    BOOLEAN Found = FALSE;
+    while (!IsDevicePathEnd (Node)) {
+      if (DevicePathType (Node) == MEDIA_DEVICE_PATH &&
+          DevicePathSubType (Node) == MEDIA_HARDDRIVE_DP
+          ) {
+        Found = TRUE;
+        break;
+      }
+      Node = NextDevicePathNode (Node);
+    }
+    if(Found == FALSE)
+      return EFI_INVALID_PARAMETER;
+
+    // build guid part
+    HARDDRIVE_DEVICE_PATH *Hd = (HARDDRIVE_DEVICE_PATH*) Node;
+    switch (Hd->SignatureType) {
+    case SIGNATURE_TYPE_MBR:
+      Len = 3+1+8+1+1;
+      DevPathString = AllocatePool(Len);
+      AsciiSPrint(DevPathString, Len, "MBR,%08x,", *((UINT32 *) (&(Hd->Signature[0]))));
+      break;
+
+    case SIGNATURE_TYPE_GUID:
+      Len = 3+1+36+1+1;
+      DevPathString = AllocatePool(Len);
+      AsciiSPrint(DevPathString, Len, "GPT,%g,", (EFI_GUID *) &(Hd->Signature[0]));
+      break;
+
+    default:
+      return EFI_INVALID_PARAMETER;
+    }
+  }
 
   // terminate cmdlines
   Hdr->cmdline[BOOT_ARGS_SIZE-1] = 0;
@@ -66,13 +115,26 @@ AndroidLoadCmdline (
   // create cmdline
   UINTN len_cmdline = AsciiStrLen(Hdr->cmdline);
   UINTN len_cmdline_extra = AsciiStrLen(Hdr->extra_cmdline);
-  Parsed->Cmdline = AllocatePool(len_cmdline + len_cmdline_extra + 1);
+  UINTN len_cmdline_mbpath = 0;
+  if(mbhandle) {
+    len_cmdline_mbpath += AsciiStrLen(CMDLINE_MULTIBOOTPATH);
+    len_cmdline_mbpath += AsciiStrLen(DevPathString);
+    len_cmdline_mbpath += AsciiStrLen(mbhandle->MultibootConfig);
+  }
+
+  UINTN CmdlineLenMax = len_cmdline + len_cmdline_extra + len_cmdline_mbpath + 1;
+  Parsed->Cmdline = AllocateZeroPool(CmdlineLenMax);
   if (Parsed->Cmdline == NULL)
     return EFI_OUT_OF_RESOURCES;
 
-  AsciiStrnCpy(Parsed->Cmdline, Hdr->cmdline, len_cmdline+1);
-  AsciiStrnCpy(Parsed->Cmdline + len_cmdline, Hdr->extra_cmdline, len_cmdline_extra+1);
-  Parsed->Cmdline[len_cmdline + len_cmdline_extra] = 0;
+  AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, Hdr->cmdline);
+  AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, Hdr->extra_cmdline);
+
+  if(mbhandle) {
+    AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, CMDLINE_MULTIBOOTPATH);
+    AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, DevPathString);
+    AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, mbhandle->MultibootConfig);
+  }
 
   return EFI_SUCCESS;
 }
@@ -181,11 +243,11 @@ VOID DecompError(CHAR8* Str)
 
 EFI_STATUS
 AndroidBootFromBlockIo (
-  IN VOID *Private
+  IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
+  IN multiboot_handle_t     *mbhandle
 )
 {
   EFI_STATUS                Status;
-  EFI_BLOCK_IO_PROTOCOL     *BlockIo = Private;
   UINTN                     BufferSize;
   boot_img_hdr_t            *AndroidHdr;
   android_parsed_bootimg_t  Parsed;
@@ -224,7 +286,7 @@ AndroidBootFromBlockIo (
   }
 
   // load cmdline
-  Status = AndroidLoadCmdline(&Parsed);
+  Status = AndroidLoadCmdline(&Parsed, mbhandle);
   if (EFI_ERROR(Status)) {
     gErrorStr = "Error loading cmdline";
     goto FREEBUFFER;

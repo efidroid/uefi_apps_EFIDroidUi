@@ -23,6 +23,7 @@
 [Sources]
   AndroidBoot.c
   Loader.c
+  MultibootLoader.c
 
 [Packages]
   ArmPkg/ArmPkg.dec
@@ -47,6 +48,8 @@
   EFIDroidMenuLib
   CpioLib
   DecompressLib
+  IniLib
+  FileHandleLib
 
 [Protocols]
   gEfiLoadedImageProtocolGuid

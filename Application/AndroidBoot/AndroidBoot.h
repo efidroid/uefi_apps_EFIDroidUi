@@ -39,21 +39,57 @@
 #include <Library/EFIDroid.h>
 #include <Library/Cpio.h>
 #include <Library/Decompress.h>
+#include <Library/Ini.h>
 #include <Library/PcdLib.h>
 #include <Library/DxeServicesLib.h>
+#include <Library/FileHandleLib.h>
 
 #include <LittleKernel.h>
 
 #include "bootimg.h"
 
+typedef struct {
+  // ini values
+  CHAR8  *Name;
+  CHAR16 *PartitionBoot;
+
+  // handles
+  EFI_HANDLE DeviceHandle;
+  EFI_FILE_PROTOCOL* ROMDirectory;
+
+  // set by MultibootCallback
+  CHAR8* MultibootConfig;
+} multiboot_handle_t;
+
 EFI_STATUS
 AndroidBootFromBlockIo (
-  IN VOID *Private
+  IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
+  IN multiboot_handle_t     *mbhandle
 );
 
 EFI_STATUS
 AndroidVerify (
   IN VOID* Buffer
+);
+
+EFI_STATUS
+MultibootCallback (
+  IN VOID *Private
+);
+
+CHAR8*
+Unicode2Ascii (
+  CONST CHAR16* UnicodeStr
+);
+
+CHAR16*
+Ascii2Unicode (
+  CONST CHAR8* AsciiStr
+);
+
+CHAR8*
+AsciiStrDup (
+  CONST CHAR8* SrcStr
 );
 
 #endif /* __LINUX_LOADER_H__ */

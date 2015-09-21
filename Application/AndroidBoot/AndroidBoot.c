@@ -35,7 +35,7 @@ EFI_STATUS
   IN VOID                 *Context
   );
 
-STATIC CHAR8*
+CHAR8*
 Unicode2Ascii (
   CONST CHAR16* UnicodeStr
 )
@@ -48,6 +48,45 @@ Unicode2Ascii (
   UnicodeStrToAsciiStr(UnicodeStr, AsciiStr);
 
   return AsciiStr;
+}
+
+CHAR16*
+Ascii2Unicode (
+  CONST CHAR8* AsciiStr
+)
+{
+  CHAR16* UnicodeStr = AllocatePool((AsciiStrLen (AsciiStr) + 1) * sizeof (CHAR16));
+  if (UnicodeStr == NULL) {
+    return NULL;
+  }
+
+  AsciiStrToUnicodeStr(AsciiStr, UnicodeStr);
+
+  return UnicodeStr;
+}
+
+CHAR8*
+AsciiStrDup (
+  CONST CHAR8* SrcStr
+)
+{
+  UINTN Len = (AsciiStrLen (SrcStr) + 1) * sizeof (CHAR8);
+  CHAR8* NewStr = AllocatePool(Len);
+  if (NewStr == NULL) {
+    return NULL;
+  }
+
+  CopyMem(NewStr, SrcStr, Len);
+
+  return NewStr;
+}
+
+STATIC EFI_STATUS
+AndroidCallback (
+  IN VOID *Private
+)
+{
+  return AndroidBootFromBlockIo((EFI_BLOCK_IO_PROTOCOL*)Private, NULL);
 }
 
 STATIC EFI_STATUS
@@ -120,13 +159,218 @@ FindAndroidBlockIo (
     Entry->Description = "Unknown";
   }
 
-  Entry->Callback = AndroidBootFromBlockIo;
+  Entry->Callback = AndroidCallback;
   Entry->Private = BlockIo;
 
   Status = EFI_SUCCESS;
 
 FREEBUFFER:
   FreePool(AndroidHdr);
+
+  return Status;
+}
+
+STATIC BOOLEAN
+NodeIsDir (
+  IN EFI_FILE_INFO      *NodeInfo
+  )
+{
+  return ((NodeInfo->Attribute & EFI_FILE_DIRECTORY) == EFI_FILE_DIRECTORY);
+}
+
+STATIC INT32
+IniHandler (
+  VOID         *Private,
+  CONST CHAR8  *Section,
+  CONST CHAR8  *Name,
+  CONST CHAR8  *Value
+)
+{
+  multiboot_handle_t* mbhandle = (multiboot_handle_t*)Private;
+
+  if(!AsciiStrCmp(Section, "config")) {
+    if(!AsciiStrCmp(Name, "name")) {
+      mbhandle->Name = AsciiStrDup(Value);
+    }
+  }
+
+  if(!AsciiStrCmp(Section, "partitions")) {
+    if(!AsciiStrCmp(Name, "boot")) {
+      mbhandle->PartitionBoot = Ascii2Unicode(Value);
+    }
+  }
+  return 1;
+} 
+
+STATIC EFI_STATUS
+EFIAPI
+FindMultibootSFS (
+  IN EFI_HANDLE  Handle,
+  IN VOID        *Instance,
+  IN VOID        *Context
+  )
+{
+  EFI_STATUS                        Status;
+  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   *Volume;
+  EFI_FILE_PROTOCOL                 *Root;
+  EFI_FILE_PROTOCOL                 *DirMultiboot;
+  EFI_FILE_PROTOCOL                 *FileMultibootIni;
+  EFI_FILE_INFO                     *NodeInfo;
+  CHAR16                            *FilenameBuf;
+  BOOLEAN                           NoFile;
+  multiboot_handle_t                *mbhandle;
+
+  //
+  // Get the SimpleFilesystem protocol on that handle
+  //
+  Volume = NULL;
+  Status = gBS->HandleProtocol (
+                  Handle,
+                  &gEfiSimpleFileSystemProtocolGuid,
+                  (VOID **)&Volume
+                  );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  //
+  // Open the root directory of the volume
+  //
+  Root = NULL;
+  Status = Volume->OpenVolume (
+                     Volume,
+                     &Root
+                     );
+  if (EFI_ERROR (Status) || Root==NULL) {
+    return Status;
+  }
+
+  //
+  // Open multiboot dir
+  //
+  DirMultiboot = NULL;
+  Status = Root->Open (
+                   Root,
+                   &DirMultiboot,
+                   L"\\multiboot",
+                   EFI_FILE_MODE_READ,
+                   0
+                   );
+  if (!EFI_ERROR (Status)) goto ENUMERATE;
+
+  DirMultiboot = NULL;
+  Status = Root->Open (
+                   Root,
+                   &DirMultiboot,
+                   L"\\media\\multiboot",
+                   EFI_FILE_MODE_READ,
+                   0
+                   );
+  if (!EFI_ERROR (Status)) goto ENUMERATE;
+
+
+  DirMultiboot = NULL;
+  Status = Root->Open (
+                   Root,
+                   &DirMultiboot,
+                   L"\\media\\0\\multiboot",
+                   EFI_FILE_MODE_READ,
+                   0
+                   );
+  if (!EFI_ERROR (Status)) goto ENUMERATE;
+
+  return Status;
+
+
+ENUMERATE:
+  // enumerate directories
+  NoFile      = FALSE;
+  NodeInfo    = NULL;
+  FilenameBuf = NULL;
+  mbhandle    = NULL;
+  for ( Status = FileHandleFindFirstFile(DirMultiboot, &NodeInfo)
+      ; !EFI_ERROR(Status) && !NoFile
+      ; Status = FileHandleFindNextFile(DirMultiboot, NodeInfo, &NoFile)
+     ){
+
+    // ignore files
+    if(!NodeIsDir(NodeInfo))
+      continue;
+
+    // build multiboot.ini path
+    CONST CHAR16* PathMultibootIni = L"\\multiboot.ini";
+    FilenameBuf = AllocateZeroPool(StrSize(NodeInfo->FileName)+StrSize(PathMultibootIni)-1);
+    if (FilenameBuf == NULL) {
+      continue;
+    }
+    StrCat(FilenameBuf, NodeInfo->FileName);
+    StrCat(FilenameBuf, PathMultibootIni);
+    
+    // open multiboot.ini
+    FileMultibootIni = NULL;
+    Status = DirMultiboot->Open (
+                     DirMultiboot,
+                     &FileMultibootIni,
+                     FilenameBuf,
+                     EFI_FILE_MODE_READ,
+                     0
+                     );
+    if (EFI_ERROR (Status)) {
+      goto NEXT;
+    }
+
+    // allocate multiboot handle
+    mbhandle = AllocateZeroPool(sizeof(multiboot_handle_t));
+    if(mbhandle==NULL) {
+      goto NEXT;
+    }
+    mbhandle->DeviceHandle = Handle;
+
+    // open ROM directory
+    Status = DirMultiboot->Open (
+                     DirMultiboot,
+                     &mbhandle->ROMDirectory,
+                     NodeInfo->FileName,
+                     EFI_FILE_MODE_READ,
+                     0
+                     );
+    if (EFI_ERROR (Status)) {
+      goto NEXT;
+    }
+
+    // parse ini
+    ini_parse_file(FileMultibootIni, IniHandler, mbhandle);
+
+    // close multiboot.ini
+    FileHandleClose(FileMultibootIni);
+
+    // add menu entry
+    if(mbhandle->Name && mbhandle->PartitionBoot) {
+      // create new menu entry
+      BOOT_MENU_ENTRY *Entry = MenuAddEntry(&mBootMenuMain, &mBootMenuMainCount);
+      if(Entry == NULL) {
+        return EFI_OUT_OF_RESOURCES;
+      }
+
+      Entry->Description = mbhandle->Name;
+      Entry->Private = mbhandle;
+      Entry->Callback = MultibootCallback;
+    }
+
+NEXT:
+    if(EFI_ERROR(Status) && mbhandle) {
+      FreePool(mbhandle);
+      mbhandle = NULL;
+    }
+
+    if(FilenameBuf) {
+      FreePool(FilenameBuf);
+      FilenameBuf = NULL;
+    }
+  }
+
+  // close multiboot dir
+  FileHandleClose(DirMultiboot);
 
   return Status;
 }
@@ -290,6 +534,13 @@ AndroidBootEntryPoint (
   VisitAllInstancesOfProtocol (
     &gEfiBlockIoProtocolGuid,
     FindAndroidBlockIo,
+    NULL
+    );
+
+  // add Multiboot options
+  VisitAllInstancesOfProtocol (
+    &gEfiSimpleFileSystemProtocolGuid,
+    FindMultibootSFS,
     NULL
     );
 
