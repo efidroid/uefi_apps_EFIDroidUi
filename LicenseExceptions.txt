@@ -1,0 +1,10 @@
+License.txt holds the license for EFIDroid's contributions in this project.
+It uses some 3rd Party code with different licenses though.
+
+These may be incompatible with this project's license and you have to remove/replace them
+if you want to use it as a closed source application.
+
+List of directories containing 3rd Party code and the sites where you can find their original source code:
+Library/DecompressLib: https://github.com/torvalds/linux
+Library/Freetype2Lib: http://git.savannah.gnu.org/cgit/freetype/freetype2.git
+Library/IniLib: https://github.com/benhoyt/inih
