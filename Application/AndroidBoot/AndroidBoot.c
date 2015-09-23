@@ -124,8 +124,13 @@ FindAndroidBlockIo (
   if(AndroidHdr == NULL)
     return EFI_OUT_OF_RESOURCES;
 
-  // read and verify the android header
-  BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, 0, BufferSize, AndroidHdr);
+  // read android header
+  Status = BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, 0, BufferSize, AndroidHdr);
+  if(EFI_ERROR(Status)) {
+    goto FREEBUFFER;
+  }
+
+  // read android header
   Status = AndroidVerify(AndroidHdr);
   if(EFI_ERROR(Status)) {
     goto FREEBUFFER;
