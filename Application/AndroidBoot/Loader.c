@@ -63,7 +63,7 @@ AndroidLoadCmdline (
 {
   boot_img_hdr_t* Hdr = Parsed->Hdr;
   EFI_DEVICE_PATH_PROTOCOL  *DevPath;
-  CHAR8 *DevPathString;
+  CHAR8 *DevPathString = NULL;
   UINTN Len;
 
   // check mbhandle
