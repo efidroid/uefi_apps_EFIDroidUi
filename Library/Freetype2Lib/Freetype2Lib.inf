@@ -92,4 +92,4 @@
   TRUE
 
 [BuildOptions]
-  GCC:*_*_*_CC_FLAGS     = -DFT2_BUILD_LIBRARY
+  GCC:*_*_*_CC_FLAGS     = -DFT2_BUILD_LIBRARY -Wno-error
