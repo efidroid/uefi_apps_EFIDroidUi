@@ -3,6 +3,8 @@
 
 #include <Uefi/UefiBaseType.h>
 
+extern EFI_GUID gEFIDroidVariableGuid;
+
 typedef struct {
   CONST CHAR8* Description;
   EFI_STATUS (*Callback) (VOID*);

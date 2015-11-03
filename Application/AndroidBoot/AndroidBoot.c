@@ -532,6 +532,9 @@ AndroidBootEntryPoint (
   IN EFI_SYSTEM_TABLE  *SystemTable
   )
 {
+  UINTN                               Size;
+  EFI_STATUS                          Status;
+
   // create main menu
   mBootMenuMain = MenuCreate();
 
@@ -556,6 +559,24 @@ AndroidBootEntryPoint (
   BOOT_MENU_ENTRY *Entry = MenuAddEntry(&mBootMenuMain, &mBootMenuMainCount);
   Entry->Description = "Reboot";
   Entry->Callback = RebootCallback;
+
+  // get size of 'EFIDroidErrorStr'
+  Size = 0;
+  Status = gRT->GetVariable (L"EFIDroidErrorStr", &gEFIDroidVariableGuid, NULL, &Size, NULL);
+  if (Status == EFI_BUFFER_TOO_SMALL) {
+    // allocate memory (XXX: this is a memleak)
+    CHAR8* EFIDroidErrorStr = AllocateZeroPool(Size);
+    if (EFIDroidErrorStr) {
+      // get actual variable value and set 'gErrorStr'
+      Status = gRT->GetVariable (L"EFIDroidErrorStr", &gEFIDroidVariableGuid, NULL, &Size, EFIDroidErrorStr);
+      if (Status == EFI_SUCCESS) {
+        gErrorStr = EFIDroidErrorStr;
+
+        // delete variable
+        Status = gRT->SetVariable (L"EFIDroidErrorStr", &gEFIDroidVariableGuid, 0, 0, NULL);
+      }
+    }
+  }
 
   // finish and main menu
   MenuFinish(&mBootMenuMain, &mBootMenuMainCount);
