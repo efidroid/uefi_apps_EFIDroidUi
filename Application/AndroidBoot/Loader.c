@@ -115,6 +115,7 @@ AndroidLoadCmdline (
   // create cmdline
   UINTN len_cmdline = AsciiStrLen(Hdr->cmdline);
   UINTN len_cmdline_extra = AsciiStrLen(Hdr->extra_cmdline);
+  UINTN len_cmdline_rdinit = AsciiStrLen(CMDLINE_RDINIT);
   UINTN len_cmdline_mbpath = 0;
   if(mbhandle) {
     len_cmdline_mbpath += AsciiStrLen(CMDLINE_MULTIBOOTPATH);
@@ -122,13 +123,14 @@ AndroidLoadCmdline (
     len_cmdline_mbpath += AsciiStrLen(mbhandle->MultibootConfig);
   }
 
-  UINTN CmdlineLenMax = len_cmdline + len_cmdline_extra + len_cmdline_mbpath + 1;
+  UINTN CmdlineLenMax = len_cmdline + len_cmdline_extra + len_cmdline_rdinit + len_cmdline_mbpath + 1;
   Parsed->Cmdline = AllocateZeroPool(CmdlineLenMax);
   if (Parsed->Cmdline == NULL)
     return EFI_OUT_OF_RESOURCES;
 
   AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, Hdr->cmdline);
   AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, Hdr->extra_cmdline);
+  AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, CMDLINE_RDINIT);
 
   if(mbhandle) {
     AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, CMDLINE_MULTIBOOTPATH);
