@@ -7,6 +7,7 @@
 #include <Library/BaseMemoryLib.h>
 #include <Protocol/GraphicsOutput.h>
 #include <Protocol/SimpleTextIn.h>
+#include <Protocol/LKDisplay.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <LittleKernel.h>
@@ -24,7 +25,7 @@
 #define INCFILE(symname, sizename, filename) INCBIN(symname, sizename, filename, ".rodata")
 
 extern EFI_GRAPHICS_OUTPUT_PROTOCOL *mGop;
-extern lkapi_t* mLKApi;
+extern EFI_LK_DISPLAY_PROTOCOL *gLKDisplay;
 
 extern UINT8 mColorRed;
 extern UINT8 mColorGreen;

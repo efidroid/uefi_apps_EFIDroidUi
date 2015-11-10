@@ -1,7 +1,7 @@
 #include "Menu.h"
 
 EFI_GRAPHICS_OUTPUT_PROTOCOL *mGop;
-lkapi_t* mLKApi;
+EFI_LK_DISPLAY_PROTOCOL *gLKDisplay;
 
 EFI_STATUS
 EFIAPI
@@ -10,7 +10,6 @@ MenuLibConstructor (
   IN EFI_SYSTEM_TABLE  *SystemTable
   )
 {
-  mLKApi = GetLKApi();
   return EFI_SUCCESS;
 }
 
@@ -196,10 +195,18 @@ EFIDroidEnterFrontPage (
     return;
   }
 
+  // get LKDisplay protocol
+  Status = gBS->LocateProtocol (&gEfiLKDisplayProtocolGuid, NULL, (VOID **) &gLKDisplay);
+  if (EFI_ERROR (Status)) {
+    ASSERT(FALSE);
+    return;
+  }
+
   // set mode to initialize HW
   mGop->SetMode(mGop, 0);
+  gLKDisplay->SetFlushMode(LK_DISPLAY_FLUSH_MODE_MANUAL);
 
-  SetDensity(mLKApi->lcd_get_density());
+  SetDensity(gLKDisplay->GetDensity());
 
   // initialize text engine
   TextInit();

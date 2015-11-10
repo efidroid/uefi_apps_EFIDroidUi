@@ -39,7 +39,7 @@ LCDFlush (
 )
 {
   // flush framebuffer contents
-  mLKApi->lcd_flush();
+  gLKDisplay->FlushScreen();
 }
 
 VOID
