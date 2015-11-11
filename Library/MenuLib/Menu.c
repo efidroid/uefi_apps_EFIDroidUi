@@ -204,9 +204,8 @@ EFIDroidEnterFrontPage (
 
   // set mode to initialize HW
   mGop->SetMode(mGop, 0);
-  gLKDisplay->SetFlushMode(LK_DISPLAY_FLUSH_MODE_MANUAL);
 
-  SetDensity(gLKDisplay->GetDensity());
+  SetDensity(gLKDisplay->GetDensity(gLKDisplay));
 
   // initialize text engine
   TextInit();
