@@ -9,6 +9,7 @@ typedef struct {
   CONST CHAR8* Description;
   EFI_STATUS (*Callback) (VOID*);
   VOID *Private;
+  BOOLEAN ResetGop;
 } BOOT_MENU_ENTRY;
 
 extern CONST CHAR8                 *gErrorStr;

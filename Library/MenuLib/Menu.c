@@ -187,6 +187,7 @@ EFIDroidEnterFrontPage (
   )
 {
   EFI_STATUS Status;
+  UINT32     OldMode;
 
   // get graphics protocol
   Status = gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **) &mGop);
@@ -202,8 +203,9 @@ EFIDroidEnterFrontPage (
     return;
   }
 
-  // set mode to initialize HW
-  mGop->SetMode(mGop, 0);
+  // use portrait mode
+  OldMode = mGop->Mode->Mode;
+  mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
 
   SetDensity(gLKDisplay->GetDensity(gLKDisplay));
 
@@ -225,8 +227,15 @@ EFIDroidEnterFrontPage (
         case CHAR_CARRIAGE_RETURN:
           RenderBootScreen(&mActiveMenu[mActiveMenuPosition]);
 
-          if(mActiveMenu[mActiveMenuPosition].Callback)
+          if(mActiveMenu[mActiveMenuPosition].Callback) {
+            if (mActiveMenu[mActiveMenuPosition].ResetGop)
+              mGop->SetMode(mGop, OldMode);
+
             mActiveMenu[mActiveMenuPosition].Callback(mActiveMenu[mActiveMenuPosition].Private);
+
+            if (mActiveMenu[mActiveMenuPosition].ResetGop)
+              mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
+          }
           break;
       }
     }
@@ -245,4 +254,6 @@ EFIDroidEnterFrontPage (
       }
     }
   }
+
+  mGop->SetMode(mGop, OldMode);
 }

@@ -475,6 +475,7 @@ AddEfiBootOptions (
     Entry->Description = Unicode2Ascii(Option->Description);
     Entry->Callback = BootOptionEfiOption;
     Entry->Private = Option;
+    Entry->ResetGop = TRUE;
   }
 }
 
