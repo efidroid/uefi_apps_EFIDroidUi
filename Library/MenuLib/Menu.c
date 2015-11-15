@@ -225,7 +225,8 @@ EFIDroidEnterFrontPage (
     if(Key.ScanCode==SCAN_NULL) {
       switch(Key.UnicodeChar) {
         case CHAR_CARRIAGE_RETURN:
-          RenderBootScreen(&mActiveMenu[mActiveMenuPosition]);
+          if(!mActiveMenu[mActiveMenuPosition].HideBootMessage)
+            RenderBootScreen(&mActiveMenu[mActiveMenuPosition]);
 
           if(mActiveMenu[mActiveMenuPosition].Callback) {
             if (mActiveMenu[mActiveMenuPosition].ResetGop)

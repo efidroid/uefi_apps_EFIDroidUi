@@ -10,6 +10,7 @@ typedef struct {
   EFI_STATUS (*Callback) (VOID*);
   VOID *Private;
   BOOLEAN ResetGop;
+  BOOLEAN HideBootMessage;
 } BOOT_MENU_ENTRY;
 
 extern CONST CHAR8                 *gErrorStr;

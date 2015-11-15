@@ -22,7 +22,10 @@
 
 BOOT_MENU_ENTRY             *mBootMenuMain = NULL;
 UINTN                       mBootMenuMainCount = 0;
+BOOT_MENU_ENTRY             *mBootMenuRecovery = NULL;
+UINTN                       mBootMenuRecoveryCount = 0;
 CONST CHAR8                 *gErrorStr = NULL;
+INT32                       gEntryRecoveryIndex = -1;
 
 // Type definitions
 //
@@ -102,6 +105,8 @@ FindAndroidBlockIo (
   EFI_PARTITION_NAME_PROTOCOL *PartitionName;
   UINTN                     BufferSize;
   VOID                      *AndroidHdr;
+  CONST CHAR8               *EntryDescription;
+  BOOLEAN                   IsRecovery = FALSE;
 
   Status = EFI_SUCCESS;
 
@@ -136,12 +141,6 @@ FindAndroidBlockIo (
     goto FREEBUFFER;
   }
 
-  // create new menu entry
-  BOOT_MENU_ENTRY *Entry = MenuAddEntry(&mBootMenuMain, &mBootMenuMainCount);;
-  if(Entry == NULL) {
-    return EFI_OUT_OF_RESOURCES;
-  }
-
   //
   // Get the PartitionName protocol on that handle
   //
@@ -153,17 +152,32 @@ FindAndroidBlockIo (
                   );
   if (!EFI_ERROR (Status) && PartitionName->Name[0]) {
     if (!StrCmp(PartitionName->Name, L"boot"))
-      Entry->Description = "Android";
-    else if (!StrCmp(PartitionName->Name, L"recovery"))
-      Entry->Description = "Recovery";
+      EntryDescription = "Internal Android";
+    else if (!StrCmp(PartitionName->Name, L"recovery")) {
+      EntryDescription = "Internal Android";
+      IsRecovery = TRUE;
+    }
     else {
-      Entry->Description = Unicode2Ascii(PartitionName->Name);
+      EntryDescription = Unicode2Ascii(PartitionName->Name);
     }
   }
   else {
-    Entry->Description = "Unknown";
+    EntryDescription = "Unknown";
   }
 
+  // create new menu entry
+  BOOT_MENU_ENTRY *Entry = NULL;
+  if(IsRecovery) {
+    Entry = MenuAddEntry(&mBootMenuRecovery, &mBootMenuRecoveryCount);
+    gEntryRecoveryIndex = mBootMenuRecoveryCount-1;
+  }
+  else {
+    Entry = MenuAddEntry(&mBootMenuMain, &mBootMenuMainCount);
+  }
+  if(Entry == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+  Entry->Description = EntryDescription;
   Entry->Callback = AndroidCallback;
   Entry->Private = BlockIo;
 
@@ -206,6 +220,15 @@ IniHandler (
   }
   return 1;
 } 
+
+STATIC EFI_STATUS
+MultibootRecoveryCallback (
+  IN VOID *Private
+)
+{
+  multiboot_handle_t        *mbhandle = Private;
+  return AndroidBootFromBlockIo(mBootMenuRecovery[gEntryRecoveryIndex].Private, mbhandle);
+}
 
 STATIC EFI_STATUS
 EFIAPI
@@ -379,10 +402,19 @@ ENUMERATE:
       if(Entry == NULL) {
         return EFI_OUT_OF_RESOURCES;
       }
-
       Entry->Description = mbhandle->Name;
       Entry->Private = mbhandle;
       Entry->Callback = MultibootCallback;
+
+      if (gEntryRecoveryIndex >= 0) {
+        // create new recovery menu entry
+        BOOT_MENU_ENTRY *EntryRecovery = MenuAddEntry(&mBootMenuRecovery, &mBootMenuRecoveryCount);
+        if(EntryRecovery == NULL) {
+          return EFI_OUT_OF_RESOURCES;
+        }
+        CopyMem(EntryRecovery, Entry, sizeof(BOOT_MENU_ENTRY));
+        EntryRecovery->Callback = MultibootRecoveryCallback;
+      }
     }
 
 NEXT:
@@ -431,6 +463,24 @@ BootOptionEfiOption (
   //
   Status = BdsLibBootViaBootOption (BootOption, BootOption->DevicePath, &ExitDataSize, &ExitData);
   return Status;
+}
+
+EFI_STATUS
+RecoveryCallback (
+  IN VOID* Private
+)
+{
+  SetActiveMenu(mBootMenuRecovery);
+  return EFI_UNSUPPORTED;
+}
+
+EFI_STATUS
+RecoveryBackCallback (
+  IN VOID* Private
+)
+{
+  SetActiveMenu(mBootMenuMain);
+  return EFI_UNSUPPORTED;
 }
 
 EFI_STATUS
@@ -558,9 +608,11 @@ AndroidBootEntryPoint (
 {
   UINTN                               Size;
   EFI_STATUS                          Status;
+  BOOT_MENU_ENTRY                     *Entry;
 
-  // create main menu
+  // create menus
   mBootMenuMain = MenuCreate();
+  mBootMenuRecovery = MenuCreate();
 
   // add Android options
   VisitAllInstancesOfProtocol (
@@ -579,10 +631,24 @@ AndroidBootEntryPoint (
   // add default EFI options
   AddEfiBootOptions();
 
+  if (gEntryRecoveryIndex >= 0) {
+    // add recovery option
+    Entry = MenuAddEntry(&mBootMenuMain, &mBootMenuMainCount);
+    Entry->Description = "Recovery";
+    Entry->Callback = RecoveryCallback;
+    Entry->HideBootMessage = TRUE;
+  }
+
   // add reboot option
-  BOOT_MENU_ENTRY *Entry = MenuAddEntry(&mBootMenuMain, &mBootMenuMainCount);
+  Entry = MenuAddEntry(&mBootMenuMain, &mBootMenuMainCount);
   Entry->Description = "Reboot";
   Entry->Callback = RebootCallback;
+
+  // add back option
+  Entry = MenuAddEntry(&mBootMenuRecovery, &mBootMenuRecoveryCount);
+  Entry->Description = "< Back";
+  Entry->Callback = RecoveryBackCallback;
+  Entry->HideBootMessage = TRUE;
 
   // get size of 'EFIDroidErrorStr'
   Size = 0;
@@ -602,8 +668,11 @@ AndroidBootEntryPoint (
     }
   }
 
-  // finish and main menu
+  // finish menus
   MenuFinish(&mBootMenuMain, &mBootMenuMainCount);
+  MenuFinish(&mBootMenuRecovery, &mBootMenuRecoveryCount);
+
+  // show main menu
   SetActiveMenu(mBootMenuMain);
   EFIDroidEnterFrontPage (0, TRUE);
 
