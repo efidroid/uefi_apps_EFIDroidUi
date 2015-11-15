@@ -126,29 +126,6 @@ MultibootCallback (
     return Status;
   }
 
-  // get filename
-  CHAR16* fname;
-  Status = FileHandleGetFileName(BootFile, &fname);
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-
-  // convert filename
-  CHAR16 *Tmp = fname;
-  for(Tmp = fname; *Tmp != 0; Tmp++) {
-    if(*Tmp=='\\')
-      *Tmp = '/';
-  }
-  
-  // store as ascii string
-  mbhandle->MultibootConfig = Unicode2Ascii(fname);
-  if (mbhandle->MultibootConfig == NULL) {
-    return EFI_OUT_OF_RESOURCES;
-  }
-  
-  // cleanup
-  FreePool(fname);
-
   Status = FileHandleGetSize(BootFile, &FileSize);
   if (EFI_ERROR (Status)) {
     return Status;

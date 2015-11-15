@@ -346,6 +346,29 @@ ENUMERATE:
     // parse ini
     ini_parse_file(FileMultibootIni, IniHandler, mbhandle);
 
+    // get filename
+    CHAR16* fname;
+    Status = FileHandleGetFileName(FileMultibootIni, &fname);
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
+
+    // convert filename
+    CHAR16 *Tmp = fname;
+    for(Tmp = fname; *Tmp != 0; Tmp++) {
+      if(*Tmp=='\\')
+        *Tmp = '/';
+    }
+
+    // store as ascii string
+    mbhandle->MultibootConfig = Unicode2Ascii(fname);
+    if (mbhandle->MultibootConfig == NULL) {
+      return EFI_OUT_OF_RESOURCES;
+    }
+
+    // cleanup
+    FreePool(fname);
+
     // close multiboot.ini
     FileHandleClose(FileMultibootIni);
 
