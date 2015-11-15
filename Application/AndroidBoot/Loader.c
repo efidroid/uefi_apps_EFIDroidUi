@@ -16,6 +16,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include "AndroidBoot.h"
 
 #define ATAG_MAX_SIZE   0x3000
+#define DTB_PAD_SIZE    0x1000
 #define ROUNDUP(a, b)   (((a) + ((b)-1)) & ~((b)-1))
 #define ROUNDDOWN(a, b) ((a) & ~((b)-1))
 
@@ -39,6 +40,36 @@ typedef struct {
   VOID   *second_loaded;
   VOID   *tags_loaded;
 } android_parsed_bootimg_t;
+
+STATIC inline
+UINT32
+RangeOverlaps (
+  UINT32 x1,
+  UINT32 x2,
+  UINT32 y1,
+  UINT32 y2
+)
+{
+  return MAX(x1,y1) <= MIN(x2,y2);
+}
+
+#define MAXVAL_FUNCTION(name, type) \
+int name(type n, ...) { \
+  type i, val, largest; \
+  VA_LIST vl; \
+ \
+  VA_START(vl, n); \
+  largest = VA_ARG(vl, type); \
+  for(i=1; i<n; i++) { \
+    val = VA_ARG(vl,type); \
+    largest = (largest>val) ? largest : val; \
+  } \
+  VA_END(vl); \
+ \
+  return largest; \
+}
+
+MAXVAL_FUNCTION(MAXUINT, UINT32);
 
 
 EFI_STATUS
@@ -316,6 +347,11 @@ AndroidBootFromBlockIo (
     TagsSize = ATAG_MAX_SIZE;
     off_tags = 0;
   }
+  else {
+    // the DTB may get expanded
+    TagsSize += DTB_PAD_SIZE;
+  }
+
 
   // allocate tag memory and load dtb if available
   Status = AndroidLoadImage(BlockIo, off_tags, TagsSize, &Parsed.Tags, AndroidHdr->tags_addr);
@@ -359,6 +395,14 @@ AndroidBootFromBlockIo (
   UINTN objsize = CpioPredictObjSize(AsciiStrLen(cpio_name_mbinit), MultibootSize);
   RamdiskUncompressedLen += objsize;
 
+  if (   RangeOverlaps(AndroidHdr->ramdisk_addr, RamdiskUncompressedLen, (UINT32)Parsed.Kernel, AndroidHdr->kernel_size)
+      || RangeOverlaps(AndroidHdr->ramdisk_addr, RamdiskUncompressedLen, (UINT32)Parsed.Tags, TagsSize)
+     )
+  {
+    AndroidHdr->ramdisk_addr = MAXUINT((UINT32)Parsed.Kernel + AndroidHdr->kernel_size, Parsed.Tags + TagsSize);
+    DEBUG((EFI_D_INFO, "Ramdisk overlaps - move it to 0x%08x.\n", AndroidHdr->ramdisk_addr));
+  }
+
   // allocate uncompressed ramdisk memory in boot memory
   Status = AndroidLoadImage(BlockIo, 0, RamdiskUncompressedLen, &Parsed.Ramdisk, AndroidHdr->ramdisk_addr);
   if (EFI_ERROR(Status)) {
@@ -380,7 +424,7 @@ AndroidBootFromBlockIo (
   ASSERT((UINT32)cpiohd <= (UINT32)Parsed.Ramdisk+RamdiskUncompressedLen);
 
   // generate Atags
-  if(LKApi->boot_create_tags(Parsed.Cmdline, (UINT32)Parsed.Ramdisk, ((UINT32)cpiohd)-((UINT32)Parsed.Ramdisk), AndroidHdr->tags_addr, TagsSize)) {
+  if(LKApi->boot_create_tags(Parsed.Cmdline, (UINT32)Parsed.Ramdisk, ((UINT32)cpiohd)-((UINT32)Parsed.Ramdisk), AndroidHdr->tags_addr, TagsSize-DTB_PAD_SIZE)) {
     gErrorStr = "Error creating tags";
     goto FREEBUFFER;
   }
