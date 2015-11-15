@@ -117,7 +117,7 @@ RenderActiveMenu(
   UINTN y = GetScreenHeight()/2 - (mActiveMenuSize*LineHeight)/2 + LineHeight;
 
   // move the active item to the screen's center
-  if(mActiveMenuSize*LineHeight > GetScreenHeight()) {
+  if(mActiveMenuSize*LineHeight > GetScreenHeight() - TitleBottom) {
     y += (mActiveMenuSize/2 - mActiveMenuPosition)*LineHeight;
   }
 
