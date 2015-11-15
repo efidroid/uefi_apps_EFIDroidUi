@@ -540,6 +540,14 @@ AddEfiBootOptions (
       continue;
     }
 
+    // Don't display the VNOR device
+    if (DevicePathType(Option->DevicePath) == HARDWARE_DEVICE_PATH || DevicePathSubType(Option->DevicePath) == HW_VENDOR_DP) {
+      VENDOR_DEVICE_PATH *Vendor = (VENDOR_DEVICE_PATH *) Option->DevicePath;
+      if (CompareGuid (&Vendor->Guid, &gLKVNORGuid)) {
+        continue;
+      }
+    }
+
     BOOT_MENU_ENTRY *Entry = MenuAddEntry(&mBootMenuMain, &mBootMenuMainCount);
     if(Entry == NULL) {
       break;
