@@ -654,7 +654,7 @@ AndroidBootEntryPoint (
 
   // add back option
   Entry = MenuAddEntry(&mBootMenuRecovery, &mBootMenuRecoveryCount);
-  Entry->Description = "< Back";
+  Entry->Description = "< Back <";
   Entry->Callback = RecoveryBackCallback;
   Entry->HideBootMessage = TRUE;
 
