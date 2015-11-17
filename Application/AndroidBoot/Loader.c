@@ -442,6 +442,7 @@ AndroidBootFromBlockIo (
   // Switch off interrupts, caches, mmu, etc
   //
   PreparePlatformHardware ();
+  LKApi->platform_uninit();
 
   // Outside BootServices, so can't use Print();
   DEBUG ((EFI_D_ERROR, "\nStarting the kernel:\n\n"));
