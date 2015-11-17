@@ -448,7 +448,7 @@ AndroidBootFromBlockIo (
 
   LinuxKernel = (LINUX_KERNEL)(UINTN)Parsed.Kernel;
   // Jump to kernel with register set
-  LinuxKernel ((UINTN)0, LKApi->boot_machine_type(), (UINTN)AndroidHdr->tags_addr);
+  LKApi->boot_exec(LinuxKernel, (UINTN)0, LKApi->boot_machine_type(), (UINTN)AndroidHdr->tags_addr);
 
   // Kernel should never exit
   // After Life services are not provided
