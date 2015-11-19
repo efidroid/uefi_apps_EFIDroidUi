@@ -23,7 +23,7 @@ CpioUlToStr (
   UINT32 in
 )
 {
-  AsciiSPrint (buf, 9, "%08x", in);
+  AsciiSPrint (buf, 9, "%08X", in);
 }
 
 INT32
