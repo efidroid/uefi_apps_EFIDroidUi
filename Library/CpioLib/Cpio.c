@@ -109,7 +109,7 @@ CpioCreateObj (
   }
 
   // mode: -rwxr-x---
-  CopyMem (hdr->c_mode, cpio_mode_executable, AsciiStrLen (cpio_mode_executable) - 1);
+  CopyMem (hdr->c_mode, cpio_mode_executable, AsciiStrLen (cpio_mode_executable));
 
   return (CPIO_NEWC_HEADER *) (dataptr + ALIGN_VALUE (data_size, 4));
 }
