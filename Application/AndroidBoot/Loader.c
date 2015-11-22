@@ -20,6 +20,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define ROUNDUP(a, b)   (((a) + ((b)-1)) & ~((b)-1))
 #define ROUNDDOWN(a, b) ((a) & ~((b)-1))
 
+STATIC EFI_FILE_PROTOCOL* FileHandle = NULL;
 CONST CHAR8* CMDLINE_MULTIBOOTPATH = " multibootpath=";
 CONST CHAR8* CMDLINE_RDINIT        = " rdinit=/init.multiboot";
 
@@ -472,4 +473,128 @@ FREEBUFFER:
   FreePool(AndroidHdr);
 
   return EFI_SUCCESS;
+}
+
+STATIC EFI_STATUS
+EFIAPI
+BIOReset (
+  IN EFI_BLOCK_IO_PROTOCOL          *This,
+  IN BOOLEAN                        ExtendedVerification
+  )
+{
+  return EFI_SUCCESS;
+}
+
+STATIC EFI_STATUS
+EFIAPI
+BIOReadBlocks (
+  IN EFI_BLOCK_IO_PROTOCOL          *This,
+  IN UINT32                         MediaId,
+  IN EFI_LBA                        Lba,
+  IN UINTN                          BufferSize,
+  OUT VOID                          *Buffer
+  )
+{
+  EFI_BLOCK_IO_MEDIA         *Media;
+  UINTN                      BlockSize;
+  EFI_STATUS                 Status;
+
+  Media     = This->Media;
+  BlockSize = Media->BlockSize;
+
+  if (MediaId != Media->MediaId) {
+    return EFI_MEDIA_CHANGED;
+  }
+
+  if (Lba > Media->LastBlock) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  if ((Lba + (BufferSize / BlockSize) - 1) > Media->LastBlock) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  if (BufferSize % BlockSize != 0) {
+    return EFI_BAD_BUFFER_SIZE;
+  }
+
+  if (Buffer == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  if (BufferSize == 0) {
+    return EFI_SUCCESS;
+  }
+
+  Status = FileHandleSetPosition(FileHandle, Lba*BlockSize);
+  if (EFI_ERROR (Status)) {
+    return EFI_DEVICE_ERROR;
+  }
+
+  Status = FileHandleRead(FileHandle, &BufferSize, Buffer);
+  if (EFI_ERROR (Status)) {
+    return EFI_DEVICE_ERROR;
+  }
+
+  return EFI_SUCCESS;
+}
+
+STATIC EFI_STATUS
+EFIAPI
+BIOWriteBlocks (
+  IN EFI_BLOCK_IO_PROTOCOL          *This,
+  IN UINT32                         MediaId,
+  IN EFI_LBA                        Lba,
+  IN UINTN                          BufferSize,
+  IN VOID                           *Buffer
+  )
+{
+  return EFI_WRITE_PROTECTED;
+}
+STATIC EFI_STATUS
+EFIAPI
+BIOFlushBlocks (
+  IN EFI_BLOCK_IO_PROTOCOL  *This
+  )
+{
+  return EFI_SUCCESS;
+}
+
+EFI_STATUS
+AndroidBootFromFile (
+  IN EFI_FILE_PROTOCOL  *File,
+  IN multiboot_handle_t *mbhandle
+)
+{
+  EFI_STATUS                Status;
+  UINT64                    FileSize = 0;
+
+  Status = FileHandleGetSize(File, &FileSize);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+  FileHandle = File;
+
+  EFI_BLOCK_IO_MEDIA Media = {
+    .MediaId = SIGNATURE_32('f', 'i', 'l', 'e'),
+    .RemovableMedia = FALSE,
+    .MediaPresent = TRUE,
+    .LogicalPartition = FALSE,
+    .ReadOnly = TRUE,
+    .WriteCaching = FALSE,
+    .BlockSize = 512,
+    .IoAlign = 4,
+    .LastBlock = FileSize/512 - 1
+  };
+
+  EFI_BLOCK_IO_PROTOCOL BlockIo = {
+    .Revision = EFI_BLOCK_IO_INTERFACE_REVISION,
+    .Media = &Media,
+    .Reset = BIOReset,
+    .ReadBlocks = BIOReadBlocks,
+    .WriteBlocks = BIOWriteBlocks,
+    .FlushBlocks = BIOFlushBlocks,
+  };
+
+  return AndroidBootFromBlockIo(&BlockIo, mbhandle);
 }

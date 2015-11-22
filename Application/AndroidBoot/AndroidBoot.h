@@ -68,6 +68,12 @@ AndroidBootFromBlockIo (
 );
 
 EFI_STATUS
+AndroidBootFromFile (
+  IN EFI_FILE_PROTOCOL  *File,
+  IN multiboot_handle_t *mbhandle
+);
+
+EFI_STATUS
 AndroidVerify (
   IN VOID* Buffer
 );
