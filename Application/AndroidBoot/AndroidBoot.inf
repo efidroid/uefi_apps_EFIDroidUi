@@ -50,6 +50,7 @@
   DecompressLib
   IniLib
   FileHandleLib
+  FstabLib
 
 [Protocols]
   gEfiLoadedImageProtocolGuid
@@ -59,6 +60,7 @@
 
 [FixedPcd]
   gLittleKernelTokenSpaceGuid.PcdMultibootBin
+  gLittleKernelTokenSpaceGuid.PcdFstabData
 
 [Guids]
   gEFIDroidVariableGuid

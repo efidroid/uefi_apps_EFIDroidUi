@@ -14,6 +14,7 @@
 
 #include <Library/UefiApplicationEntryPoint.h>
 #include <Library/BaseMemoryLib.h>
+#include <Library/Fstab.h>
 
 #include <Protocol/DevicePathFromText.h>
 
@@ -26,6 +27,13 @@ BOOT_MENU_ENTRY             *mBootMenuRecovery = NULL;
 UINTN                       mBootMenuRecoveryCount = 0;
 CONST CHAR8                 *gErrorStr = NULL;
 INT32                       gEntryRecoveryIndex = -1;
+FSTAB                       *mFstab = NULL;
+
+// ESP
+CHAR16                      *mEspPartitionName = NULL;
+CHAR16                      *mEspPartitionPath = NULL;
+EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *mEspVolume = NULL;
+EFI_FILE_PROTOCOL               *mEspDir    = NULL;
 
 // Type definitions
 //
@@ -84,12 +92,122 @@ AsciiStrDup (
   return NewStr;
 }
 
+VOID
+PathToUnix(
+  CHAR16* fname
+)
+{
+  CHAR16 *Tmp = fname;
+  for(Tmp = fname; *Tmp != 0; Tmp++) {
+    if(*Tmp=='\\')
+      *Tmp = '/';
+  }
+}
+
+VOID
+PathToUefi(
+  CHAR16* fname
+)
+{
+  CHAR16 *Tmp = fname;
+  for(Tmp = fname; *Tmp != 0; Tmp++) {
+    if(*Tmp=='/')
+      *Tmp = '\\';
+  }
+}
+
 STATIC EFI_STATUS
-AndroidCallback (
+AndroidCallbackBlockIo (
   IN VOID *Private
 )
 {
   return AndroidBootFromBlockIo((EFI_BLOCK_IO_PROTOCOL*)Private, NULL);
+}
+
+STATIC EFI_STATUS
+AndroidCallbackFile (
+  IN VOID *Private
+)
+{
+  return AndroidBootFromFile((EFI_FILE_PROTOCOL*)Private, NULL);
+}
+
+STATIC EFI_STATUS
+EFIAPI
+FindESP (
+  IN EFI_HANDLE  Handle,
+  IN VOID        *Instance,
+  IN VOID        *Context
+  )
+{
+  EFI_STATUS                        Status;
+  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   *Volume;
+  EFI_FILE_PROTOCOL                 *Root;
+  EFI_FILE_PROTOCOL                 *DirEsp;
+  EFI_PARTITION_NAME_PROTOCOL       *PartitionName;
+
+  //
+  // Get the PartitionName protocol on that handle
+  //
+  PartitionName = NULL;
+  Status = gBS->HandleProtocol (
+                  Handle,
+                  &gEfiPartitionNameProtocolGuid,
+                  (VOID **)&PartitionName
+                  );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  // return if it's not our ESP
+  if (StrCmp(PartitionName->Name, mEspPartitionName))
+    return Status;
+
+  //
+  // Get the SimpleFilesystem protocol on that handle
+  //
+  Volume = NULL;
+  Status = gBS->HandleProtocol (
+                  Handle,
+                  &gEfiSimpleFileSystemProtocolGuid,
+                  (VOID **)&Volume
+                  );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  //
+  // Open the root directory of the volume
+  //
+  Root = NULL;
+  Status = Volume->OpenVolume (
+                     Volume,
+                     &Root
+
+                     );
+  if (EFI_ERROR (Status) || Root==NULL) {
+    return Status;
+  }
+
+  //
+  // Open multiboot dir
+  //
+  DirEsp = NULL;
+  Status = Root->Open (
+                   Root,
+                   &DirEsp,
+                   mEspPartitionPath,
+                   EFI_FILE_MODE_READ,
+                   0
+                   );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  mEspVolume = Volume;
+  mEspDir = DirEsp;
+
+  return Status;
 }
 
 STATIC EFI_STATUS
@@ -107,6 +225,8 @@ FindAndroidBlockIo (
   VOID                      *AndroidHdr;
   CONST CHAR8               *EntryDescription;
   BOOLEAN                   IsRecovery = FALSE;
+  VOID                      *Private = NULL;
+  EFI_STATUS                (*Callback)(VOID*) = AndroidCallbackBlockIo;
 
   Status = EFI_SUCCESS;
 
@@ -122,6 +242,7 @@ FindAndroidBlockIo (
   if (EFI_ERROR (Status)) {
     return Status;
   }
+  Private = BlockIo;
 
   // allocate a buffer for the android header aligned on the block size
   BufferSize = ALIGN_VALUE(sizeof(boot_img_hdr_t), BlockIo->Media->BlockSize);
@@ -135,7 +256,7 @@ FindAndroidBlockIo (
     goto FREEBUFFER;
   }
 
-  // read android header
+  // verify android header
   Status = AndroidVerify(AndroidHdr);
   if(EFI_ERROR(Status)) {
     goto FREEBUFFER;
@@ -151,12 +272,48 @@ FindAndroidBlockIo (
                   (VOID **)&PartitionName
                   );
   if (!EFI_ERROR (Status) && PartitionName->Name[0]) {
-    if (!StrCmp(PartitionName->Name, L"boot"))
-      EntryDescription = "Internal Android";
-    else if (!StrCmp(PartitionName->Name, L"recovery")) {
-      EntryDescription = "Internal Android";
-      IsRecovery = TRUE;
+    // get fstab rec
+    CHAR8* PartitionNameAscii = Unicode2Ascii(PartitionName->Name);
+    ASSERT(PartitionNameAscii);
+    FSTAB_REC* Rec = FstabGetByPartitionName(mFstab, PartitionNameAscii);
+    FreePool(PartitionNameAscii);
+
+    if(Rec) {
+      // this partition needs a ESP redirect
+      if(FstabIsUEFI(Rec) && mEspDir) {
+        // build filename
+        UINTN PathBufSize = 100*sizeof(CHAR16);
+        CHAR16 *PathBuf = AllocateZeroPool(PathBufSize);
+        ASSERT(PathBuf);
+        UnicodeSPrint(PathBuf, PathBufSize, L"partition_%s.img", PartitionName->Name);
+
+        // open File
+        EFI_FILE_PROTOCOL* BootFile = NULL;
+        Status = mEspDir->Open (
+                         mEspDir,
+                         &BootFile,
+                         PathBuf,
+                         EFI_FILE_MODE_READ,
+                         0
+                         );
+        FreePool(PathBuf);
+        if (EFI_ERROR(Status)) {
+          goto FREEBUFFER;
+        }
+
+        Callback = AndroidCallbackFile;
+        Private = BootFile;
+      }
+
+      // this is a recovery partition
+      if(!AsciiStrCmp(Rec->mount_point, "/recovery")) {
+        IsRecovery = TRUE;
+      }
     }
+
+    // set entry description
+    if (!StrCmp(PartitionName->Name, L"boot") || IsRecovery)
+      EntryDescription = "Internal Android";
     else {
       EntryDescription = Unicode2Ascii(PartitionName->Name);
     }
@@ -175,11 +332,12 @@ FindAndroidBlockIo (
     Entry = MenuAddEntry(&mBootMenuMain, &mBootMenuMainCount);
   }
   if(Entry == NULL) {
-    return EFI_OUT_OF_RESOURCES;
+    Status = EFI_OUT_OF_RESOURCES;
+    goto FREEBUFFER;
   }
   Entry->Description = EntryDescription;
-  Entry->Callback = AndroidCallback;
-  Entry->Private = BlockIo;
+  Entry->Callback = Callback;
+  Entry->Private = Private;
 
   Status = EFI_SUCCESS;
 
@@ -227,7 +385,15 @@ MultibootRecoveryCallback (
 )
 {
   multiboot_handle_t        *mbhandle = Private;
-  return AndroidBootFromBlockIo(mBootMenuRecovery[gEntryRecoveryIndex].Private, mbhandle);
+
+  if (mBootMenuRecovery[gEntryRecoveryIndex].Callback==AndroidCallbackFile)
+    return AndroidBootFromFile(mBootMenuRecovery[gEntryRecoveryIndex].Private, mbhandle);
+  else if (mBootMenuRecovery[gEntryRecoveryIndex].Callback==AndroidCallbackBlockIo)
+    return AndroidBootFromBlockIo(mBootMenuRecovery[gEntryRecoveryIndex].Private, mbhandle);
+  else {
+    gErrorStr = "BUG: Invalid Callback";
+    return EFI_INVALID_PARAMETER;
+  }
 }
 
 STATIC EFI_STATUS
@@ -377,11 +543,7 @@ ENUMERATE:
     }
 
     // convert filename
-    CHAR16 *Tmp = fname;
-    for(Tmp = fname; *Tmp != 0; Tmp++) {
-      if(*Tmp=='\\')
-        *Tmp = '/';
-    }
+    PathToUnix(fname);
 
     // store as ascii string
     mbhandle->MultibootConfig = Unicode2Ascii(fname);
@@ -607,6 +769,50 @@ VisitAllInstancesOfProtocol (
   return EFI_SUCCESS;
 }
 
+STATIC
+EFI_STATUS
+InitializeEspData (
+  VOID
+)
+{
+  // get ESP
+  FSTAB_REC* EspRec = FstabGetESP(mFstab);
+  if(!EspRec)
+    return EFI_NOT_FOUND;
+
+  // get ESP Partition name
+  CHAR8* Tmp = FstabGetPartitionName(EspRec);
+  if(!Tmp)
+    return EFI_NOT_FOUND;
+  mEspPartitionName = Ascii2Unicode(Tmp);
+  ASSERT(mEspPartitionName);
+  FreePool(Tmp);
+
+  // build path for UEFIESP directory
+  UINTN BufSize = 5000*sizeof(CHAR16);
+  mEspPartitionPath = AllocateZeroPool(BufSize);
+  ASSERT(mEspPartitionPath);
+  if(EspRec->esp[0]=='/')
+    UnicodeSPrint(mEspPartitionPath, BufSize, L"%s/UEFIESP", EspRec->esp);
+  else if(!AsciiStrCmp(EspRec->esp, "datamedia"))
+    UnicodeSPrint(mEspPartitionPath, BufSize, L"/media/UEFIESP");
+  else {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  // convert path
+  PathToUefi(mEspPartitionPath);
+
+  // find ESP filesystem
+  VisitAllInstancesOfProtocol (
+    &gEfiSimpleFileSystemProtocolGuid,
+    FindESP,
+    NULL
+    );
+
+  return EFI_SUCCESS;
+}
+
 EFI_STATUS
 EFIAPI
 AndroidBootEntryPoint (
@@ -617,10 +823,27 @@ AndroidBootEntryPoint (
   UINTN                               Size;
   EFI_STATUS                          Status;
   BOOT_MENU_ENTRY                     *Entry;
+  CHAR8                               *FstabBin;
+  UINTN                               FstabSize;
 
   // create menus
   mBootMenuMain = MenuCreate();
   mBootMenuRecovery = MenuCreate();
+
+  // get fstab data
+  Status = GetSectionFromAnyFv (PcdGetPtr(PcdFstabData), EFI_SECTION_RAW, 0, (VOID **) &FstabBin, &FstabSize);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  // parse fstab
+  mFstab = FstabParse(FstabBin, FstabSize);
+  if(!mFstab) {
+    return EFI_UNSUPPORTED;
+  }
+
+  // init ESP variables
+  InitializeEspData();
 
   // add Android options
   VisitAllInstancesOfProtocol (
