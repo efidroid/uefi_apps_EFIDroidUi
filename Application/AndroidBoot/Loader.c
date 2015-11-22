@@ -23,6 +23,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 STATIC EFI_FILE_PROTOCOL* FileHandle = NULL;
 CONST CHAR8* CMDLINE_MULTIBOOTPATH = " multibootpath=";
 CONST CHAR8* CMDLINE_RDINIT        = " rdinit=/init.multiboot";
+CONST CHAR8* CMDLINE_PERMISSIVE    = " androidboot.selinux=permissive";
 
 typedef VOID (*LINUX_KERNEL)(UINT32 Zero, UINT32 Arch, UINTN ParametersBase);
 
@@ -90,7 +91,8 @@ AndroidVerify (
 STATIC EFI_STATUS
 AndroidLoadCmdline (
   android_parsed_bootimg_t  *Parsed,
-  IN multiboot_handle_t     *mbhandle
+  IN multiboot_handle_t     *mbhandle,
+  IN BOOLEAN                RecoveryMode
 )
 {
   boot_img_hdr_t* Hdr = Parsed->Hdr;
@@ -148,6 +150,7 @@ AndroidLoadCmdline (
   UINTN len_cmdline = AsciiStrLen(Hdr->cmdline);
   UINTN len_cmdline_extra = AsciiStrLen(Hdr->extra_cmdline);
   UINTN len_cmdline_rdinit = AsciiStrLen(CMDLINE_RDINIT);
+  UINTN len_cmdline_permissive = AsciiStrLen(CMDLINE_PERMISSIVE);
   UINTN len_cmdline_mbpath = 0;
   if(mbhandle) {
     len_cmdline_mbpath += AsciiStrLen(CMDLINE_MULTIBOOTPATH);
@@ -155,7 +158,8 @@ AndroidLoadCmdline (
     len_cmdline_mbpath += AsciiStrLen(mbhandle->MultibootConfig);
   }
 
-  UINTN CmdlineLenMax = len_cmdline + len_cmdline_extra + len_cmdline_rdinit + len_cmdline_mbpath + 1;
+  UINTN CmdlineLenMax = len_cmdline + len_cmdline_extra + len_cmdline_rdinit + 
+                        len_cmdline_permissive + len_cmdline_mbpath + 1;
   Parsed->Cmdline = AllocateZeroPool(CmdlineLenMax);
   if (Parsed->Cmdline == NULL)
     return EFI_OUT_OF_RESOURCES;
@@ -163,6 +167,10 @@ AndroidLoadCmdline (
   AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, Hdr->cmdline);
   AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, Hdr->extra_cmdline);
   AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, CMDLINE_RDINIT);
+
+  // in recovery mode we ptrace the whole system. that doesn't work well with selinux
+  if (RecoveryMode)
+    AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, CMDLINE_PERMISSIVE);
 
   if(mbhandle) {
     AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, CMDLINE_MULTIBOOTPATH);
@@ -324,13 +332,6 @@ AndroidBootFromBlockIo (
     goto FREEBUFFER;
   }
 
-  // load cmdline
-  Status = AndroidLoadCmdline(&Parsed, mbhandle);
-  if (EFI_ERROR(Status)) {
-    gErrorStr = "Error loading cmdline";
-    goto FREEBUFFER;
-  }
-
   // update addresses if necessary
   LKApi->boot_update_addrs(&AndroidHdr->kernel_addr, &AndroidHdr->ramdisk_addr, &AndroidHdr->tags_addr);
 
@@ -428,6 +429,19 @@ AndroidBootFromBlockIo (
   cpiohd = CpioCreateObj (cpiohd, cpio_name_mbinit, MultibootBin, MultibootSize);
   cpiohd = CpioCreateObj (cpiohd, CPIO_TRAILER, NULL, 0);
   ASSERT((UINT32)cpiohd <= (UINT32)Parsed.Ramdisk+RamdiskUncompressedLen);
+
+  // check if this is a recovery ramdisk
+  BOOLEAN RecoveryMode = FALSE;
+  if (CpioGetByName((CPIO_NEWC_HEADER *)Parsed.Ramdisk, "sbin/recovery")) {
+    RecoveryMode = TRUE;
+  }
+
+  // load cmdline
+  Status = AndroidLoadCmdline(&Parsed, mbhandle, RecoveryMode);
+  if (EFI_ERROR(Status)) {
+    gErrorStr = "Error loading cmdline";
+    goto FREEBUFFER;
+  }
 
   // generate Atags
   if(LKApi->boot_create_tags(Parsed.Cmdline, (UINT32)Parsed.Ramdisk, ((UINT32)cpiohd)-((UINT32)Parsed.Ramdisk), AndroidHdr->tags_addr, TagsSize-DTB_PAD_SIZE)) {
