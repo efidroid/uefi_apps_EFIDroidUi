@@ -303,7 +303,12 @@ AndroidBootFromBlockIo (
   }
 
   // read and verify the android header
-  BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, 0, BufferSize, AndroidHdr);
+  Status = BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, 0, BufferSize, AndroidHdr);
+  if (EFI_ERROR(Status)) {
+    gErrorStr = "Can't read boot image header";
+    goto FREEBUFFER;
+  }
+
   Status = AndroidVerify(AndroidHdr);
   if (EFI_ERROR(Status)) {
     gErrorStr = "Not a boot image";
