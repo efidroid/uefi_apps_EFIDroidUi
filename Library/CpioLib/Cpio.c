@@ -75,6 +75,22 @@ CpioGetLast (
 }
 
 CPIO_NEWC_HEADER*
+CpioGetByName (
+  CPIO_NEWC_HEADER *hdr,
+  CONST CHAR8        *name
+)
+{
+  while (CpioIsValid (hdr) && CpioHasNext (hdr)) {
+    hdr = (CPIO_NEWC_HEADER *) (((CHAR8 *) hdr) + CpioGetObjSize (hdr));
+    CONST CHAR8  *nameptr = (CONST CHAR8 *) (hdr + 1);
+    if (!AsciiStrCmp(nameptr, name))
+      return hdr;
+  }
+
+  return NULL;
+}
+
+CPIO_NEWC_HEADER*
 CpioCreateObj (
   CPIO_NEWC_HEADER   *hdr,
   CONST CHAR8        *name,
