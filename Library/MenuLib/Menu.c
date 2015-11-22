@@ -70,7 +70,7 @@ SetActiveMenu (
 
   // count entries
   UINTN NumEntries = 0;
-  while(mEntry->Description) {
+  while(mEntry && mEntry->Description) {
     NumEntries++;
     mEntry++;
   }
@@ -225,6 +225,9 @@ EFIDroidEnterFrontPage (
     if(Key.ScanCode==SCAN_NULL) {
       switch(Key.UnicodeChar) {
         case CHAR_CARRIAGE_RETURN:
+          if(mActiveMenuPosition>=mActiveMenuSize)
+            break;
+
           if(!mActiveMenu[mActiveMenuPosition].HideBootMessage)
             RenderBootScreen(&mActiveMenu[mActiveMenuPosition]);
 
