@@ -57,8 +57,5 @@
   LKApiLib
   Freetype2Lib
 
-[Guids]
-  gArmGlobalVariableGuid
-
 [Protocols]
   gEfiLKDisplayProtocolGuid
