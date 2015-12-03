@@ -461,7 +461,6 @@ AndroidBootFromBlockIo (
   //
   // Switch off interrupts, caches, mmu, etc
   //
-  LKApi->platform_uninit();
   PreparePlatformHardware ();
 
   // Outside BootServices, so can't use Print();
