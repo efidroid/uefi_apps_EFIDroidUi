@@ -76,7 +76,7 @@ DrawGlyph (
       }
 
       // get destination pixel
-      Pixel = FrameBuffer + y*HorizontalResolution*3 + x*3;
+      Pixel = FrameBuffer + y*HorizontalResolution*4 + x*4;
       // get alpha value from glyph
       Alpha = bitmap->buffer[q * bitmap->width + p];
 

@@ -79,5 +79,5 @@ ClearScreen(
   UINTN HorizontalResolution = mGop->Mode->Info->HorizontalResolution;
   UINTN VerticalResolution   = mGop->Mode->Info->VerticalResolution;
 
-  SetMem(FrameBuffer, HorizontalResolution*VerticalResolution*3, 0);
+  SetMem(FrameBuffer, HorizontalResolution*VerticalResolution*4, 0);
 }
