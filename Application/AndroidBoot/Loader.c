@@ -294,7 +294,7 @@ AndroidBootFromBlockIo (
   boot_img_hdr_t            *AndroidHdr;
   android_parsed_bootimg_t  Parsed;
   LINUX_KERNEL              LinuxKernel;
-  UINTN                     TagsSize;
+  UINTN                     TagsSize = 0;
   lkapi_t                   *LKApi = GetLKApi();
   VOID                      *OriginalRamdisk = NULL;
   UINT32                    RamdiskUncompressedLen = 0;
@@ -484,7 +484,7 @@ FREEBUFFER:
   if(Parsed.Ramdisk)
     FreeAlignedMemoryRange((UINT32)Parsed.Ramdisk, RamdiskUncompressedLen);
   if(Parsed.Tags)
-    FreeAlignedMemoryRange((UINT32)Parsed.Tags, AndroidHdr->dt_size);
+    FreeAlignedMemoryRange((UINT32)Parsed.Tags, TagsSize);
   if(OriginalRamdisk)
     FreeAlignedMemoryRange((UINT32)OriginalRamdisk, AndroidHdr->ramdisk_size);
 
