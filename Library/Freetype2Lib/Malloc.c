@@ -30,10 +30,16 @@
 #include  <Library/BaseMemoryLib.h>
 #include  <Library/DebugLib.h>
 
+#include <ft2build.h>
+#include FT_INTERNAL_MEMORY_H
+#include FT_INTERNAL_STREAM_H
+#include FT_INTERNAL_DEBUG_H
+#include FT_CONFIG_STANDARD_LIBRARY_H
+
 //#include  <LibConfig.h>
 
 //#include  <assert.h>
-#include  <stdlib.h>
+//#include  <stdlib.h>
 //#include  <errno.h>
 
 #define CPOOL_HEAD_SIGNATURE   SIGNATURE_32('C','p','h','d')

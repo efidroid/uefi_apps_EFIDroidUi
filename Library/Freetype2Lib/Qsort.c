@@ -57,7 +57,13 @@
  */
 //#include  <LibConfig.h>
 
-#include  <stdlib.h>
+//#include  <stdlib.h>
+
+#include <ft2build.h>
+#include FT_INTERNAL_MEMORY_H
+#include FT_INTERNAL_STREAM_H
+#include FT_INTERNAL_DEBUG_H
+#include FT_CONFIG_STANDARD_LIBRARY_H
 
 typedef int    cmp_t(const void *, const void *);
 

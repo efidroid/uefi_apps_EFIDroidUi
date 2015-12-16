@@ -92,4 +92,4 @@
   TRUE
 
 [BuildOptions]
-  GCC:*_*_*_CC_FLAGS     = -DFT2_BUILD_LIBRARY -Wno-error
+  GCC:*_*_*_CC_FLAGS     = -DFT2_BUILD_LIBRARY -DNO_ERRNO_H -DFT_CONFIG_OPTION_DISABLE_STREAM_SUPPORT -Wno-maybe-uninitialized
