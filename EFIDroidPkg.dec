@@ -6,7 +6,7 @@
 
 [Includes]
   Include
-  Library/Freetype2Lib/freetype2/include
+  ../Build/EFIDROID/freetype2/include
 
 [Guids.common]
   gEFIDroidVariableGuid = { 0x7586a741, 0x84f7, 0x43d1, { 0x82, 0x05, 0xda, 0x70, 0x69, 0xeb, 0x05, 0x4d } }
