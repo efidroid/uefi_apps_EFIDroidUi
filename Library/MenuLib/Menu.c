@@ -86,10 +86,13 @@ RenderActiveMenu(
 )
 {
   UINTN LineHeight, TitleBottom;
+  EFI_TPL      OldTpl;
 
   BOOT_MENU_ENTRY* mEntry = mActiveMenu;
   if(mEntry==NULL)
     return;
+
+  OldTpl = gBS->RaiseTPL (TPL_NOTIFY);
 
   ClearScreen();
 
@@ -141,6 +144,8 @@ RenderActiveMenu(
   }
 
   LCDFlush();
+
+  gBS->RestoreTPL (OldTpl);
 }
 
 STATIC VOID
@@ -149,6 +154,9 @@ RenderBootScreen(
 )
 {
   UINTN LineHeight;
+  EFI_TPL      OldTpl;
+
+  OldTpl = gBS->RaiseTPL (TPL_NOTIFY);
 
   ClearScreen();
 
@@ -178,6 +186,8 @@ RenderBootScreen(
   y += LineHeight;
 
   LCDFlush();
+
+  gBS->RestoreTPL (OldTpl);
 }
 
 VOID
