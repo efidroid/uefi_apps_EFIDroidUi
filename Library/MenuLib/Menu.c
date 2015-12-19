@@ -2,6 +2,7 @@
 
 EFI_GRAPHICS_OUTPUT_PROTOCOL *mGop;
 EFI_LK_DISPLAY_PROTOCOL *gLKDisplay;
+STATIC MENU_OPTION* mActiveMenu = NULL;
 
 EFI_STATUS
 EFIAPI
@@ -13,71 +14,120 @@ MenuLibConstructor (
   return EFI_SUCCESS;
 }
 
-STATIC BOOT_MENU_ENTRY* mActiveMenu = NULL;
-STATIC UINTN mActiveMenuSize = 0;
-STATIC UINTN mActiveMenuPosition = 0;
 
-BOOT_MENU_ENTRY*
+MENU_OPTION*
 MenuCreate (
   VOID
 )
 {
-  return NULL;
-}
+  MENU_OPTION *Menu;
 
-BOOT_MENU_ENTRY*
-MenuAddEntry (
-  BOOT_MENU_ENTRY  **Menu,
-  UINTN            *Size
-)
-{
-  BOOT_MENU_ENTRY *NewMenu;
-
-  NewMenu = ReallocatePool ((*Size)*sizeof(BOOT_MENU_ENTRY), ((*Size)+1)*sizeof(BOOT_MENU_ENTRY), *Menu);
-  if(NewMenu==NULL)
+  // allocate menu
+  Menu = AllocateZeroPool (sizeof(*Menu));
+  if(Menu==NULL)
     return NULL;
-  *Menu = NewMenu;
+  
+  // initialize entry list
+  InitializeListHead (&Menu->Head);
 
-  BOOT_MENU_ENTRY *NewEntry =  &NewMenu[(*Size)++];
-  SetMem(NewEntry, sizeof(*NewEntry), 0);
+  Menu->Signature = MENU_SIGNATURE;
 
-  return NewEntry;
+  return Menu;
 }
 
-EFI_STATUS
-MenuFinish (
-  BOOT_MENU_ENTRY  **Menu,
-  UINTN            *Size
+VOID
+MenuFree (
+  MENU_OPTION  *Menu
 )
 {
-  BOOT_MENU_ENTRY *Entry = MenuAddEntry(Menu, Size);
-  if (Entry == NULL)
-    return EFI_OUT_OF_RESOURCES;
-
-  Entry->Description = NULL;
-  Entry->Callback = NULL;
-
-  return EFI_SUCCESS;
+  MENU_ENTRY *MenuEntry;
+  while (!IsListEmpty (&Menu->Head)) {
+    MenuEntry = CR (
+                  Menu->Head.ForwardLink,
+                  MENU_ENTRY,
+                  Link,
+                  MENU_ENTRY_SIGNATURE
+                  );
+    RemoveEntryList (&MenuEntry->Link);
+    MenuFreeEntry (MenuEntry);
+  }
+  Menu->OptionNumber = 0;
+  Menu->Selection = 0;
 }
 
+MENU_ENTRY*
+MenuCreateEntry (
+  VOID
+)
+{
+  MENU_ENTRY *Entry;
+
+  // allocate menu
+  Entry = AllocateZeroPool (sizeof(*Entry));
+  if(Entry==NULL)
+    return NULL;
+
+  Entry->Signature = MENU_ENTRY_SIGNATURE;
+
+  return Entry;
+}
+
+VOID
+MenuFreeEntry (
+  MENU_ENTRY* Entry
+)
+{
+  FreePool(Entry);
+}
+
+VOID
+MenuAddEntry (
+  MENU_OPTION  *Menu,
+  MENU_ENTRY   *Entry
+)
+{
+  Menu->OptionNumber++;
+  InsertTailList (&Menu->Head, &Entry->Link);
+}
+
+VOID
+MenuRemoveEntry (
+  MENU_OPTION  *Menu,
+  MENU_ENTRY   *Entry
+)
+{
+  RemoveEntryList (&Entry->Link);
+  Menu->OptionNumber--;
+}
+
+MENU_ENTRY *
+MenuGetEntryById (
+  MENU_OPTION         *MenuOption,
+  UINTN               MenuNumber
+  )
+{
+  MENU_ENTRY      *NewMenuEntry;
+  UINTN           Index;
+  LIST_ENTRY      *List;
+
+  ASSERT (MenuNumber < MenuOption->OptionNumber);
+
+  List = MenuOption->Head.ForwardLink;
+  for (Index = 0; Index < MenuNumber; Index++) {
+    List = List->ForwardLink;
+  }
+
+  NewMenuEntry = CR (List, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
+
+  return NewMenuEntry;
+}
 
 VOID
 SetActiveMenu (
-  BOOT_MENU_ENTRY* Menu
+  MENU_OPTION* Menu
 )
 {
-  BOOT_MENU_ENTRY* mEntry = Menu;
-
-  // count entries
-  UINTN NumEntries = 0;
-  while(mEntry && mEntry->Description) {
-    NumEntries++;
-    mEntry++;
-  }
-
   mActiveMenu = Menu;
-  mActiveMenuSize = NumEntries;
-  mActiveMenuPosition = 0;
 }
 
 STATIC VOID
@@ -87,9 +137,11 @@ RenderActiveMenu(
 {
   UINTN LineHeight, TitleBottom;
   EFI_TPL      OldTpl;
+  LIST_ENTRY   *Link;
+  MENU_ENTRY   *Entry;
+  UINTN        Index;
 
-  BOOT_MENU_ENTRY* mEntry = mActiveMenu;
-  if(mEntry==NULL)
+  if(mActiveMenu==NULL)
     return;
 
   OldTpl = gBS->RaiseTPL (TPL_NOTIFY);
@@ -117,30 +169,36 @@ RenderActiveMenu(
   LineHeight = TextLineHeight();
 
   // calculate vertical start position (put the center of the menu to the center of the screen)
-  UINTN y = GetScreenHeight()/2 - (mActiveMenuSize*LineHeight)/2 + LineHeight;
+  UINTN y = GetScreenHeight()/2 - (mActiveMenu->OptionNumber*LineHeight)/2 + LineHeight;
 
   // move the active item to the screen's center
-  if(mActiveMenuSize*LineHeight > GetScreenHeight() - TitleBottom) {
-    y += (mActiveMenuSize/2 - mActiveMenuPosition)*LineHeight;
+  if(mActiveMenu->OptionNumber*LineHeight > GetScreenHeight() - TitleBottom) {
+    y += (mActiveMenu->OptionNumber/2 - mActiveMenu->Selection)*LineHeight;
   }
 
   // render all entries
-  UINTN Count;
-  for(Count=0; Count<mActiveMenuSize; Count++) {
+  Link = mActiveMenu->Head.ForwardLink;
+  Index = 0;
+  while (Link != NULL && Link != &mActiveMenu->Head) {
+    Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
+
     // get horizontal start position
-    UINTN TextWidth = TextLineWidth(mActiveMenu[Count].Description);
+    UINTN TextWidth = TextLineWidth(Entry->Description);
     UINTN x = GetScreenWidth()/2 - TextWidth/2;
 
-    if(Count==mActiveMenuPosition)
+    if(Index==mActiveMenu->Selection)
       SetColor(0xA5, 0xC5, 0x39);
     else
       SetColor(0xff, 0xff, 0xff);
 
     // draw text
     if(y>=TitleBottom && y<=GetScreenHeight())
-      TextDrawAscii(mActiveMenu[Count].Description, x, y);
+      TextDrawAscii(Entry->Description, x, y);
 
     y += LineHeight;
+    
+    Link = Link->ForwardLink;
+    Index++;
   }
 
   LCDFlush();
@@ -150,7 +208,7 @@ RenderActiveMenu(
 
 STATIC VOID
 RenderBootScreen(
-  BOOT_MENU_ENTRY *Entry
+  MENU_ENTRY *Entry
 )
 {
   UINTN LineHeight;
@@ -235,19 +293,21 @@ EFIDroidEnterFrontPage (
     if(Key.ScanCode==SCAN_NULL) {
       switch(Key.UnicodeChar) {
         case CHAR_CARRIAGE_RETURN:
-          if(mActiveMenuPosition>=mActiveMenuSize)
+          if(mActiveMenu->Selection>=mActiveMenu->OptionNumber)
             break;
+          
+          MENU_ENTRY* Entry = MenuGetEntryById(mActiveMenu, mActiveMenu->Selection);
 
-          if(!mActiveMenu[mActiveMenuPosition].HideBootMessage)
-            RenderBootScreen(&mActiveMenu[mActiveMenuPosition]);
+          if(!Entry->HideBootMessage)
+            RenderBootScreen(Entry);
 
-          if(mActiveMenu[mActiveMenuPosition].Callback) {
-            if (mActiveMenu[mActiveMenuPosition].ResetGop)
+          if(Entry->Callback) {
+            if (Entry->ResetGop)
               mGop->SetMode(mGop, OldMode);
 
-            mActiveMenu[mActiveMenuPosition].Callback(mActiveMenu[mActiveMenuPosition].Private);
+            Entry->Callback(Entry->Private);
 
-            if (mActiveMenu[mActiveMenuPosition].ResetGop)
+            if (Entry->ResetGop)
               mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
           }
           break;
@@ -256,14 +316,14 @@ EFIDroidEnterFrontPage (
     else {
       switch(Key.ScanCode) {
         case SCAN_UP:
-          if(mActiveMenuPosition>0)
-            mActiveMenuPosition--;
-          else mActiveMenuPosition = mActiveMenuSize-1;
+          if(mActiveMenu->Selection>0)
+            mActiveMenu->Selection--;
+          else mActiveMenu->Selection = mActiveMenu->OptionNumber-1;
           break;
         case SCAN_DOWN:
-          if(mActiveMenuPosition+1<mActiveMenuSize)
-            mActiveMenuPosition++;
-          else mActiveMenuPosition = 0;
+          if(mActiveMenu->Selection+1<mActiveMenu->OptionNumber)
+            mActiveMenu->Selection++;
+          else mActiveMenu->Selection = 0;
           break;
       }
     }

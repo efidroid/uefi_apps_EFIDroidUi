@@ -3,15 +3,28 @@
 
 #include <Uefi/UefiBaseType.h>
 
+#define MENU_SIGNATURE             SIGNATURE_32 ('m', 'e', 'n', 'u')
+#define MENU_ENTRY_SIGNATURE       SIGNATURE_32 ('e', 'n', 't', 'r')
+
 extern EFI_GUID gEFIDroidVariableGuid;
 
 typedef struct {
+  UINTN           Signature;
+  LIST_ENTRY      Link;
+
   CONST CHAR8* Description;
   EFI_STATUS (*Callback) (VOID*);
   VOID *Private;
   BOOLEAN ResetGop;
   BOOLEAN HideBootMessage;
-} BOOT_MENU_ENTRY;
+} MENU_ENTRY;
+
+typedef struct {
+  UINTN           Signature;
+  LIST_ENTRY      Head;
+  UINTN           OptionNumber;
+  UINTN           Selection;
+} MENU_OPTION;
 
 extern CONST CHAR8                 *gErrorStr;
 
@@ -21,27 +34,48 @@ EFIDroidEnterFrontPage (
   IN BOOLEAN                ConnectAllHappened
   );
 
-VOID
-SetActiveMenu(
-  BOOT_MENU_ENTRY* Menu
-);
-
-BOOT_MENU_ENTRY*
+MENU_OPTION*
 MenuCreate (
   VOID
 );
 
-BOOT_MENU_ENTRY*
+VOID
+MenuFree (
+  MENU_OPTION *Menu
+);
+
+MENU_ENTRY*
+MenuCreateEntry (
+  VOID
+);
+
+VOID
+MenuFreeEntry (
+  MENU_ENTRY* Entry
+);
+
+VOID
 MenuAddEntry (
-  BOOT_MENU_ENTRY  **Menu,
-  UINTN            *Size
+  MENU_OPTION  *Menu,
+  MENU_ENTRY   *Entry
+);
+
+VOID
+MenuRemoveEntry (
+  MENU_OPTION  *Menu,
+  MENU_ENTRY   *Entry
 );
 
 
-EFI_STATUS
-MenuFinish (
-  BOOT_MENU_ENTRY  **Menu,
-  UINTN            *Size
+MENU_ENTRY *
+MenuGetEntryById (
+  MENU_OPTION         *MenuOption,
+  UINTN               MenuNumber
+  );
+
+VOID
+SetActiveMenu(
+  MENU_OPTION* Menu
 );
 
 #endif
