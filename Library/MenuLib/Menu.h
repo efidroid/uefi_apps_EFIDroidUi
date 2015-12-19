@@ -10,19 +10,9 @@
 #include <Protocol/LKDisplay.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/MemoryAllocationLib.h>
+#include <PiDxe.h>
+#include <Library/DxeServicesLib.h>
 #include <LittleKernel.h>
-
-#define INCBIN(symname, sizename, filename, section)                    \
-    __asm__ (".section " section "; .align 4; .globl "#symname);        \
-    __asm__ (""#symname ":\n.incbin \"" filename "\"");                 \
-    __asm__ (".section " section "; .align 1;");                        \
-    __asm__ (""#symname "_end:");                                       \
-    __asm__ (".section " section "; .align 4; .globl "#sizename);       \
-    __asm__ (""#sizename ": .long "#symname "_end - "#symname " - 1");  \
-    extern unsigned char symname[];                                     \
-    extern unsigned int sizename
-
-#define INCFILE(symname, sizename, filename) INCBIN(symname, sizename, filename, ".rodata")
 
 extern EFI_GRAPHICS_OUTPUT_PROTOCOL *mGop;
 extern EFI_LK_DISPLAY_PROTOCOL *gLKDisplay;

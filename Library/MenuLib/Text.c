@@ -5,8 +5,6 @@
 #define calc_alpha(dest, col, alpha) \
   (((dest * (255-alpha)) + (col * alpha)) >> 8)
 
-INCFILE(font_normal, font_normal_sz, "fonts/Roboto-Regular.ttf");
-
 STATIC FT_Library mLibrary;
 STATIC FT_Face    mFace;
 STATIC UINTN mFontSize = 14;
@@ -17,6 +15,15 @@ TextInit (
   VOID
 ) {
   INT32 error;
+  const FT_Byte *FontData;
+  UINTN FontSize;
+  EFI_STATUS Status;
+
+  // get font data
+  Status = GetSectionFromAnyFv (PcdGetPtr(PcdTruetypeFont), EFI_SECTION_RAW, 0, (VOID **) &FontData, &FontSize);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
 
   // init freetype
   error = FT_Init_FreeType(&mLibrary);
@@ -26,7 +33,7 @@ TextInit (
   }
 
   // create memory faces for fonts
-  error = FT_New_Memory_Face(mLibrary, font_normal, font_normal_sz, 0, &mFace);
+  error = FT_New_Memory_Face(mLibrary, FontData, FontSize, 0, &mFace);
   if(error) {
     DEBUG((EFI_D_ERROR, "FT_New_Memory_Face error\n"));
     return EFI_UNSUPPORTED;
