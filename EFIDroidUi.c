@@ -18,7 +18,7 @@
 
 #include <Protocol/DevicePathFromText.h>
 
-#include "AndroidBoot.h"
+#include "EFIDroidUi.h"
 #include "bootimg.h"
 
 MENU_OPTION                 *mBootMenuMain = NULL;
@@ -818,11 +818,10 @@ InitializeEspData (
   return EFI_SUCCESS;
 }
 
-EFI_STATUS
-EFIAPI
-AndroidBootEntryPoint (
-  IN EFI_HANDLE        ImageHandle,
-  IN EFI_SYSTEM_TABLE  *SystemTable
+INT32
+main (
+  IN INT32  Argc,
+  IN CHAR8  **Argv
   )
 {
   UINTN                               Size;

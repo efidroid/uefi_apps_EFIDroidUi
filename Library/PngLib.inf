@@ -20,29 +20,45 @@
 
 [Defines]
   INF_VERSION                    = 0x00010005
-  BASE_NAME                      = FstabLib
-  FILE_GUID                      = e89a953b-7405-4e12-99ab-44036236654d
+  BASE_NAME                      = PngLib
+  FILE_GUID                      = 25e87be2-c834-4c44-a391-6d3d70f82484
   MODULE_TYPE                    = BASE
   VERSION_STRING                 = 1.0 
-  LIBRARY_CLASS                  = FstabLib
+  LIBRARY_CLASS                  = PngLib
 
 #
 #  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
 #
 
 [Sources]
-  Fstab.c
+  ../../../EFIDroidModules/libaroma/libs/png/png.c
+  ../../../EFIDroidModules/libaroma/libs/png/pngerror.c
+  ../../../EFIDroidModules/libaroma/libs/png/pngget.c
+  ../../../EFIDroidModules/libaroma/libs/png/pngmem.c
+  ../../../EFIDroidModules/libaroma/libs/png/pngpread.c
+  ../../../EFIDroidModules/libaroma/libs/png/pngread.c
+  ../../../EFIDroidModules/libaroma/libs/png/pngrio.c
+  ../../../EFIDroidModules/libaroma/libs/png/pngrtran.c
+  ../../../EFIDroidModules/libaroma/libs/png/pngrutil.c
+  ../../../EFIDroidModules/libaroma/libs/png/pngset.c
+  ../../../EFIDroidModules/libaroma/libs/png/pngtrans.c
+  ../../../EFIDroidModules/libaroma/libs/png/pngwio.c
+  ../../../EFIDroidModules/libaroma/libs/png/pngwrite.c
+  ../../../EFIDroidModules/libaroma/libs/png/pngwtran.c
+  ../../../EFIDroidModules/libaroma/libs/png/pngwutil.c
 
 [Packages]
+  StdLib/StdLib.dec
   MdePkg/MdePkg.dec
-  MdeModulePkg/MdeModulePkg.dec
-  EFIDroidUEFIApps/EFIDroidUi/EFIDroidUi.dec
+  ShellPkg/ShellPkg.dec
+  EFIDroidUEFIApps/EFIDroidUi/Library/AromaLib/AromaLib.dec
 
 [LibraryClasses]
-  BaseLib
-  UefiBootServicesTableLib
-  UefiLib
-  PrintLib
+  LibC
+  LibStdio
 
 [Depex]
   TRUE
+
+[BuildOptions]
+  GCC:*_*_*_CC_FLAGS     = -Wno-error

@@ -22,7 +22,6 @@
   MODULE_TYPE                    = UEFI_APPLICATION
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = EFIDroidMenuLib|UEFI_APPLICATION
-  CONSTRUCTOR                    = MenuLibConstructor
 
 #
 # The following information is for reference only and not required by the build tools.
@@ -32,17 +31,17 @@
 
 [Sources]
   Menu.c
-  Graphics.c
-  Text.c
 
 [Packages]
+  StdLib/StdLib.dec
   ArmPkg/ArmPkg.dec
   ArmPlatformPkg/ArmPlatformPkg.dec
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   IntelFrameworkModulePkg/IntelFrameworkModulePkg.dec
   LittleKernelPkg/LittleKernelPkg.dec
-  EFIDroidPkg/EFIDroidPkg.dec
+  EFIDroidUEFIApps/EFIDroidUi/EFIDroidUi.dec
+  EFIDroidUEFIApps/EFIDroidUi/Library/AromaLib/AromaLib.dec
 
 [LibraryClasses]
   BaseLib
@@ -55,10 +54,7 @@
   PcdLib
   GenericBdsLib
   LKApiLib
-  Freetype2Lib
-
-[Protocols]
-  gEfiLKDisplayProtocolGuid
+  AromaLib
 
 [FixedPcd]
   gLittleKernelTokenSpaceGuid.PcdTruetypeFont

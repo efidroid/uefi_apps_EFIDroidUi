@@ -86,4 +86,9 @@ GetActiveMenu(
   VOID
 );
 
+VOID
+InvalidateActiveMenu(
+  VOID
+);
+
 #endif

@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include "AndroidBoot.h"
+#include "EFIDroidUi.h"
 
 #define ATAG_MAX_SIZE   0x3000
 #define DTB_PAD_SIZE    0x1000

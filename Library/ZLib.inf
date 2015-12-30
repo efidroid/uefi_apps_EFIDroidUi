@@ -20,29 +20,41 @@
 
 [Defines]
   INF_VERSION                    = 0x00010005
-  BASE_NAME                      = FstabLib
-  FILE_GUID                      = e89a953b-7405-4e12-99ab-44036236654d
+  BASE_NAME                      = ZLib
+  FILE_GUID                      = 6f78b341-9e0d-4dab-82d2-a44ee4620fd9
   MODULE_TYPE                    = BASE
   VERSION_STRING                 = 1.0 
-  LIBRARY_CLASS                  = FstabLib
+  LIBRARY_CLASS                  = ZLib
 
 #
 #  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
 #
 
 [Sources]
-  Fstab.c
+  ../../../EFIDroidModules/libaroma/libs/zlib/src/adler32.c
+  ../../../EFIDroidModules/libaroma/libs/zlib/src/compress.c
+  ../../../EFIDroidModules/libaroma/libs/zlib/src/crc32.c
+  ../../../EFIDroidModules/libaroma/libs/zlib/src/deflate.c
+  ../../../EFIDroidModules/libaroma/libs/zlib/src/gzclose.c
+  ../../../EFIDroidModules/libaroma/libs/zlib/src/gzlib.c
+  ../../../EFIDroidModules/libaroma/libs/zlib/src/gzread.c
+  ../../../EFIDroidModules/libaroma/libs/zlib/src/gzwrite.c
+  ../../../EFIDroidModules/libaroma/libs/zlib/src/infback.c
+  ../../../EFIDroidModules/libaroma/libs/zlib/src/inflate.c
+  ../../../EFIDroidModules/libaroma/libs/zlib/src/inftrees.c
+  ../../../EFIDroidModules/libaroma/libs/zlib/src/inffast.c
+  ../../../EFIDroidModules/libaroma/libs/zlib/src/trees.c
+  ../../../EFIDroidModules/libaroma/libs/zlib/src/uncompr.c
+  ../../../EFIDroidModules/libaroma/libs/zlib/src/zutil.c
 
 [Packages]
+  StdLib/StdLib.dec
   MdePkg/MdePkg.dec
-  MdeModulePkg/MdeModulePkg.dec
-  EFIDroidUEFIApps/EFIDroidUi/EFIDroidUi.dec
+  ShellPkg/ShellPkg.dec
 
 [LibraryClasses]
-  BaseLib
-  UefiBootServicesTableLib
-  UefiLib
-  PrintLib
+  LibC
+  LibStdio
 
 [Depex]
   TRUE

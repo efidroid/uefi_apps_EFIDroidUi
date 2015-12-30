@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#include "AndroidBoot.h"
+#include "EFIDroidUi.h"
 
 EFI_STATUS
 MultibootCallback (

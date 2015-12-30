@@ -1,0 +1,92 @@
+## @file
+#  NULL instance of Timer Library as a template.
+#
+#  A non-functional instance of the Timer Library that can be used as a template
+#  for the implementation of a functional timer library instance. This library instance can
+#  also be used to test build DXE, Runtime, DXE SAL, and DXE SMM modules that require timer
+#  services as well as EBC modules that require timer services.
+#
+#  Copyright (c) 2007 - 2014, Intel Corporation. All rights reserved.<BR>
+#
+#  This program and the accompanying materials
+#  are licensed and made available under the terms and conditions of the BSD License
+#  which accompanies this distribution. The full text of the license may be found at
+#  http://opensource.org/licenses/bsd-license.php.
+#  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+#
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = AromaLib
+  FILE_GUID                      = ad838f5f-d760-41f3-837e-9d934a43c17b
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0 
+  LIBRARY_CLASS                  = AromaLib
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
+#
+
+[Sources]
+  aroma.c
+  fb_driver.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/version.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/artworker.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/canvas.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/fb.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/image.c
+  #../../../../EFIDroidModules/libaroma/src/aroma/graph/jpeg.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/png.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/text.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/draw/blur.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/draw/commondraw.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/draw/filters.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/draw/gradient.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/draw/path.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/draw/scale.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/engine/alignblt.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/engine/alpha.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/engine/blt.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/engine/color.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/engine/dither.c
+
+  ../../../../EFIDroidModules/libaroma/src/aroma/utils/array.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/utils/json.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/utils/minutf8.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/utils/motions.c
+  #../../../../EFIDroidModules/libaroma/src/aroma/utils/runtime.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/utils/stream.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/utils/strings.c
+  #../../../../EFIDroidModules/libaroma/src/aroma/utils/system.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/utils/time.c
+  #../../../../EFIDroidModules/libaroma/src/aroma/utils/zip.c
+
+  ../../../../EFIDroidModules/libaroma/libs/harfbuzz-ng/src/hb-ucdn/ucdn.c
+
+[Packages]
+  StdLib/StdLib.dec
+  MdePkg/MdePkg.dec
+  ShellPkg/ShellPkg.dec
+  LittleKernelPkg/LittleKernelPkg.dec
+  EFIDroidUEFIApps/EFIDroidUi/Library/AromaLib/AromaLib.dec
+  EFIDroidUEFIApps/EFIDroidUi/Library/AromaLib/AromaLibPriv.dec
+
+[LibraryClasses]
+  LibC
+  LibStdio
+  LibMath
+  Freetype2Lib
+  ZLib
+  PngLib
+
+[Depex]
+  TRUE
+
+[Protocols]
+  gEfiLKDisplayProtocolGuid
+
+[BuildOptions]
+  GCC:*_*_*_CC_FLAGS     = -DLIBAROMA_CONFIG_TEXT_NOHARFBUZZ=1 -DLIBAROMA_CONFIG_NOMINZIP=1 -DLIBAROMA_CONFIG_NOJPEG=1 -DLIBAROMA_CONFIG_NOPNGWRITE=1 -DLIBAROMA_CONFIG_DEBUG=0

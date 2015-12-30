@@ -12,8 +12,8 @@
 *
 **/
 
-#ifndef __LINUX_LOADER_H__
-#define __LINUX_LOADER_H__
+#ifndef __EFIDROIDUI_H__
+#define __EFIDROIDUI_H__
 
 #include <PiDxe.h>
 #include <Protocol/BlockIo.h>
@@ -98,4 +98,4 @@ AsciiStrDup (
   CONST CHAR8* SrcStr
 );
 
-#endif /* __LINUX_LOADER_H__ */
+#endif /* __EFIDROIDUI_H__ */
