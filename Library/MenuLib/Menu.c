@@ -77,6 +77,8 @@ MenuFreeEntry (
   MENU_ENTRY* Entry
 )
 {
+  if(Entry->FreeCallback)
+    Entry->FreeCallback(Entry);
   FreePool(Entry);
 }
 

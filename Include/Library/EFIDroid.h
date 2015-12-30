@@ -8,7 +8,8 @@
 
 extern EFI_GUID gEFIDroidVariableGuid;
 
-typedef struct {
+typedef struct _MENU_ENTRY MENU_ENTRY;
+struct _MENU_ENTRY {
   UINTN           Signature;
   LIST_ENTRY      Link;
 
@@ -17,7 +18,9 @@ typedef struct {
   VOID *Private;
   BOOLEAN ResetGop;
   BOOLEAN HideBootMessage;
-} MENU_ENTRY;
+
+  VOID (*FreeCallback)(struct _MENU_ENTRY* Entry);
+};
 
 typedef struct {
   UINTN           Signature;
