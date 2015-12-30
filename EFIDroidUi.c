@@ -636,6 +636,7 @@ RecoveryCallback (
   IN VOID* Private
 )
 {
+  mBootMenuRecovery->Selection = 0;
   SetActiveMenu(mBootMenuRecovery);
   return EFI_UNSUPPORTED;
 }
