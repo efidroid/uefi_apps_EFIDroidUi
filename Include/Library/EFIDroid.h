@@ -26,7 +26,8 @@ typedef struct {
   UINTN           Signature;
   LIST_ENTRY      Head;
   UINTN           OptionNumber;
-  UINTN           Selection;
+  INT32           Selection;
+  EFI_STATUS      (*BackCallback) (VOID);
 } MENU_OPTION;
 
 extern CONST CHAR8                 *gErrorStr;

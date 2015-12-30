@@ -252,12 +252,59 @@ syncit:
   //libaroma_sync();
 }
 
-void appbar_draw(char * text, word bgcolor, word textcolor, int y, int h){
+#define APPBAR_FLAG_ICON_BACK   1 /* back arrow */
+#define APPBAR_FLAG_ICON_DRAWER 2 /* drawer */
+#define APPBAR_FLAG_SELECTED    4 /* selected */
+#define APPBAR_FLAG_WIDEGAP     8 /* align text with text in listbox */
+void appbar_draw(
+  char * text,
+  word bgcolor,
+  word textcolor,
+  int y,
+  int h,
+  byte flags
+){
   /* draw appbar */
   libaroma_draw_rect(
     dc, 0, y, dc->w, h, bgcolor, 0xff
   );
   int txt_x = libaroma_dp(16);
+ 
+  if ((flags&APPBAR_FLAG_ICON_BACK)||(flags&APPBAR_FLAG_ICON_DRAWER)){
+    if (flags&APPBAR_FLAG_ICON_BACK){
+      libaroma_art_arrowdrawer(
+        dc,1,0,
+        txt_x,
+        y+libaroma_dp(16),
+        libaroma_dp(24),
+        textcolor,
+        0xff, 0, 0.5
+      );
+    }
+    else{
+      libaroma_art_arrowdrawer(
+        dc,1,1,
+        txt_x,
+        y+libaroma_dp(16),
+        libaroma_dp(24),
+        textcolor,
+        0xff, 0, 0.5
+      );
+    }
+    txt_x = libaroma_dp((flags&APPBAR_FLAG_WIDEGAP)?72:60);
+     
+    if (flags&APPBAR_FLAG_SELECTED){
+      int sel_w=txt_x+libaroma_dp(16);
+      LIBAROMA_CANVASP carea=libaroma_canvas_area(dc,0,y,sel_w,h);
+      if (carea){
+        int center_xy=(h>>1);
+        libaroma_draw_circle(
+          carea, textcolor, center_xy-libaroma_dp(16), center_xy, sel_w+libaroma_dp(20), 0x40
+        );
+        libaroma_canvas_free(carea);
+      }
+    }
+  }
  
   LIBAROMA_TEXT txt = libaroma_text(
     text,
@@ -485,13 +532,20 @@ RenderActiveMenu(
       100
   );
 
+  int appbar_flags = 0;
+  if(mActiveMenu->BackCallback)
+    appbar_flags |= APPBAR_FLAG_ICON_BACK;
+  if(mActiveMenu->Selection==-1)
+    appbar_flags |= APPBAR_FLAG_SELECTED;
+
   /* set appbar */
   appbar_draw(
     "Please Select OS",
     RGB(446688),
     RGB(ffffff),
     statusbar_height,
-    appbar_height
+    appbar_height,
+    appbar_flags
   );
 
   if(list) {
@@ -590,7 +644,12 @@ EFIDroidEnterFrontPage (
     if(Key.ScanCode==SCAN_NULL) {
       switch(Key.UnicodeChar) {
         case CHAR_CARRIAGE_RETURN:
-          if(mActiveMenu->Selection>=mActiveMenu->OptionNumber)
+          if(mActiveMenu->Selection==-1) {
+            mActiveMenu->BackCallback();
+            break;
+          }
+
+          if(mActiveMenu->Selection>=mActiveMenu->OptionNumber || mActiveMenu->Selection<0)
             break;
           
           MENU_ENTRY* Entry = MenuGetEntryById(mActiveMenu, mActiveMenu->Selection);
@@ -615,16 +674,17 @@ EFIDroidEnterFrontPage (
       }
     }
     else {
+      INT32 MinSelection = mActiveMenu->BackCallback?-1:0;
       switch(Key.ScanCode) {
         case SCAN_UP:
-          if(mActiveMenu->Selection>0)
+          if(mActiveMenu->Selection>MinSelection)
             mActiveMenu->Selection--;
           else mActiveMenu->Selection = mActiveMenu->OptionNumber-1;
           break;
         case SCAN_DOWN:
           if(mActiveMenu->Selection+1<mActiveMenu->OptionNumber)
             mActiveMenu->Selection++;
-          else mActiveMenu->Selection = 0;
+          else mActiveMenu->Selection = MinSelection;
           break;
       }
     }

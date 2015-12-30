@@ -642,7 +642,7 @@ RecoveryCallback (
 
 EFI_STATUS
 RecoveryBackCallback (
-  IN VOID* Private
+  VOID
 )
 {
   SetActiveMenu(mBootMenuMain);
@@ -833,6 +833,7 @@ main (
   // create menus
   mBootMenuMain = MenuCreate();
   mBootMenuRecovery = MenuCreate();
+  mBootMenuRecovery->BackCallback = RecoveryBackCallback;
 
   // get fstab data
   Status = GetSectionFromAnyFv (PcdGetPtr(PcdFstabData), EFI_SECTION_RAW, 0, (VOID **) &FstabBin, &FstabSize);
@@ -880,13 +881,6 @@ main (
   Entry->Description = "Reboot";
   Entry->Callback = RebootCallback;
   MenuAddEntry(mBootMenuMain, Entry);
-
-  // add back option
-  Entry = MenuCreateEntry();
-  Entry->Description = "< Back <";
-  Entry->Callback = RecoveryBackCallback;
-  Entry->HideBootMessage = TRUE;
-  MenuAddEntry(mBootMenuRecovery, Entry);
 
   // get size of 'EFIDroidErrorStr'
   Size = 0;
