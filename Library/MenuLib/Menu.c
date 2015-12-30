@@ -130,6 +130,14 @@ SetActiveMenu (
   mActiveMenu = Menu;
 }
 
+MENU_OPTION*
+GetActiveMenu(
+  VOID
+)
+{
+  return mActiveMenu;
+}
+
 STATIC VOID
 RenderActiveMenu(
   VOID

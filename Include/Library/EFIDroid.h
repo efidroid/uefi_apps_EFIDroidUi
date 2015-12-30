@@ -78,4 +78,9 @@ SetActiveMenu(
   MENU_OPTION* Menu
 );
 
+MENU_OPTION*
+GetActiveMenu(
+  VOID
+);
+
 #endif
