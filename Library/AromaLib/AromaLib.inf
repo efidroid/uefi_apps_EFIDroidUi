@@ -38,7 +38,7 @@
   ../../../../EFIDroidModules/libaroma/src/aroma/graph/canvas.c
   ../../../../EFIDroidModules/libaroma/src/aroma/graph/fb.c
   ../../../../EFIDroidModules/libaroma/src/aroma/graph/image.c
-  #../../../../EFIDroidModules/libaroma/src/aroma/graph/jpeg.c
+  ../../../../EFIDroidModules/libaroma/src/aroma/graph/jpeg.c
   ../../../../EFIDroidModules/libaroma/src/aroma/graph/png.c
   ../../../../EFIDroidModules/libaroma/src/aroma/graph/text.c
   ../../../../EFIDroidModules/libaroma/src/aroma/graph/draw/blur.c
@@ -81,6 +81,7 @@
   Freetype2Lib
   ZLib
   PngLib
+  JpegLib
 
 [Depex]
   TRUE
@@ -89,4 +90,4 @@
   gEfiLKDisplayProtocolGuid
 
 [BuildOptions]
-  GCC:*_*_*_CC_FLAGS     = -DLIBAROMA_CONFIG_TEXT_NOHARFBUZZ=1 -DLIBAROMA_CONFIG_NOMINZIP=1 -DLIBAROMA_CONFIG_NOJPEG=1 -DLIBAROMA_CONFIG_NOPNGWRITE=1 -DLIBAROMA_CONFIG_DEBUG=0
+  GCC:*_*_*_CC_FLAGS     = -DLIBAROMA_CONFIG_TEXT_NOHARFBUZZ=1 -DLIBAROMA_CONFIG_NOMINZIP=1 -DLIBAROMA_CONFIG_NOPNGWRITE=1 -DLIBAROMA_CONFIG_DEBUG=0
