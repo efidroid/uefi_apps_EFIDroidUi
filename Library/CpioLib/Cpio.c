@@ -1,3 +1,4 @@
+#include <PiDxe.h>
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/PrintLib.h>
@@ -60,6 +61,25 @@ CpioGetObjSize (
   UINT32 filesize = CpioStrToUl (hdr->c_filesize);
 
   return CpioPredictObjSize (namesize, filesize);
+}
+
+EFI_STATUS
+CpioGetData (
+  CPIO_NEWC_HEADER *hdr,
+  VOID             **Ptr,
+  UINTN            *Size
+)
+{
+  UINT32 namesize = CpioStrToUl (hdr->c_namesize);
+  UINT32 filesize = CpioStrToUl (hdr->c_filesize);
+
+  if(!CpioIsValid (hdr))
+    return EFI_INVALID_PARAMETER;
+
+  *Ptr = ((CHAR8*)hdr) + ALIGN_VALUE (sizeof (CPIO_NEWC_HEADER) + namesize, 4);
+  *Size = filesize;
+
+  return EFI_SUCCESS;
 }
 
 CPIO_NEWC_HEADER*

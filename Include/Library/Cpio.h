@@ -29,6 +29,12 @@ INT32 CpioHasNext (CPIO_NEWC_HEADER * hdr);
 UINTN CpioPredictObjSize (UINT32 namesize,
 				   UINT32 filesize);
 UINTN CpioGetObjSize (CPIO_NEWC_HEADER * hdr);
+EFI_STATUS
+CpioGetData (
+  CPIO_NEWC_HEADER *hdr,
+  VOID             **Ptr,
+  UINTN            *Size
+);
 CPIO_NEWC_HEADER *CpioGetLast (CPIO_NEWC_HEADER * hdr);
 CPIO_NEWC_HEADER *CpioGetByName (CPIO_NEWC_HEADER * hdr, CONST CHAR8 *name);
 

@@ -9,6 +9,7 @@
   FstabLib|EFIDroidUEFIApps/EFIDroidUi/Library/FstabLib/FstabLib.inf
   IniLib|EFIDroidUEFIApps/EFIDroidUi/Library/IniLib/IniLib.inf
   EFIDroidMenuLib|EFIDroidUEFIApps/EFIDroidUi/Library/MenuLib/MenuLib.inf
+  UEFIRamdiskLib|EFIDroidUEFIApps/EFIDroidUi/Library/UEFIRamdiskLib/UEFIRamdiskLib.inf
 
 [PcdsFixedAtBuild]
   gEfiMdeModulePkgTokenSpaceGuid.PcdResetOnMemoryTypeInformationChange|FALSE

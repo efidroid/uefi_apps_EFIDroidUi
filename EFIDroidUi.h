@@ -43,6 +43,7 @@
 #include <Library/PcdLib.h>
 #include <Library/DxeServicesLib.h>
 #include <Library/FileHandleLib.h>
+#include <Library/UEFIRamdisk.h>
 
 #include <LittleKernel.h>
 

@@ -46,6 +46,7 @@
   ShellLib
   UefiLib
   LKApiLib
+  UEFIRamdiskLib
   EFIDroidMenuLib
   CpioLib
   DecompressLib
@@ -59,10 +60,6 @@
   gEfiShellParametersProtocolGuid
   gEfiPartitionNameProtocolGuid
   gEfiBlockIoProtocolGuid
-
-[FixedPcd]
-  gLittleKernelTokenSpaceGuid.PcdMultibootBin
-  gLittleKernelTokenSpaceGuid.PcdFstabData
 
 [Guids]
   gEFIDroidVariableGuid

@@ -55,6 +55,4 @@
   GenericBdsLib
   LKApiLib
   AromaLib
-
-[FixedPcd]
-  gLittleKernelTokenSpaceGuid.PcdTruetypeFont
+  UEFIRamdiskLib

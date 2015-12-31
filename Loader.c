@@ -391,7 +391,7 @@ AndroidBootFromBlockIo (
 
   UINT8 *MultibootBin;
   UINTN MultibootSize;
-  Status = GetSectionFromAnyFv (PcdGetPtr(PcdMultibootBin), EFI_SECTION_RAW, 0, (VOID **) &MultibootBin, &MultibootSize);
+  Status = UEFIRamdiskGetFile ("init.multiboot", (VOID **) &MultibootBin, &MultibootSize);
   if (EFI_ERROR (Status)) {
     gErrorStr = "Multiboot binary not found";
     goto FREEBUFFER;

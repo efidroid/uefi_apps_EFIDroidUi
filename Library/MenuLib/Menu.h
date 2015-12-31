@@ -12,6 +12,7 @@
 #include <Library/MemoryAllocationLib.h>
 #include <PiDxe.h>
 #include <Library/DxeServicesLib.h>
+#include <Library/UEFIRamdisk.h>
 #include <LittleKernel.h>
 #include <aroma.h>
 

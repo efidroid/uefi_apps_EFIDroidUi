@@ -837,7 +837,7 @@ main (
   mBootMenuRecovery->BackCallback = RecoveryBackCallback;
 
   // get fstab data
-  Status = GetSectionFromAnyFv (PcdGetPtr(PcdFstabData), EFI_SECTION_RAW, 0, (VOID **) &FstabBin, &FstabSize);
+  Status = UEFIRamdiskGetFile ("fstab.multiboot", (VOID **) &FstabBin, &FstabSize);
   if (EFI_ERROR (Status)) {
     return Status;
   }
