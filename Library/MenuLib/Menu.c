@@ -18,6 +18,10 @@ word colorTextPrimary;
 word colorTextSecondary;
 
 word colorSelection;
+byte alphaSelection;
+word colorSeparator;
+byte alphaSeparator;
+word colorBackground;
 
 EFI_STATUS
 AromaInit (
@@ -83,6 +87,7 @@ MINLIST * list_create(int width, int itemheight, word bg, word sl, word tbg, wor
   list->n = 0;
   list->bgcolor=bg;
   list->selcolor=sl;
+  list->selalpha = alphaSelection;
   list->textcolor=tbg;
   list->textselcolor=tsl;
   return list;
@@ -118,7 +123,7 @@ void list_add(MINLIST * list, const char * icon, const char * title, const char 
  
   /* selected bg */
   libaroma_draw_rect(cva, 0, item_y, list->w, list->ih, list->bgcolor, 0xff);
-  libaroma_draw_rect(cva, 0, item_y+libaroma_dp(1), list->w, list->ih-libaroma_dp(1), list->selcolor, 0xff);
+  libaroma_draw_rect(cva, 0, item_y+libaroma_dp(1), list->w, list->ih-libaroma_dp(1), list->selcolor, list->selalpha);
  
   char text[256];
   if (subtitle!=NULL){
@@ -184,7 +189,6 @@ void list_add(MINLIST * list, const char * icon, const char * title, const char 
   }
  
   if (LIST_ADD_WITH_SEPARATOR&flags){
-    byte is_dark = libaroma_color_isdark(list->bgcolor);
     int sepxp=0;
     if (flags&LIST_ADD_SEPARATOR_ALIGN_TEXT){
       sepxp=libaroma_dp(72);
@@ -195,8 +199,8 @@ void list_add(MINLIST * list, const char * icon, const char * title, const char 
       item_y-libaroma_dp(1),
       cv->w-sepxp,
       libaroma_dp(1),
-      is_dark?RGB(555555):RGB(dddddd),
-      0xff
+      colorSeparator,
+      alphaSeparator
     );
   }
  
@@ -493,7 +497,7 @@ BuildAromaMenu (
   list = list_create(
     dc->w,
     libaroma_dp(72),
-    colorText,
+    colorBackground,
     colorSelection,
     colorTextPrimary,
     colorTextPrimary
@@ -581,7 +585,7 @@ RenderBootScreen(
   int dialog_y = (dc->h>>1)-(dialog_h>>1);
 
   libaroma_draw_rect(
-    dc, dialog_x, dialog_y, dialog_w, dialog_h, RGB(FFFFFF), 0xff
+    dc, dialog_x, dialog_y, dialog_w, dialog_h, colorBackground, 0xff
   );
 
   char text[256];
@@ -589,7 +593,7 @@ RenderBootScreen(
 
   LIBAROMA_TEXT txt = libaroma_text(
     text,
-    colorText, dialog_w-libaroma_dp(16),
+    colorTextPrimary, dialog_w-libaroma_dp(16),
     LIBAROMA_FONT(0,5)|LIBAROMA_TEXT_CENTER,
     100
   );
@@ -650,13 +654,20 @@ EFIDroidEnterFrontPage (
   colorTextPrimary = RGB(212121);
   colorTextSecondary = RGB(727272);
 
-  colorSelection = RGB(cccccc);
+  colorSelection = RGB(000000);
+  alphaSelection = 0x30;
+  colorSeparator = RGB(dddddd);
+  alphaSeparator = 0xff;
+  colorBackground = RGB(FFFFFF);
 
-
+#if 1
   colorText = RGB(000000);
   colorTextPrimary = RGB(FFFFFF);
   colorTextSecondary = RGB(FFFFFF);
-  colorSelection = RGB(212121);
+  colorSelection = RGB(FFFFFF);
+  colorSeparator = RGB(555555);
+  colorBackground = RGB(212121);
+#endif
 
   UINTN           WaitIndex;
   EFI_INPUT_KEY   Key;

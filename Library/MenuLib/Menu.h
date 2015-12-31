@@ -25,6 +25,7 @@ typedef struct {
   int ih; /* item height */
   word bgcolor;
   word selcolor;
+  byte selalpha;
   word textcolor;
   word textselcolor;
 } MINLIST;
