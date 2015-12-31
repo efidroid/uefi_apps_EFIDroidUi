@@ -167,7 +167,7 @@ void list_add(MINLIST * list, const char * icon, const char * title, const char 
   }
  
   if (icon!=NULL){
-    LIBAROMA_CANVASP ico =libaroma_image_uri((char*)icon);
+    LIBAROMA_CANVASP ico =libaroma_image_ex(libaroma_stream_ramdisk(icon), 1, 0);
     if (ico){
       int dpsz=libaroma_dp(40);
       int icoy=item_y + ((list->ih>>1) - (dpsz>>1));
