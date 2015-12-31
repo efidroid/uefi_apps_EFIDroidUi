@@ -3,6 +3,8 @@
 
 static LIBAROMA_CONFIG _libaroma_config;
 static byte _libaroma_config_ready=0;
+static FILE * _libaroma_debug_fp=NULL;
+static char _libaroma_debug_tag[256]="LIBAROMA()";
 
 /*
  * Function    : _libaroma_config_default
@@ -17,6 +19,7 @@ void _libaroma_config_default() {
   else{*/
     _libaroma_config.fb_shm_name[0]=0;
   /*}*/
+  _libaroma_debug_fp=stdout;
   _libaroma_config.multicore_init_num = 8; /* activate core */
   _libaroma_config.snapshoot_fb = 0; /* snapshoot after graph init */
   _libaroma_config.runtime_monitor = LIBAROMA_START_UNSAFE;
@@ -44,6 +47,27 @@ int libaroma_filesize_fd(int fd) {
 byte libaroma_file_exists(const char * filename) {
   return 0;
 }
+
+/*
+ * Function    : libaroma_debug_output
+ * Return Value: FILE *
+ * Descriptions: get debug output fd
+ */
+FILE * libaroma_debug_output(){
+  if (!_libaroma_debug_fp){
+    _libaroma_debug_fp=stdout;
+  }
+  return _libaroma_debug_fp;
+} /* End of libaroma_debug_output */
+
+/*
+ * Function    : libaroma_debug_tag
+ * Return Value: char *
+ * Descriptions: get debug tag
+ */
+char * libaroma_debug_tag(){
+  return _libaroma_debug_tag;
+} /* End of libaroma_debug_tag */
 
 double
 round(double x)
