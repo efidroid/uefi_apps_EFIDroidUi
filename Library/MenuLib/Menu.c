@@ -8,6 +8,17 @@ STATIC MENU_OPTION* mActiveMenu = NULL;
 STATIC LIBAROMA_CANVASP dc;
 STATIC MINLIST *list = NULL;
 
+word colorPrimary;
+word colorPrimaryLight;
+word colorPrimaryDark;
+word colorText;
+
+word colorAccent;
+word colorTextPrimary;
+word colorTextSecondary;
+
+word colorSelection;
+
 EFI_STATUS
 AromaInit (
   VOID
@@ -111,7 +122,7 @@ void list_add(MINLIST * list, const char * icon, const char * title, const char 
  
   char text[256];
   if (subtitle!=NULL){
-    word scolor = libaroma_alpha(list->bgcolor,list->textcolor,0x66);
+    word scolor = colorTextSecondary;
     snprintf(text,256,"<b>%s</b>\n<#%02X%02X%02X><size=3>%s</size></#>",title?title:"",
       libaroma_color_r(scolor),
       libaroma_color_g(scolor),
@@ -482,10 +493,10 @@ BuildAromaMenu (
   list = list_create(
     dc->w,
     libaroma_dp(72),
-    RGB(ffffff),
-    RGB(cccccc),
-    RGB(000000),
-    RGB(000000)
+    colorText,
+    colorSelection,
+    colorTextPrimary,
+    colorTextPrimary
   );
 
   Link = mActiveMenu->Head.ForwardLink;
@@ -522,12 +533,12 @@ RenderActiveMenu(
    * DRAW STATUSBAR
    */
   libaroma_draw_rect(
-    dc, 0, 0, dc->w, statusbar_height, RGB(335577), 0xff
+    dc, 0, 0, dc->w, statusbar_height, colorPrimaryDark, 0xff
   );
   libaroma_draw_text(
       dc,
       "EFIDroid",
-      0, libaroma_dp(2) ,RGB(ffffff), dc->w,
+      0, libaroma_dp(2) ,colorText, dc->w,
       LIBAROMA_FONT(0,3)|LIBAROMA_TEXT_CENTER,
       100
   );
@@ -541,8 +552,8 @@ RenderActiveMenu(
   /* set appbar */
   appbar_draw(
     "Please Select OS",
-    RGB(446688),
-    RGB(ffffff),
+    colorPrimary,
+    colorText,
     statusbar_height,
     appbar_height,
     appbar_flags
@@ -630,6 +641,23 @@ EFIDroidEnterFrontPage (
     ASSERT(FALSE);
     return;
   }
+
+  colorPrimary = RGB(4CAF50);
+  colorPrimaryLight = RGB(C8E6C9);
+  colorPrimaryDark = RGB(388E3C);
+  colorText = RGB(FFFFFF);
+
+  colorAccent = RGB(FF4081);
+  colorTextPrimary = RGB(212121);
+  colorTextSecondary = RGB(727272);
+
+  colorSelection = RGB(cccccc);
+
+
+  colorText = RGB(000000);
+  colorTextPrimary = RGB(FFFFFF);
+  colorTextSecondary = RGB(FFFFFF);
+  colorSelection = RGB(212121);
 
   UINTN           WaitIndex;
   EFI_INPUT_KEY   Key;
