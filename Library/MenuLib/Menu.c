@@ -516,7 +516,7 @@ BuildAromaMenu (
   while (Link != NULL && Link != &mActiveMenu->Head) {
     Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
 
-    list_add(list, NULL, Entry->Description, NULL, LIST_ADD_MASK_ICON_COLOR|LIST_ADD_WITH_SEPARATOR);
+    list_add(list, NULL, Entry->Description, NULL, LIST_ADD_WITH_SEPARATOR);
 
     Link = Link->ForwardLink;
     Index++;
