@@ -309,6 +309,10 @@ GetAndroidImgInfo (
       *Icon = libaroma_stream_ramdisk("icons/recovery_lglaf.png");
       *ImgName = AsciiStrDup("LG Laf Recovery");
     }
+    else if (CpioGetByName(Ramdisk, "res/images/icon_smile.png")) {
+      *Icon = libaroma_stream_ramdisk("icons/recovery_xiaomi.png");
+      *ImgName = AsciiStrDup("Xiaomi Recovery");
+    }
     else {
       *Icon = libaroma_stream_ramdisk("icons/android.png");
       *ImgName = AsciiStrDup("Recovery");
