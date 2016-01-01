@@ -1,12 +1,15 @@
-#ifndef __LIBRARY_EFIDROID_H__
-#define __LIBRARY_EFIDROID_H__
+#ifndef MENU_H
+#define MENU_H 1
 
-#include <Uefi/UefiBaseType.h>
+#include <PiDxe.h>
+#include <Guid/FileInfo.h>
+
+#include <Library/BaseLib.h>
 
 #define MENU_SIGNATURE             SIGNATURE_32 ('m', 'e', 'n', 'u')
 #define MENU_ENTRY_SIGNATURE       SIGNATURE_32 ('e', 'n', 't', 'r')
 
-extern EFI_GUID gEFIDroidVariableGuid;
+extern CONST CHAR8                 *gErrorStr;
 
 typedef struct _MENU_ENTRY MENU_ENTRY;
 struct _MENU_ENTRY {
@@ -30,8 +33,6 @@ typedef struct {
   INT32           Selection;
   EFI_STATUS      (*BackCallback) (VOID);
 } MENU_OPTION;
-
-extern CONST CHAR8                 *gErrorStr;
 
 VOID
 EFIDroidEnterFrontPage (
@@ -98,4 +99,4 @@ InvalidateActiveMenu(
   VOID
 );
 
-#endif
+#endif /* ! MENU_H */

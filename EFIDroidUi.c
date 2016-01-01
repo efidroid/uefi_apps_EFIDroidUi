@@ -22,7 +22,6 @@
 #include "bootimg.h"
 
 MENU_OPTION                 *mBootMenuMain = NULL;
-CONST CHAR8                 *gErrorStr = NULL;
 LIST_ENTRY                  mRecoveries;
 FSTAB                       *mFstab = NULL;
 

@@ -36,7 +36,6 @@
 #include <Library/UefiLib.h>
 #include <Library/GenericBdsLib.h>
 #include <Library/DevicePathLib.h>
-#include <Library/EFIDroid.h>
 #include <Library/Cpio.h>
 #include <Library/Decompress.h>
 #include <Library/Ini.h>
@@ -45,10 +44,13 @@
 #include <Library/FileHandleLib.h>
 #include <Library/UEFIRamdisk.h>
 #include <Library/Util.h>
+#include <Library/Menu.h>
 
 #include <LittleKernel.h>
 
 #include "bootimg.h"
+
+extern EFI_GUID gEFIDroidVariableGuid;
 
 typedef struct {
   // ini values

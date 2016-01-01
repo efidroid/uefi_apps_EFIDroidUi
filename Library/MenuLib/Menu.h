@@ -4,12 +4,12 @@
 #include <PiDxe.h>
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
-#include <Library/EFIDroid.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/DxeServicesLib.h>
 #include <Library/Util.h>
+#include <Library/Menu.h>
 
 #include <Protocol/GraphicsOutput.h>
 #include <Protocol/SimpleTextIn.h>
