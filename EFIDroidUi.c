@@ -793,6 +793,7 @@ AddEfiBootOptions (
       break;
     }
 
+    Entry->Icon = libaroma_stream_ramdisk("icons/uefi.png");
     Entry->Description = Unicode2Ascii(Option->Description);
     Entry->Callback = BootOptionEfiOption;
     Entry->Private = Option;
@@ -953,6 +954,7 @@ main (
 
   // add reboot option
   Entry = MenuCreateEntry();
+  Entry->Icon = libaroma_stream_ramdisk("icons/reboot.png");
   Entry->Description = AsciiStrDup("Reboot");
   Entry->Callback = RebootCallback;
   MenuAddEntry(mBootMenuMain, Entry);
