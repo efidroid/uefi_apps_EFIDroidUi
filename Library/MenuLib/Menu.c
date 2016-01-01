@@ -23,24 +23,6 @@ word colorSeparator;
 byte alphaSeparator;
 word colorBackground;
 
-LIBAROMA_STREAMP
-libaroma_stream_ramdisk(
-  CONST CHAR8* Path
-)
-{
-  bytep Data;
-  UINTN Size;
-  EFI_STATUS Status;
-
-  // get font data
-  Status = UEFIRamdiskGetFile (Path, (VOID **) &Data, &Size);
-  if (EFI_ERROR (Status)) {
-    return NULL;
-  }
-
-  return libaroma_stream_mem(Data, Size);
-}
-
 EFI_STATUS
 AromaInit (
   VOID

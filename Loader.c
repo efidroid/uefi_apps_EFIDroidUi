@@ -17,8 +17,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #define ATAG_MAX_SIZE   0x3000
 #define DTB_PAD_SIZE    0x1000
-#define ROUNDUP(a, b)   (((a) + ((b)-1)) & ~((b)-1))
-#define ROUNDDOWN(a, b) ((a) & ~((b)-1))
 
 STATIC EFI_FILE_PROTOCOL* FileHandle = NULL;
 CONST CHAR8* CMDLINE_MULTIBOOTPATH = " multibootpath=";
@@ -43,18 +41,6 @@ typedef struct {
   VOID   *tags_loaded;
 } android_parsed_bootimg_t;
 
-STATIC inline
-UINT32
-RangeOverlaps (
-  UINT32 x1,
-  UINT32 x2,
-  UINT32 y1,
-  UINT32 y2
-)
-{
-  return MAX(x1,y1) <= MIN(x2,y2);
-}
-
 #define MAXVAL_FUNCTION(name, type) \
 int name(type n, ...) { \
   type i, val, largest; \
@@ -72,7 +58,6 @@ int name(type n, ...) { \
 }
 
 MAXVAL_FUNCTION(MAXUINT, UINT32);
-
 
 EFI_STATUS
 AndroidVerify (
@@ -179,41 +164,6 @@ AndroidLoadCmdline (
   }
 
   return EFI_SUCCESS;
-}
-
-STATIC UINT32
-AlignMemoryRange (
-  IN UINT32 Addr,
-  IN OUT UINTN *Size,
-  OUT UINTN  *AddrOffset
-)
-{
-  // align range
-  UINT32 AddrAligned = ROUNDDOWN(Addr, EFI_PAGE_SIZE);
-
-  // calculate offset
-  UINTN Offset = Addr - AddrAligned;
-  if (AddrOffset!=NULL)
-    *AddrOffset = Offset;
-
-  // round and return size
-  *Size = ROUNDUP(Offset + (*Size), EFI_PAGE_SIZE);
-
-  return AddrAligned;
-}
-
-STATIC EFI_STATUS
-FreeAlignedMemoryRange (
-  IN UINT32 Address,
-  IN OUT UINTN Size
-)
-{
-  UINTN      AlignedSize = Size;
-  UINTN      AddrOffset = 0;
-
-  EFI_PHYSICAL_ADDRESS AllocationAddress = AlignMemoryRange(Address, &AlignedSize, &AddrOffset);
-
-  return gBS->FreePages(AllocationAddress, EFI_SIZE_TO_PAGES(AlignedSize));
 }
 
 STATIC EFI_STATUS

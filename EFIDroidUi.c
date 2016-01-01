@@ -198,76 +198,6 @@ EFI_STATUS
   IN VOID                 *Context
   );
 
-CHAR8*
-Unicode2Ascii (
-  CONST CHAR16* UnicodeStr
-)
-{
-  CHAR8* AsciiStr = AllocatePool((StrLen (UnicodeStr) + 1) * sizeof (CHAR8));
-  if (AsciiStr == NULL) {
-    return NULL;
-  }
-
-  UnicodeStrToAsciiStr(UnicodeStr, AsciiStr);
-
-  return AsciiStr;
-}
-
-CHAR16*
-Ascii2Unicode (
-  CONST CHAR8* AsciiStr
-)
-{
-  CHAR16* UnicodeStr = AllocatePool((AsciiStrLen (AsciiStr) + 1) * sizeof (CHAR16));
-  if (UnicodeStr == NULL) {
-    return NULL;
-  }
-
-  AsciiStrToUnicodeStr(AsciiStr, UnicodeStr);
-
-  return UnicodeStr;
-}
-
-CHAR8*
-AsciiStrDup (
-  CONST CHAR8* SrcStr
-)
-{
-  UINTN Len = (AsciiStrLen (SrcStr) + 1) * sizeof (CHAR8);
-  CHAR8* NewStr = AllocatePool(Len);
-  if (NewStr == NULL) {
-    return NULL;
-  }
-
-  CopyMem(NewStr, SrcStr, Len);
-
-  return NewStr;
-}
-
-VOID
-PathToUnix(
-  CHAR16* fname
-)
-{
-  CHAR16 *Tmp = fname;
-  for(Tmp = fname; *Tmp != 0; Tmp++) {
-    if(*Tmp=='\\')
-      *Tmp = '/';
-  }
-}
-
-VOID
-PathToUefi(
-  CHAR16* fname
-)
-{
-  CHAR16 *Tmp = fname;
-  for(Tmp = fname; *Tmp != 0; Tmp++) {
-    if(*Tmp=='/')
-      *Tmp = '\\';
-  }
-}
-
 STATIC EFI_STATUS
 EFIAPI
 FindESP (
@@ -478,14 +408,6 @@ FREEBUFFER:
   FreePool(AndroidHdr);
 
   return Status;
-}
-
-STATIC BOOLEAN
-NodeIsDir (
-  IN EFI_FILE_INFO      *NodeInfo
-  )
-{
-  return ((NodeInfo->Attribute & EFI_FILE_DIRECTORY) == EFI_FILE_DIRECTORY);
 }
 
 STATIC INT32

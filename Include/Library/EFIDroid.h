@@ -98,9 +98,4 @@ InvalidateActiveMenu(
   VOID
 );
 
-CHAR8*
-AsciiStrDup (
-  CONST CHAR8* SrcStr
-);
-
 #endif

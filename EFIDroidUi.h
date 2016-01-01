@@ -44,6 +44,7 @@
 #include <Library/DxeServicesLib.h>
 #include <Library/FileHandleLib.h>
 #include <Library/UEFIRamdisk.h>
+#include <Library/Util.h>
 
 #include <LittleKernel.h>
 
@@ -99,21 +100,6 @@ AndroidVerify (
 EFI_STATUS
 MultibootCallback (
   IN VOID *Private
-);
-
-CHAR8*
-Unicode2Ascii (
-  CONST CHAR16* UnicodeStr
-);
-
-CHAR16*
-Ascii2Unicode (
-  CONST CHAR8* AsciiStr
-);
-
-CHAR8*
-AsciiStrDup (
-  CONST CHAR8* SrcStr
 );
 
 #endif /* __EFIDROIDUI_H__ */
