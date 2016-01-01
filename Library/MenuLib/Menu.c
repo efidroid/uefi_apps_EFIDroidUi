@@ -406,8 +406,8 @@ MenuCloneEntry (
   if(Entry==NULL)
     return NULL;
 
-  if(Entry->CloneCallback) {
-    Status = Entry->CloneCallback(BaseEntry, Entry);
+  if(BaseEntry->CloneCallback) {
+    Status = BaseEntry->CloneCallback(BaseEntry, Entry);
     if(EFI_ERROR(Status)) {
       MenuFreeEntry(Entry);
       return NULL;
