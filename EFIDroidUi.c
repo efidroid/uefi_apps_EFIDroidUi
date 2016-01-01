@@ -305,6 +305,10 @@ GetAndroidImgInfo (
       *Icon = libaroma_stream_ramdisk("icons/recovery_cyanogen.png");
       *ImgName = AsciiStrDup("Cyanogen Recovery");
     }
+    else if (CpioGetByName(Ramdisk, "sbin/lafd")) {
+      *Icon = libaroma_stream_ramdisk("icons/recovery_lglaf.png");
+      *ImgName = AsciiStrDup("LG Laf Recovery");
+    }
     else {
       *Icon = libaroma_stream_ramdisk("icons/android.png");
       *ImgName = AsciiStrDup("Recovery");
