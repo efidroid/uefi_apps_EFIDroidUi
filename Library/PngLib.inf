@@ -61,4 +61,4 @@
   TRUE
 
 [BuildOptions]
-  GCC:*_*_*_CC_FLAGS     = -Wno-error
+  GCC:*_*_*_CC_FLAGS     = -Wno-unused-variable
