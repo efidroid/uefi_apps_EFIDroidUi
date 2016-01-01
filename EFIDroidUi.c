@@ -293,6 +293,10 @@ GetAndroidImgInfo (
       *Icon = libaroma_stream_ramdisk("icons/recovery_twrp.png");
       *ImgName = AsciiStrDup("TWRP");
     }
+    else if (CpioGetByName(Ramdisk, "res/images/icon_clockwork.png")) {
+      *Icon = libaroma_stream_ramdisk("icons/recovery_clockwork.png");
+      *ImgName = AsciiStrDup("ClockworkMod Recovery");
+    }
     else {
       *Icon = libaroma_stream_ramdisk("icons/android.png");
       *ImgName = AsciiStrDup("Recovery");
