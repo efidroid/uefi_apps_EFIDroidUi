@@ -276,6 +276,35 @@ FindESP (
 }
 
 STATIC EFI_STATUS
+GetAndroidImgInfo (
+  IN boot_img_hdr_t     *AndroidHdr,
+  IN CPIO_NEWC_HEADER   *Ramdisk,
+  LIBAROMA_STREAMP      *Icon,
+  CHAR8                 **ImgName,
+  BOOLEAN               *IsRecovery
+)
+{
+  // check if this is a recovery ramdisk
+  if (CpioGetByName(Ramdisk, "sbin/recovery")) {
+    *IsRecovery = TRUE;
+
+    // set icon and description
+    if (CpioGetByName(Ramdisk, "sbin/twrp")) {
+      *Icon = libaroma_stream_ramdisk("icons/recovery_twrp.png");
+      *ImgName = AsciiStrDup("TWRP");
+    }
+    else {
+      *Icon = libaroma_stream_ramdisk("icons/android.png");
+      *ImgName = AsciiStrDup("Recovery");
+    }
+
+    return EFI_SUCCESS;
+  }
+
+  return EFI_UNSUPPORTED;
+}
+
+STATIC EFI_STATUS
 EFIAPI
 FindAndroidBlockIo (
   IN EFI_HANDLE  Handle,
@@ -289,6 +318,8 @@ FindAndroidBlockIo (
   UINTN                     BufferSize;
   boot_img_hdr_t            *AndroidHdr;
   BOOLEAN                   IsRecovery = FALSE;
+  LIBAROMA_STREAMP          Icon = NULL;
+  CHAR8                     *Description = NULL;
 
   Status = EFI_SUCCESS;
 
@@ -381,23 +412,57 @@ FindAndroidBlockIo (
     }
 
     // set entry description
-    if (!StrCmp(PartitionName->Name, L"boot") || IsRecovery)
-      Entry->Description = AsciiStrDup("Internal Android");
+    if (!StrCmp(PartitionName->Name, L"boot"))
+      Description = AsciiStrDup("Android (Internal)");
+    else if(IsRecovery)
+      Description = AsciiStrDup("Recovery (Internal)");
     else {
-      Entry->Description = Unicode2Ascii(PartitionName->Name);
+      Description = AllocateZeroPool(4096);
+      if(Description) {
+        AsciiSPrint(Description, 4096, "Android (%s)", PartitionName->Name);
+      }
     }
   }
   else {
-    Entry->Description = AsciiStrDup("Unknown");
+    Description = AsciiStrDup("Unknown");
+  }
+
+  CPIO_NEWC_HEADER *Ramdisk = AndroidGetDecompRamdiskFromBlockIo (BlockIo, AndroidHdr);
+  if(Ramdisk) {
+    CHAR8* ImgName = NULL;
+    Status = GetAndroidImgInfo(AndroidHdr, Ramdisk, &Icon, &ImgName, &IsRecovery);
+    if(!EFI_ERROR(Status) && ImgName) {
+      FreePool(Description);
+      Description = AllocateZeroPool(4096);
+      if(Description) {
+        AsciiSPrint(Description, 4096, "%a (Internal)", ImgName);
+        FreePool(ImgName);
+      }
+      else {
+        Description = ImgName;
+      }
+    }
+
+    FreePool(Ramdisk);
+  }
+  if(Icon==NULL) {
+    Icon = libaroma_stream_ramdisk("icons/android.png");
   }
 
   if(IsRecovery) {
     RECOVERY_MENU *RecMenu = CreateRecoveryMenu();
-    RecMenu->RootEntry->Description = AsciiStrDup("Recovery");
+    RecMenu->RootEntry->Icon = Icon;
+    RecMenu->RootEntry->Description = Description;
+
+    Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
+    Entry->Description = AsciiStrDup("Android (Internal)");
     RecMenu->BaseEntry = Entry;
+
     MenuAddEntry(RecMenu->SubMenu, Entry);
   }
   else {
+    Entry->Icon = Icon;
+    Entry->Description = Description;
     MenuAddEntry(mBootMenuMain, Entry);
   }
 

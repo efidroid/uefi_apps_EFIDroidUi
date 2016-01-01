@@ -443,6 +443,60 @@ FREEBUFFER:
   return EFI_SUCCESS;
 }
 
+CPIO_NEWC_HEADER*
+AndroidGetDecompRamdiskFromBlockIo (
+  IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
+  IN boot_img_hdr_t* AndroidHdr
+)
+{
+  VOID                      *OriginalRamdisk = NULL;
+  UINT32                    RamdiskUncompressedLen = 0;
+  CPIO_NEWC_HEADER          *DecompressedRamdisk = NULL;
+  EFI_STATUS                Status;
+
+  // calculate offsets
+  UINTN off_kernel  = AndroidHdr->page_size;
+  UINTN off_ramdisk = off_kernel  + ALIGN_VALUE(AndroidHdr->kernel_size,  AndroidHdr->page_size);
+
+  // load ramdisk into UEFI memory
+  Status = AndroidLoadImage(BlockIo, off_ramdisk, AndroidHdr->ramdisk_size, &OriginalRamdisk, 0);
+  if (!EFI_ERROR(Status) && OriginalRamdisk) {
+    CONST CHAR8 *DecompName;
+
+    // get decompressor
+    decompress_fn Decompressor = decompress_method(OriginalRamdisk, AndroidHdr->ramdisk_size, &DecompName);
+    if(Decompressor==NULL) {
+      goto FreeOriginalRd;
+    }
+
+    // get uncompressed size
+    // since the Linux decompressor doesn't support predicting the length we hardcode this to 10MB
+    RamdiskUncompressedLen = 10*1024*1024;
+    DecompressedRamdisk = AllocatePool(RamdiskUncompressedLen);
+    if(DecompressedRamdisk==NULL) {
+      goto FreeOriginalRd;
+    }
+
+    // decompress ramdisk
+    if(Decompressor(OriginalRamdisk, AndroidHdr->ramdisk_size, NULL, NULL, (VOID*)DecompressedRamdisk, NULL, DecompError)) {
+      goto FreeDecompRd;
+    }
+
+    goto FreeOriginalRd;
+
+  FreeDecompRd:
+    if(DecompressedRamdisk) {
+      FreePool(DecompressedRamdisk);
+      DecompressedRamdisk = NULL;
+    }
+
+  FreeOriginalRd:
+    FreeAlignedMemoryRange((UINT32)OriginalRamdisk, AndroidHdr->ramdisk_size);
+  }
+
+  return DecompressedRamdisk;
+}
+
 STATIC EFI_STATUS
 EFIAPI
 BIOReset (

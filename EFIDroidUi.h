@@ -99,6 +99,12 @@ AndroidVerify (
   IN VOID* Buffer
 );
 
+CPIO_NEWC_HEADER*
+AndroidGetDecompRamdiskFromBlockIo (
+  IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
+  IN boot_img_hdr_t* AndroidHdr
+);
+
 EFI_STATUS
 MultibootCallback (
   IN VOID *Private
