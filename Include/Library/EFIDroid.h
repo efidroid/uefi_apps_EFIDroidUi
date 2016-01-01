@@ -13,13 +13,14 @@ struct _MENU_ENTRY {
   UINTN           Signature;
   LIST_ENTRY      Link;
 
-  CONST CHAR8* Description;
+  CHAR8* Description;
   EFI_STATUS (*Callback) (VOID*);
   VOID *Private;
   BOOLEAN ResetGop;
   BOOLEAN HideBootMessage;
 
   VOID (*FreeCallback)(struct _MENU_ENTRY* Entry);
+  EFI_STATUS (*CloneCallback)(struct _MENU_ENTRY* BaseEntry, struct _MENU_ENTRY* Entry);
 };
 
 typedef struct {
@@ -51,6 +52,11 @@ MenuFree (
 MENU_ENTRY*
 MenuCreateEntry (
   VOID
+);
+
+MENU_ENTRY*
+MenuCloneEntry (
+  MENU_ENTRY* BaseEntry
 );
 
 VOID
@@ -90,6 +96,11 @@ GetActiveMenu(
 VOID
 InvalidateActiveMenu(
   VOID
+);
+
+CHAR8*
+AsciiStrDup (
+  CONST CHAR8* SrcStr
 );
 
 #endif

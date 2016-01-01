@@ -410,6 +410,40 @@ MenuCreateEntry (
   return Entry;
 }
 
+MENU_ENTRY*
+MenuCloneEntry (
+  MENU_ENTRY* BaseEntry
+)
+{
+  MENU_ENTRY* Entry;
+  EFI_STATUS Status;
+
+  Entry = MenuCreateEntry();
+  if(Entry==NULL)
+    return NULL;
+
+  if(Entry->CloneCallback) {
+    Status = Entry->CloneCallback(BaseEntry, Entry);
+    if(EFI_ERROR(Status)) {
+      MenuFreeEntry(Entry);
+      return NULL;
+    }
+  }
+  else {
+    Entry->Private = BaseEntry->Private;
+  }
+
+  Entry->Description = AsciiStrDup(BaseEntry->Description);
+  Entry->Callback = BaseEntry->Callback;
+  Entry->ResetGop = BaseEntry->ResetGop;
+  Entry->HideBootMessage = BaseEntry->HideBootMessage;
+  Entry->Icon = BaseEntry->Icon;
+  Entry->FreeCallback = BaseEntry->FreeCallback;
+  Entry->CloneCallback = BaseEntry->CloneCallback;
+
+  return Entry;
+}
+
 VOID
 MenuFreeEntry (
   MENU_ENTRY* Entry
@@ -417,6 +451,8 @@ MenuFreeEntry (
 {
   if(Entry->FreeCallback)
     Entry->FreeCallback(Entry);
+  if(Entry->Description)
+    FreePool(Entry->Description);
   FreePool(Entry);
 }
 

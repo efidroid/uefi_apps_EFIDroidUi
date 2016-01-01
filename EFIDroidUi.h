@@ -62,6 +62,23 @@ typedef struct {
   CHAR8* MultibootConfig;
 } multiboot_handle_t;
 
+typedef struct {
+  EFI_BLOCK_IO_PROTOCOL *BlockIo;
+  EFI_FILE_PROTOCOL     *File;
+  multiboot_handle_t    *mbhandle;
+} MENU_ENTRY_PDATA;
+
+#define RECOVERY_MENU_SIGNATURE             SIGNATURE_32 ('r', 'e', 'c', 'm')
+
+typedef struct {
+  UINTN           Signature;
+  LIST_ENTRY      Link;
+
+  MENU_OPTION     *SubMenu;
+  MENU_ENTRY      *RootEntry;
+  MENU_ENTRY      *BaseEntry;
+} RECOVERY_MENU;
+
 EFI_STATUS
 AndroidBootFromBlockIo (
   IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
