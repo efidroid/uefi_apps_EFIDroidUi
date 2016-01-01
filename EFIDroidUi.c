@@ -297,6 +297,10 @@ GetAndroidImgInfo (
       *Icon = libaroma_stream_ramdisk("icons/recovery_clockwork.png");
       *ImgName = AsciiStrDup("ClockworkMod Recovery");
     }
+    else if (CpioGetByName(Ramdisk, "res/images/font_log.png")) {
+      *Icon = libaroma_stream_ramdisk("icons/recovery_cyanogen.png");
+      *ImgName = AsciiStrDup("Cyanogen Recovery");
+    }
     else {
       *Icon = libaroma_stream_ramdisk("icons/android.png");
       *ImgName = AsciiStrDup("Recovery");
