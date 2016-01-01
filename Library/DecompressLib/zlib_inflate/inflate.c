@@ -557,7 +557,7 @@ int zlib_inflate(z_streamp strm, int flush)
         case LEN:
             if (have >= 6 && left >= 258) {
                 RESTORE();
-                inflate_fast(strm, out);
+                zlib_inflate_fast(strm, out);
                 LOAD();
                 break;
             }

@@ -85,7 +85,7 @@ get_unaligned16(const unsigned short *p)
 
     - @start:	inflate()'s starting value for strm->avail_out
  */
-void inflate_fast(z_streamp strm, unsigned start)
+void zlib_inflate_fast(z_streamp strm, unsigned start)
 {
     struct inflate_state *state;
     const unsigned char *in;    /* local strm->next_in */
