@@ -666,11 +666,11 @@ ENUMERATE:
       if(Entry == NULL) {
         return EFI_OUT_OF_RESOURCES;
       }
+      Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
       Entry->Description = AsciiStrDup(mbhandle->Name);
       Entry->Private = mbhandle;
       Entry->Callback = MultibootCallback;
       MenuAddEntry(mBootMenuMain, Entry);
-
 
       AddMultibootSystemToRecoveryMenu(mbhandle);
     }
