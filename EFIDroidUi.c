@@ -793,7 +793,10 @@ AddEfiBootOptions (
       break;
     }
 
-    Entry->Icon = libaroma_stream_ramdisk("icons/uefi.png");
+    if(!StrCmp(Option->Description, L"EFI Internal Shell"))
+      Entry->Icon = libaroma_stream_ramdisk("icons/efi_shell.png");
+    else
+      Entry->Icon = libaroma_stream_ramdisk("icons/uefi.png");
     Entry->Description = Unicode2Ascii(Option->Description);
     Entry->Callback = BootOptionEfiOption;
     Entry->Private = Option;
