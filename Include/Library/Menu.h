@@ -21,6 +21,7 @@ struct _MENU_ENTRY {
   VOID *Private;
   BOOLEAN ResetGop;
   BOOLEAN HideBootMessage;
+  LIBAROMA_STREAMP Icon;
 
   VOID (*FreeCallback)(struct _MENU_ENTRY* Entry);
   EFI_STATUS (*CloneCallback)(struct _MENU_ENTRY* BaseEntry, struct _MENU_ENTRY* Entry);

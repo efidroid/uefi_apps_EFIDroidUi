@@ -96,7 +96,7 @@ void list_free(MINLIST * list){
 #define LIST_ADD_MASK_ICON_COLOR        0x1 /* mask icon with text color */
 #define LIST_ADD_WITH_SEPARATOR         0x2 /* add separator below item */
 #define LIST_ADD_SEPARATOR_ALIGN_TEXT   0x4 /* align the separator line with text position */
-void list_add(MINLIST * list, const char * icon, const char * title, const char * subtitle, byte flags){
+void list_add(MINLIST * list, LIBAROMA_STREAMP icon, const char * title, const char * subtitle, byte flags){
   int new_n  = list->n + 1;
   int item_y = list->n * list->ih;
   LIBAROMA_CANVASP cv = libaroma_canvas(list->w, list->ih*new_n);
@@ -151,7 +151,7 @@ void list_add(MINLIST * list, const char * icon, const char * title, const char 
   }
  
   if (icon!=NULL){
-    LIBAROMA_CANVASP ico =libaroma_image_ex(libaroma_stream_ramdisk(icon), 1, 0);
+    LIBAROMA_CANVASP ico =libaroma_image_ex(icon, 0, 0);
     if (ico){
       int dpsz=libaroma_dp(40);
       int icoy=item_y + ((list->ih>>1) - (dpsz>>1));
@@ -536,7 +536,7 @@ BuildAromaMenu (
   while (Link != NULL && Link != &mActiveMenu->Head) {
     Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
 
-    list_add(list, NULL, Entry->Description, NULL, LIST_ADD_WITH_SEPARATOR);
+    list_add(list, Entry->Icon, Entry->Description, NULL, LIST_ADD_WITH_SEPARATOR);
 
     Link = Link->ForwardLink;
     Index++;
