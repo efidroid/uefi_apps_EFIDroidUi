@@ -9,8 +9,6 @@
 #define MENU_SIGNATURE             SIGNATURE_32 ('m', 'e', 'n', 'u')
 #define MENU_ENTRY_SIGNATURE       SIGNATURE_32 ('e', 'n', 't', 'r')
 
-extern CONST CHAR8                 *gErrorStr;
-
 typedef struct _MENU_ENTRY MENU_ENTRY;
 struct _MENU_ENTRY {
   UINTN           Signature;
@@ -36,9 +34,19 @@ typedef struct {
 } MENU_OPTION;
 
 VOID
-EFIDroidEnterFrontPage (
+MenuInit (
+  VOID
+  );
+
+VOID
+MenuEnter (
   IN UINT16                 TimeoutDefault,
   IN BOOLEAN                ConnectAllHappened
+  );
+
+VOID
+MenuDeInit (
+  VOID
   );
 
 MENU_OPTION*
@@ -98,6 +106,11 @@ GetActiveMenu(
 VOID
 InvalidateActiveMenu(
   VOID
+);
+
+VOID MenuShowMessage(
+  CONST CHAR8* Title,
+  CONST CHAR8* Message
 );
 
 #endif /* ! MENU_H */

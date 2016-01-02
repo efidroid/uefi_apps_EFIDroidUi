@@ -78,7 +78,7 @@ CallbackBootAndroid (
   else if(PData->File)
     return AndroidBootFromFile(PData->File, PData->mbhandle);
   else {
-    gErrorStr = "BUG: Both BlockIo and File are NULL";
+    MenuShowMessage("BUG", "Both BlockIo and File are NULL.");
     return EFI_INVALID_PARAMETER;
   }
   return EFI_SUCCESS;
@@ -740,6 +740,11 @@ BootOptionEfiOption (
   // now boot will be performed.
   //
   Status = BdsLibBootViaBootOption (BootOption, BootOption->DevicePath, &ExitDataSize, &ExitData);
+  if(EFI_ERROR(Status)) {
+    CHAR8 Buf[100];
+    AsciiSPrint(Buf, 1024, "%r", Status);
+    MenuShowMessage("Error", Buf);
+  }
   return Status;
 }
 
@@ -982,27 +987,32 @@ main (
   Entry->Callback = RebootCallback;
   MenuAddEntry(mBootMenuMain, Entry);
 
+  MenuInit();
+
   // get size of 'EFIDroidErrorStr'
   Size = 0;
   Status = gRT->GetVariable (L"EFIDroidErrorStr", &gEFIDroidVariableGuid, NULL, &Size, NULL);
   if (Status == EFI_BUFFER_TOO_SMALL) {
-    // allocate memory (XXX: this is a memleak)
+    // allocate memory
     CHAR8* EFIDroidErrorStr = AllocateZeroPool(Size);
     if (EFIDroidErrorStr) {
-      // get actual variable value and set 'gErrorStr'
+      // get actual variable value
       Status = gRT->GetVariable (L"EFIDroidErrorStr", &gEFIDroidVariableGuid, NULL, &Size, EFIDroidErrorStr);
       if (Status == EFI_SUCCESS) {
-        gErrorStr = EFIDroidErrorStr;
+        MenuShowMessage("Previous boot failed", EFIDroidErrorStr);
 
         // delete variable
         Status = gRT->SetVariable (L"EFIDroidErrorStr", &gEFIDroidVariableGuid, 0, 0, NULL);
       }
+
+      FreePool(EFIDroidErrorStr);
     }
   }
 
   // show main menu
   SetActiveMenu(mBootMenuMain);
-  EFIDroidEnterFrontPage (0, TRUE);
+  MenuEnter (0, TRUE);
+  MenuDeInit();
 
   return EFI_SUCCESS;
 }

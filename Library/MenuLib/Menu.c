@@ -2,8 +2,6 @@
 
 #include "Menu.h"
 
-CONST CHAR8 *gErrorStr = NULL;
-
 STATIC EFI_GRAPHICS_OUTPUT_PROTOCOL *mGop;
 STATIC EFI_LK_DISPLAY_PROTOCOL *gLKDisplay;
 STATIC MENU_OPTION* mActiveMenu = NULL;
@@ -50,6 +48,9 @@ AromaInit (
   /* load font */
   libaroma_font(0,
     libaroma_stream_ramdisk("fonts/Roboto-Regular.ttf")
+  );
+  libaroma_font(1,
+    libaroma_stream_ramdisk("fonts/Roboto-Medium.ttf")
   );
 
   dc=libaroma_fb()->canvas;
@@ -543,6 +544,108 @@ BuildAromaMenu (
   }
 }
 
+void button_draw(const char* text, int x, int y, int w, int h) {
+
+  /* draw text */
+  LIBAROMA_TEXT textp = libaroma_text(
+    text,
+    colorAccent,
+    w - libaroma_dp(16),
+    LIBAROMA_FONT(1,4)|
+    LIBAROMA_TEXT_SINGLELINE|
+    LIBAROMA_TEXT_CENTER|
+    LIBAROMA_TEXT_FIXED_INDENT|
+    LIBAROMA_TEXT_FIXED_COLOR|
+    LIBAROMA_TEXT_NOHR,
+    100
+  );
+
+  int ty = y + (h>>1) - ((libaroma_text_height(textp)>>1));
+  libaroma_text_draw(dc,textp,x + libaroma_dp(8),ty);
+
+  libaroma_text_free(textp);
+}
+
+STATIC VOID
+RenderActiveMenu(
+  VOID
+);
+
+VOID MenuShowMessage(
+  CONST CHAR8* Title,
+  CONST CHAR8* Message
+)
+{
+  libaroma_draw_rect(
+    dc, 0, 0, dc->w, dc->h, RGB(000000), 0x7a
+  );
+
+  int dialog_w = dc->w-libaroma_dp(48);
+  LIBAROMA_TEXT messagetextp = libaroma_text(
+    Message,
+    colorTextSecondary,
+    dialog_w-libaroma_dp(24)*2,
+    LIBAROMA_FONT(0,4)|
+    LIBAROMA_TEXT_LEFT|
+    LIBAROMA_TEXT_FIXED_INDENT|
+    LIBAROMA_TEXT_FIXED_COLOR|
+    LIBAROMA_TEXT_NOHR,
+    100
+  );
+  LIBAROMA_TEXT textp = libaroma_text(
+    Title,
+    colorTextPrimary,
+    dialog_w-libaroma_dp(24)*2,
+    LIBAROMA_FONT(1,6)|
+    LIBAROMA_TEXT_LEFT|
+    LIBAROMA_TEXT_FIXED_INDENT|
+    LIBAROMA_TEXT_FIXED_COLOR|
+    LIBAROMA_TEXT_NOHR,
+    100
+  );
+
+  int dialog_h = libaroma_dp(24)+libaroma_text_height(textp) + libaroma_dp(20)+libaroma_text_height(messagetextp)+libaroma_dp(24)+libaroma_dp(52);
+  int dialog_x = libaroma_dp(24);
+  int dialog_y = (dc->h>>1)-(dialog_h>>1);
+
+  libaroma_draw_rect(
+    dc, dialog_x, dialog_y, dialog_w, dialog_h, colorBackground, 0xff
+  );
+
+  /* draw title */
+  libaroma_text_draw(dc,textp, dialog_x+libaroma_dp(24), dialog_y+libaroma_dp(24));
+  libaroma_text_free(textp);
+
+  /* draw text */
+  libaroma_text_draw(dc,messagetextp, dialog_x+libaroma_dp(24), dialog_y+libaroma_dp(24)+libaroma_text_height(textp) + libaroma_dp(20));
+  libaroma_text_free(messagetextp);
+
+  button_draw("OK", dialog_x+dialog_w-libaroma_dp(8)-libaroma_dp(64), dialog_y+dialog_h-libaroma_dp(16)-libaroma_dp(36), libaroma_dp(64), libaroma_dp(36));
+
+
+  UINT32 OldMode = mGop->Mode->Mode;
+  mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
+  libaroma_sync();
+
+  UINTN           WaitIndex;
+  EFI_INPUT_KEY   Key;
+  while(TRUE) {
+    EFI_STATUS Status = gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &WaitIndex);
+    ASSERT_EFI_ERROR (Status);
+
+    Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
+
+    if(Key.ScanCode==SCAN_NULL) {
+      switch(Key.UnicodeChar) {
+        case CHAR_CARRIAGE_RETURN:
+          RenderActiveMenu();
+          mGop->SetMode(mGop, OldMode);
+          return;
+      }
+    }
+  }
+}
+
 STATIC VOID
 RenderActiveMenu(
   VOID
@@ -635,16 +738,15 @@ RenderBootScreen(
   libaroma_sync();
 }
 
+STATIC EFI_STATUS Status;
+STATIC UINT32     OldMode;
+STATIC LK_DISPLAY_FLUSH_MODE     OldFlushMode;
+
 VOID
-EFIDroidEnterFrontPage (
-  IN UINT16                 TimeoutDefault,
-  IN BOOLEAN                ConnectAllHappened
+MenuInit (
+  VOID
   )
 {
-  EFI_STATUS Status;
-  UINT32     OldMode;
-  LK_DISPLAY_FLUSH_MODE     OldFlushMode;
-
   // get graphics protocol
   Status = gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **) &mGop);
   if (EFI_ERROR (Status)) {
@@ -691,12 +793,19 @@ EFIDroidEnterFrontPage (
 #if 1
   colorText = RGB(000000);
   colorTextPrimary = RGB(FFFFFF);
-  colorTextSecondary = RGB(FFFFFF);
+  colorTextSecondary = RGB(E4E4E4);
   colorSelection = RGB(FFFFFF);
   colorSeparator = RGB(555555);
   colorBackground = RGB(212121);
 #endif
+}
 
+VOID
+MenuEnter (
+  IN UINT16                 TimeoutDefault,
+  IN BOOLEAN                ConnectAllHappened
+  )
+{
   UINTN           WaitIndex;
   EFI_INPUT_KEY   Key;
   while(TRUE) {
@@ -755,7 +864,13 @@ EFIDroidEnterFrontPage (
       }
     }
   }
+}
 
+VOID
+MenuDeInit (
+  VOID
+  )
+{
   AromaRelease();
   mGop->SetMode(mGop, OldMode);
   gLKDisplay->SetFlushMode(gLKDisplay, OldFlushMode);

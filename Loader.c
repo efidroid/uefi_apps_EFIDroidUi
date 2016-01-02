@@ -230,7 +230,7 @@ PreparePlatformHardware (
 
 VOID DecompError(CHAR8* Str)
 {
-  DEBUG((EFI_D_ERROR, "%a\n", Str));
+  MenuShowMessage("Decompression Error", Str);
 }
 
 EFI_STATUS
@@ -256,20 +256,20 @@ AndroidBootFromBlockIo (
   BufferSize = ALIGN_VALUE(sizeof(boot_img_hdr_t), BlockIo->Media->BlockSize);
   AndroidHdr = AllocatePool(BufferSize);
   if (AndroidHdr == NULL) {
-    gErrorStr = "Error allocating bootimg header";
+    MenuShowMessage("Error", "Can't allocate boot image header.");
     return EFI_OUT_OF_RESOURCES;
   }
 
   // read and verify the android header
   Status = BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, 0, BufferSize, AndroidHdr);
   if (EFI_ERROR(Status)) {
-    gErrorStr = "Can't read boot image header";
+    MenuShowMessage("Error", "Can't read boot image header.");
     goto FREEBUFFER;
   }
 
   Status = AndroidVerify(AndroidHdr);
   if (EFI_ERROR(Status)) {
-    gErrorStr = "Not a boot image";
+    MenuShowMessage("Error", "Not a boot image.");
     goto FREEBUFFER;
   }
   Parsed.Hdr = AndroidHdr;
@@ -277,7 +277,7 @@ AndroidBootFromBlockIo (
   // this is not supported
   // actually I've never seen a device using this so it's not even clear how this would work
   if (AndroidHdr->second_size > 0) {
-    gErrorStr = "second_size > 0";
+    MenuShowMessage("Error", "Secondary loaders are not supported.");
     Status = EFI_UNSUPPORTED;
     goto FREEBUFFER;
   }
@@ -294,7 +294,7 @@ AndroidBootFromBlockIo (
   // load kernel
   Status = AndroidLoadImage(BlockIo, off_kernel, AndroidHdr->kernel_size, &Parsed.Kernel, AndroidHdr->kernel_addr);
   if (EFI_ERROR(Status)) {
-    gErrorStr = "Error loading kernel";
+    MenuShowMessage("Error", "Can't load kernel.");
     goto FREEBUFFER;
   }
 
@@ -313,14 +313,14 @@ AndroidBootFromBlockIo (
   // allocate tag memory and load dtb if available
   Status = AndroidLoadImage(BlockIo, off_tags, TagsSize, &Parsed.Tags, AndroidHdr->tags_addr);
   if (EFI_ERROR(Status)) {
-    gErrorStr = "Error loading tags";
+    MenuShowMessage("Error", "Can't load tags.");
     goto FREEBUFFER;
   }
 
   // load ramdisk into UEFI memory
   Status = AndroidLoadImage(BlockIo, off_ramdisk, AndroidHdr->ramdisk_size, &OriginalRamdisk, 0);
   if (EFI_ERROR(Status)) {
-    gErrorStr = "Error loading ramdisk";
+    MenuShowMessage("Error", "Can't load ramdisk.");
     goto FREEBUFFER;
   }
 
@@ -328,7 +328,7 @@ AndroidBootFromBlockIo (
   CONST CHAR8 *DecompName;
   decompress_fn Decompressor = decompress_method(OriginalRamdisk, AndroidHdr->ramdisk_size, &DecompName);
   if(Decompressor==NULL) {
-    gErrorStr = "no decompressor found";
+    MenuShowMessage("Error", "Can't find decompressor.");
     goto FREEBUFFER;
   }
   else {
@@ -343,7 +343,7 @@ AndroidBootFromBlockIo (
   UINTN MultibootSize;
   Status = UEFIRamdiskGetFile ("init.multiboot", (VOID **) &MultibootBin, &MultibootSize);
   if (EFI_ERROR (Status)) {
-    gErrorStr = "Multiboot binary not found";
+    MenuShowMessage("Error", "Multiboot binary not found.");
     goto FREEBUFFER;
   }
 
@@ -363,13 +363,12 @@ AndroidBootFromBlockIo (
   // allocate uncompressed ramdisk memory in boot memory
   Status = AndroidLoadImage(BlockIo, 0, RamdiskUncompressedLen, &Parsed.Ramdisk, AndroidHdr->ramdisk_addr);
   if (EFI_ERROR(Status)) {
-    gErrorStr = "Error allocating decompressed ramdisk memory";
+    MenuShowMessage("Error", "Can't allocate memory for decompressing ramdisk.");
     goto FREEBUFFER;
   }
 
   // decompress ramdisk
   if(Decompressor(OriginalRamdisk, AndroidHdr->ramdisk_size, NULL, NULL, Parsed.Ramdisk, NULL, DecompError)) {
-    gErrorStr = "Error decompressing ramdisk";
     goto FREEBUFFER;
   }
 
@@ -389,13 +388,13 @@ AndroidBootFromBlockIo (
   // load cmdline
   Status = AndroidLoadCmdline(&Parsed, mbhandle, RecoveryMode);
   if (EFI_ERROR(Status)) {
-    gErrorStr = "Error loading cmdline";
+    MenuShowMessage("Error", "Can't load cmdline.");
     goto FREEBUFFER;
   }
 
   // generate Atags
   if(LKApi->boot_create_tags(Parsed.Cmdline, (UINT32)Parsed.Ramdisk, ((UINT32)cpiohd)-((UINT32)Parsed.Ramdisk), AndroidHdr->tags_addr, TagsSize-DTB_PAD_SIZE)) {
-    gErrorStr = "Error creating tags";
+    MenuShowMessage("Error", "Can't generate tags.");
     goto FREEBUFFER;
   }
 
@@ -403,7 +402,7 @@ AndroidBootFromBlockIo (
   // ExitBootServices event. Example the Interrupt DXE driver will disable the interrupts on this event.
   Status = ShutdownUefiBootServices ();
   if (EFI_ERROR (Status)) {
-    gErrorStr = "Error shutting down boot services";
+    MenuShowMessage("Error", "Can't shut down UEFI boot services.");
     DEBUG ((EFI_D_ERROR, "ERROR: Can not shutdown UEFI boot services. Status=0x%X\n", Status));
     goto FREEBUFFER;
   }
