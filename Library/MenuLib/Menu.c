@@ -7,6 +7,7 @@ STATIC EFI_LK_DISPLAY_PROTOCOL *gLKDisplay;
 STATIC MENU_OPTION* mActiveMenu = NULL;
 STATIC LIBAROMA_CANVASP dc;
 STATIC MINLIST *list = NULL;
+STATIC BOOLEAN Initialized = FALSE;
 
 word colorPrimary;
 word colorPrimaryLight;
@@ -581,6 +582,9 @@ VOID MenuShowMessage(
   CONST CHAR8* Message
 )
 {
+  if(Initialized==FALSE)
+    return;
+
   libaroma_draw_rect(
     dc, 0, 0, dc->w, dc->h, RGB(000000), 0x7a
   );
@@ -803,6 +807,8 @@ MenuInit (
   colorSeparator = RGB(555555);
   colorBackground = RGB(212121);
 #endif
+
+  Initialized = TRUE;
 }
 
 VOID
@@ -876,6 +882,7 @@ MenuDeInit (
   VOID
   )
 {
+  Initialized = FALSE;
   AromaRelease();
   mGop->SetMode(mGop, OldMode);
   gLKDisplay->SetFlushMode(gLKDisplay, OldFlushMode);
