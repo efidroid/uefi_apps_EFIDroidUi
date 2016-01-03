@@ -59,7 +59,7 @@
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   EFIDroidUEFIApps/EFIDroidUi/EFIDroidUi.dec
-  EFIDroidPkg/Library/DecompressLib/DecompressLib.dec
+  EFIDroidUEFIApps/EFIDroidUi/Library/DecompressLib/DecompressLib.dec
 
 [LibraryClasses]
   BaseLib
