@@ -181,6 +181,8 @@ AddMultibootSystemToRecoveryMenu (
     if(NewEntry->Name)
       FreePool(NewEntry->Name);
     NewEntry->Name = AsciiStrDup(mbhandle->Name);
+    if(mbhandle->Description)
+      NewEntry->Description = AsciiStrDup(mbhandle->Description);
 
     MenuAddEntry(RecEntry->SubMenu, NewEntry);
   }
@@ -508,6 +510,9 @@ IniHandler (
     if(!AsciiStrCmp(Name, "name")) {
       mbhandle->Name = AsciiStrDup(Value);
     }
+    if(!AsciiStrCmp(Name, "description")) {
+      mbhandle->Description = AsciiStrDup(Value);
+    }
   }
 
   if(!AsciiStrCmp(Section, "partitions")) {
@@ -688,6 +693,7 @@ ENUMERATE:
       }
       Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
       Entry->Name = AsciiStrDup(mbhandle->Name);
+      Entry->Description = AsciiStrDup(mbhandle->Description);
       Entry->Private = mbhandle;
       Entry->Callback = MultibootCallback;
       MenuAddEntry(mBootMenuMain, Entry);

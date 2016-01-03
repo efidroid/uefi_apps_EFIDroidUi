@@ -55,6 +55,7 @@ extern EFI_GUID gEFIDroidVariableGuid;
 typedef struct {
   // ini values
   CHAR8  *Name;
+  CHAR8  *Description;
   CHAR16 *PartitionBoot;
 
   // handles
