@@ -14,6 +14,7 @@ struct _MENU_ENTRY {
   UINTN           Signature;
   LIST_ENTRY      Link;
 
+  CHAR8* Name;
   CHAR8* Description;
   EFI_STATUS (*Callback) (VOID*);
   VOID *Private;

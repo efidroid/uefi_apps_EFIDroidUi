@@ -418,7 +418,10 @@ MenuCloneEntry (
     Entry->Private = BaseEntry->Private;
   }
 
-  Entry->Description = AsciiStrDup(BaseEntry->Description);
+  if(BaseEntry->Name)
+    Entry->Name = AsciiStrDup(BaseEntry->Name);
+  if(BaseEntry->Description)
+    Entry->Description = AsciiStrDup(BaseEntry->Description);
   Entry->Callback = BaseEntry->Callback;
   Entry->ResetGop = BaseEntry->ResetGop;
   Entry->HideBootMessage = BaseEntry->HideBootMessage;
@@ -436,6 +439,8 @@ MenuFreeEntry (
 {
   if(Entry->FreeCallback)
     Entry->FreeCallback(Entry);
+  if(Entry->Name)
+    FreePool(Entry->Name);
   if(Entry->Description)
     FreePool(Entry->Description);
   FreePool(Entry);
@@ -537,7 +542,7 @@ BuildAromaMenu (
   while (Link != NULL && Link != &mActiveMenu->Head) {
     Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
 
-    list_add(list, Entry->Icon, Entry->Description, NULL, LIST_ADD_WITH_SEPARATOR);
+    list_add(list, Entry->Icon, Entry->Name, Entry->Description, LIST_ADD_WITH_SEPARATOR);
 
     Link = Link->ForwardLink;
     Index++;
@@ -720,7 +725,7 @@ RenderBootScreen(
   );
 
   char text[256];
-  snprintf(text, sizeof(text), "Booting %s ...", Entry->Description);
+  snprintf(text, sizeof(text), "Booting %s ...", Entry->Name);
 
   LIBAROMA_TEXT txt = libaroma_text(
     text,

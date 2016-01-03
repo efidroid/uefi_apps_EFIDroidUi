@@ -178,9 +178,9 @@ AddMultibootSystemToRecoveryMenu (
 
     MENU_ENTRY_PDATA* NewEntryPData = NewEntry->Private;
     NewEntryPData->mbhandle = mbhandle;
-    if(NewEntry->Description)
-      FreePool(NewEntry->Description);
-    NewEntry->Description = AsciiStrDup(mbhandle->Name);
+    if(NewEntry->Name)
+      FreePool(NewEntry->Name);
+    NewEntry->Name = AsciiStrDup(mbhandle->Name);
 
     MenuAddEntry(RecEntry->SubMenu, NewEntry);
   }
@@ -339,7 +339,7 @@ FindAndroidBlockIo (
   boot_img_hdr_t            *AndroidHdr;
   BOOLEAN                   IsRecovery = FALSE;
   LIBAROMA_STREAMP          Icon = NULL;
-  CHAR8                     *Description = NULL;
+  CHAR8                     *Name = NULL;
 
   Status = EFI_SUCCESS;
 
@@ -433,18 +433,18 @@ FindAndroidBlockIo (
 
     // set entry description
     if (!StrCmp(PartitionName->Name, L"boot"))
-      Description = AsciiStrDup("Android (Internal)");
+      Name = AsciiStrDup("Android (Internal)");
     else if(IsRecovery)
-      Description = AsciiStrDup("Recovery (Internal)");
+      Name = AsciiStrDup("Recovery (Internal)");
     else {
-      Description = AllocateZeroPool(4096);
-      if(Description) {
-        AsciiSPrint(Description, 4096, "Android (%s)", PartitionName->Name);
+      Name = AllocateZeroPool(4096);
+      if(Name) {
+        AsciiSPrint(Name, 4096, "Android (%s)", PartitionName->Name);
       }
     }
   }
   else {
-    Description = AsciiStrDup("Unknown");
+    Name = AsciiStrDup("Unknown");
   }
 
   CPIO_NEWC_HEADER *Ramdisk = AndroidGetDecompRamdiskFromBlockIo (BlockIo, AndroidHdr);
@@ -452,14 +452,14 @@ FindAndroidBlockIo (
     CHAR8* ImgName = NULL;
     Status = GetAndroidImgInfo(AndroidHdr, Ramdisk, &Icon, &ImgName, &IsRecovery);
     if(!EFI_ERROR(Status) && ImgName) {
-      FreePool(Description);
-      Description = AllocateZeroPool(4096);
-      if(Description) {
-        AsciiSPrint(Description, 4096, "%a (Internal)", ImgName);
+      FreePool(Name);
+      Name = AllocateZeroPool(4096);
+      if(Name) {
+        AsciiSPrint(Name, 4096, "%a (Internal)", ImgName);
         FreePool(ImgName);
       }
       else {
-        Description = ImgName;
+        Name = ImgName;
       }
     }
 
@@ -472,17 +472,17 @@ FindAndroidBlockIo (
   if(IsRecovery) {
     RECOVERY_MENU *RecMenu = CreateRecoveryMenu();
     RecMenu->RootEntry->Icon = Icon;
-    RecMenu->RootEntry->Description = Description;
+    RecMenu->RootEntry->Name = Name;
 
     Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
-    Entry->Description = AsciiStrDup("Android (Internal)");
+    Entry->Name = AsciiStrDup("Android (Internal)");
     RecMenu->BaseEntry = Entry;
 
     MenuAddEntry(RecMenu->SubMenu, Entry);
   }
   else {
     Entry->Icon = Icon;
-    Entry->Description = Description;
+    Entry->Name = Name;
     MenuAddEntry(mBootMenuMain, Entry);
   }
 
@@ -687,7 +687,7 @@ ENUMERATE:
         return EFI_OUT_OF_RESOURCES;
       }
       Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
-      Entry->Description = AsciiStrDup(mbhandle->Name);
+      Entry->Name = AsciiStrDup(mbhandle->Name);
       Entry->Private = mbhandle;
       Entry->Callback = MultibootCallback;
       MenuAddEntry(mBootMenuMain, Entry);
@@ -822,7 +822,7 @@ AddEfiBootOptions (
       Entry->Icon = libaroma_stream_ramdisk("icons/efi_shell.png");
     else
       Entry->Icon = libaroma_stream_ramdisk("icons/uefi.png");
-    Entry->Description = Unicode2Ascii(Option->Description);
+    Entry->Name = Unicode2Ascii(Option->Description);
     Entry->Callback = BootOptionEfiOption;
     Entry->Private = Option;
     Entry->ResetGop = TRUE;
@@ -983,7 +983,7 @@ main (
   // add reboot option
   Entry = MenuCreateEntry();
   Entry->Icon = libaroma_stream_ramdisk("icons/reboot.png");
-  Entry->Description = AsciiStrDup("Reboot");
+  Entry->Name = AsciiStrDup("Reboot");
   Entry->Callback = RebootCallback;
   MenuAddEntry(mBootMenuMain, Entry);
 
