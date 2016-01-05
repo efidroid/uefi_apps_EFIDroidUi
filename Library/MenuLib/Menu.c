@@ -572,23 +572,43 @@ void button_draw(const char* text, int x, int y, int w, int h) {
   libaroma_text_free(textp);
 }
 
+
+int button_width(const char* text) {
+
+  /* draw text */
+  LIBAROMA_TEXT textp = libaroma_text(
+    text,
+    colorAccent,
+    dc->w,
+    LIBAROMA_FONT(1,4)|
+    LIBAROMA_TEXT_SINGLELINE|
+    LIBAROMA_TEXT_CENTER|
+    LIBAROMA_TEXT_FIXED_INDENT|
+    LIBAROMA_TEXT_FIXED_COLOR|
+    LIBAROMA_TEXT_NOHR,
+    100
+  );
+
+  int w = libaroma_dp(8) + libaroma_text_width(textp) + libaroma_dp(8);
+
+  libaroma_text_free(textp);
+
+  return w;
+}
+
 STATIC VOID
 RenderActiveMenu(
   VOID
 );
 
-VOID MenuShowMessage(
+VOID MenuDialogRender(
   CONST CHAR8* Title,
-  CONST CHAR8* Message
+  CONST CHAR8* Message,
+  CONST CHAR8* Button1,
+  CONST CHAR8* Button2,
+  UINT32 Selection
 )
 {
-  if(Initialized==FALSE)
-    return;
-
-  libaroma_draw_rect(
-    dc, 0, 0, dc->w, dc->h, RGB(000000), 0x7a
-  );
-
   int dialog_w = dc->w-libaroma_dp(48);
   LIBAROMA_TEXT messagetextp = libaroma_text(
     Message,
@@ -629,16 +649,56 @@ VOID MenuShowMessage(
   libaroma_text_draw(dc,messagetextp, dialog_x+libaroma_dp(24), dialog_y+libaroma_dp(24)+libaroma_text_height(textp) + libaroma_dp(20));
   libaroma_text_free(messagetextp);
 
-  button_draw("OK", dialog_x+dialog_w-libaroma_dp(8)-libaroma_dp(64), dialog_y+dialog_h-libaroma_dp(16)-libaroma_dp(36), libaroma_dp(64), libaroma_dp(36));
+  if(Button1) {
+    // button1
+    int button_w = button_width(Button1);
+    int button_x = dialog_x+dialog_w-libaroma_dp(8)-button_w-libaroma_dp(8);
+    int button_y = dialog_y+dialog_h-libaroma_dp(16)-libaroma_dp(36);
+    button_draw(Button1, button_x, button_y, button_w, libaroma_dp(36));
 
+    if(Selection==0) {
+      libaroma_draw_rect(dc, button_x, button_y, button_w, libaroma_dp(36), colorSelection, 0x40);
+    }
+
+    // button2
+    if(Button2) {
+      button_w = button_width(Button2);
+      button_x -= (libaroma_dp(8)+button_w);
+      button_draw(Button2, button_x, button_y, button_w, libaroma_dp(36));
+
+      if(Selection==1) {
+        libaroma_draw_rect(dc, button_x, button_y, button_w, libaroma_dp(36), colorSelection, 0x40);
+      }
+    }
+  }
+}
+
+INT32 MenuShowDialog(
+  CONST CHAR8* Title,
+  CONST CHAR8* Message,
+  CONST CHAR8* Button1,
+  CONST CHAR8* Button2
+)
+{
+  UINT32 Selection = 0;
+  UINT32 MaxSelection = (Button1?1:0) + (Button2?1:0);
+
+  if(Initialized==FALSE)
+    return -1;
 
   UINT32 OldMode = mGop->Mode->Mode;
   mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
-  libaroma_sync();
+
+  libaroma_draw_rect(
+    dc, 0, 0, dc->w, dc->h, RGB(000000), 0x7a
+  );
 
   UINTN           WaitIndex;
   EFI_INPUT_KEY   Key;
   while(TRUE) {
+    MenuDialogRender(Title, Message, Button1, Button2, Selection);
+    libaroma_sync();
+
     EFI_STATUS Status = gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &WaitIndex);
     ASSERT_EFI_ERROR (Status);
 
@@ -649,10 +709,34 @@ VOID MenuShowMessage(
         case CHAR_CARRIAGE_RETURN:
           RenderActiveMenu();
           mGop->SetMode(mGop, OldMode);
-          return;
+          return Selection;
+      }
+    }
+    else {
+      switch(Key.ScanCode) {
+        case SCAN_UP:
+          if(Selection>0)
+            Selection--;
+          else Selection = MaxSelection-1;
+          break;
+        case SCAN_DOWN:
+          if(Selection+1<MaxSelection)
+            Selection++;
+          else Selection = 0;
+          break;
       }
     }
   }
+
+  return -1;
+}
+
+VOID MenuShowMessage(
+  CONST CHAR8* Title,
+  CONST CHAR8* Message
+)
+{
+  MenuShowDialog(Title, Message, "OK", NULL);
 }
 
 STATIC VOID
@@ -710,7 +794,7 @@ RenderActiveMenu(
   libaroma_sync();
 }
 
-STATIC VOID
+VOID
 RenderBootScreen(
   MENU_ENTRY *Entry
 )

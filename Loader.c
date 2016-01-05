@@ -77,7 +77,8 @@ STATIC EFI_STATUS
 AndroidLoadCmdline (
   android_parsed_bootimg_t  *Parsed,
   IN multiboot_handle_t     *mbhandle,
-  IN BOOLEAN                RecoveryMode
+  IN BOOLEAN                RecoveryMode,
+  IN BOOLEAN                DisablePatching
 )
 {
   boot_img_hdr_t* Hdr = Parsed->Hdr;
@@ -151,7 +152,8 @@ AndroidLoadCmdline (
 
   AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, Hdr->cmdline);
   AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, Hdr->extra_cmdline);
-  AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, CMDLINE_RDINIT);
+  if(!DisablePatching)
+    AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, CMDLINE_RDINIT);
 
   // in recovery mode we ptrace the whole system. that doesn't work well with selinux
   if (RecoveryMode)
@@ -236,7 +238,8 @@ VOID DecompError(CHAR8* Str)
 EFI_STATUS
 AndroidBootFromBlockIo (
   IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
-  IN multiboot_handle_t     *mbhandle
+  IN multiboot_handle_t     *mbhandle,
+  IN BOOLEAN                DisablePatching
 )
 {
   EFI_STATUS                Status;
@@ -248,6 +251,7 @@ AndroidBootFromBlockIo (
   lkapi_t                   *LKApi = GetLKApi();
   VOID                      *OriginalRamdisk = NULL;
   UINT32                    RamdiskUncompressedLen = 0;
+  BOOLEAN                   RecoveryMode = FALSE;
 
   // initialize parsed data
   SetMem(&Parsed, sizeof(Parsed), 0);
@@ -317,83 +321,95 @@ AndroidBootFromBlockIo (
     goto FREEBUFFER;
   }
 
-  // load ramdisk into UEFI memory
-  Status = AndroidLoadImage(BlockIo, off_ramdisk, AndroidHdr->ramdisk_size, &OriginalRamdisk, 0);
-  if (EFI_ERROR(Status)) {
-    MenuShowMessage("Error", "Can't load ramdisk.");
-    goto FREEBUFFER;
+  if(DisablePatching) {
+    // load ramdisk
+    Status = AndroidLoadImage(BlockIo, off_ramdisk, AndroidHdr->ramdisk_size, &Parsed.Ramdisk, AndroidHdr->ramdisk_addr);
+    if (EFI_ERROR(Status)) {
+      MenuShowMessage("Error", "Can't load ramdisk.");
+      goto FREEBUFFER;
+    }
   }
 
-  // get decompressor
-  CONST CHAR8 *DecompName;
-  decompress_fn Decompressor = decompress_method(OriginalRamdisk, AndroidHdr->ramdisk_size, &DecompName);
-  if(Decompressor==NULL) {
-    MenuShowMessage("Error", "Can't find decompressor.");
-    goto FREEBUFFER;
-  }
   else {
-    DEBUG((EFI_D_INFO, "decompressor: %a\n", DecompName));
-  }
+    // load ramdisk into UEFI memory
+    Status = AndroidLoadImage(BlockIo, off_ramdisk, AndroidHdr->ramdisk_size, &OriginalRamdisk, 0);
+    if (EFI_ERROR(Status)) {
+      MenuShowMessage("Error", "Can't load ramdisk.");
+      goto FREEBUFFER;
+    }
 
-  // get uncompressed size
-  // since the Linux decompressor doesn't support predicting the length we hardcode this to 10MB
-  RamdiskUncompressedLen = 10*1024*1024;
+    // get decompressor
+    CONST CHAR8 *DecompName;
+    decompress_fn Decompressor = decompress_method(OriginalRamdisk, AndroidHdr->ramdisk_size, &DecompName);
+    if(Decompressor==NULL) {
+      MenuShowMessage("Error", "Can't find decompressor.");
+      goto FREEBUFFER;
+    }
+    else {
+      DEBUG((EFI_D_INFO, "decompressor: %a\n", DecompName));
+    }
 
-  UINT8 *MultibootBin;
-  UINTN MultibootSize;
-  Status = UEFIRamdiskGetFile ("init.multiboot", (VOID **) &MultibootBin, &MultibootSize);
-  if (EFI_ERROR (Status)) {
-    MenuShowMessage("Error", "Multiboot binary not found.");
-    goto FREEBUFFER;
-  }
+    // get uncompressed size
+    // since the Linux decompressor doesn't support predicting the length we hardcode this to 10MB
+    RamdiskUncompressedLen = 10*1024*1024;
 
-  // add multiboot binary size to uncompressed ramdisk size
-  CONST CHAR8 *cpio_name_mbinit = "/init.multiboot";
-  UINTN objsize = CpioPredictObjSize(AsciiStrLen(cpio_name_mbinit), MultibootSize);
-  RamdiskUncompressedLen += objsize;
+    UINT8 *MultibootBin;
+    UINTN MultibootSize;
+    Status = UEFIRamdiskGetFile ("init.multiboot", (VOID **) &MultibootBin, &MultibootSize);
+    if (EFI_ERROR (Status)) {
+      MenuShowMessage("Error", "Multiboot binary not found.");
+      goto FREEBUFFER;
+    }
 
-  if (   RangeOverlaps(AndroidHdr->ramdisk_addr, RamdiskUncompressedLen, (UINT32)Parsed.Kernel, AndroidHdr->kernel_size)
-      || RangeOverlaps(AndroidHdr->ramdisk_addr, RamdiskUncompressedLen, (UINT32)Parsed.Tags, TagsSize)
-     )
-  {
-    AndroidHdr->ramdisk_addr = MAXUINT((UINT32)Parsed.Kernel + AndroidHdr->kernel_size, Parsed.Tags + TagsSize);
-    DEBUG((EFI_D_INFO, "Ramdisk overlaps - move it to 0x%08x.\n", AndroidHdr->ramdisk_addr));
-  }
+    // add multiboot binary size to uncompressed ramdisk size
+    CONST CHAR8 *cpio_name_mbinit = "/init.multiboot";
+    UINTN objsize = CpioPredictObjSize(AsciiStrLen(cpio_name_mbinit), MultibootSize);
+    RamdiskUncompressedLen += objsize;
 
-  // allocate uncompressed ramdisk memory in boot memory
-  Status = AndroidLoadImage(BlockIo, 0, RamdiskUncompressedLen, &Parsed.Ramdisk, AndroidHdr->ramdisk_addr);
-  if (EFI_ERROR(Status)) {
-    MenuShowMessage("Error", "Can't allocate memory for decompressing ramdisk.");
-    goto FREEBUFFER;
-  }
+    if (   RangeOverlaps(AndroidHdr->ramdisk_addr, RamdiskUncompressedLen, (UINT32)Parsed.Kernel, AndroidHdr->kernel_size)
+        || RangeOverlaps(AndroidHdr->ramdisk_addr, RamdiskUncompressedLen, (UINT32)Parsed.Tags, TagsSize)
+       )
+    {
+      AndroidHdr->ramdisk_addr = MAXUINT((UINT32)Parsed.Kernel + AndroidHdr->kernel_size, Parsed.Tags + TagsSize);
+      DEBUG((EFI_D_INFO, "Ramdisk overlaps - move it to 0x%08x.\n", AndroidHdr->ramdisk_addr));
+    }
 
-  // decompress ramdisk
-  if(Decompressor(OriginalRamdisk, AndroidHdr->ramdisk_size, NULL, NULL, Parsed.Ramdisk, NULL, DecompError)) {
-    goto FREEBUFFER;
-  }
+    // allocate uncompressed ramdisk memory in boot memory
+    Status = AndroidLoadImage(BlockIo, 0, RamdiskUncompressedLen, &Parsed.Ramdisk, AndroidHdr->ramdisk_addr);
+    if (EFI_ERROR(Status)) {
+      MenuShowMessage("Error", "Can't allocate memory for decompressing ramdisk.");
+      goto FREEBUFFER;
+    }
 
-  // add multiboot binary
-  CPIO_NEWC_HEADER *cpiohd = (CPIO_NEWC_HEADER *) Parsed.Ramdisk;
-  cpiohd = CpioGetLast (cpiohd);
-  cpiohd = CpioCreateObj (cpiohd, cpio_name_mbinit, MultibootBin, MultibootSize);
-  cpiohd = CpioCreateObj (cpiohd, CPIO_TRAILER, NULL, 0);
-  ASSERT((UINT32)cpiohd <= (UINT32)Parsed.Ramdisk+RamdiskUncompressedLen);
+    // decompress ramdisk
+    if(Decompressor(OriginalRamdisk, AndroidHdr->ramdisk_size, NULL, NULL, Parsed.Ramdisk, NULL, DecompError)) {
+      goto FREEBUFFER;
+    }
 
-  // check if this is a recovery ramdisk
-  BOOLEAN RecoveryMode = FALSE;
-  if (CpioGetByName((CPIO_NEWC_HEADER *)Parsed.Ramdisk, "sbin/recovery")) {
-    RecoveryMode = TRUE;
+    // add multiboot binary
+    CPIO_NEWC_HEADER *cpiohd = (CPIO_NEWC_HEADER *) Parsed.Ramdisk;
+    cpiohd = CpioGetLast (cpiohd);
+    cpiohd = CpioCreateObj (cpiohd, cpio_name_mbinit, MultibootBin, MultibootSize);
+    cpiohd = CpioCreateObj (cpiohd, CPIO_TRAILER, NULL, 0);
+    ASSERT((UINT32)cpiohd <= (UINT32)Parsed.Ramdisk+RamdiskUncompressedLen);
+
+    // check if this is a recovery ramdisk
+    if (CpioGetByName((CPIO_NEWC_HEADER *)Parsed.Ramdisk, "sbin/recovery")) {
+      RecoveryMode = TRUE;
+    }
+
+    AndroidHdr->ramdisk_size = ((UINT32)cpiohd)-((UINT32)Parsed.Ramdisk);
   }
 
   // load cmdline
-  Status = AndroidLoadCmdline(&Parsed, mbhandle, RecoveryMode);
+  Status = AndroidLoadCmdline(&Parsed, mbhandle, RecoveryMode, DisablePatching);
   if (EFI_ERROR(Status)) {
     MenuShowMessage("Error", "Can't load cmdline.");
     goto FREEBUFFER;
   }
 
   // generate Atags
-  if(LKApi->boot_create_tags(Parsed.Cmdline, (UINT32)Parsed.Ramdisk, ((UINT32)cpiohd)-((UINT32)Parsed.Ramdisk), AndroidHdr->tags_addr, TagsSize-DTB_PAD_SIZE)) {
+  if(LKApi->boot_create_tags(Parsed.Cmdline, (UINT32)Parsed.Ramdisk, AndroidHdr->ramdisk_size, AndroidHdr->tags_addr, TagsSize-DTB_PAD_SIZE)) {
     MenuShowMessage("Error", "Can't generate tags.");
     goto FREEBUFFER;
   }
@@ -584,7 +600,8 @@ BIOFlushBlocks (
 EFI_STATUS
 AndroidBootFromFile (
   IN EFI_FILE_PROTOCOL  *File,
-  IN multiboot_handle_t *mbhandle
+  IN multiboot_handle_t *mbhandle,
+  IN BOOLEAN            DisablePatching
 )
 {
   EFI_STATUS                Status;
@@ -617,5 +634,5 @@ AndroidBootFromFile (
     .FlushBlocks = BIOFlushBlocks,
   };
 
-  return AndroidBootFromBlockIo(&BlockIo, mbhandle);
+  return AndroidBootFromBlockIo(&BlockIo, mbhandle, DisablePatching);
 }

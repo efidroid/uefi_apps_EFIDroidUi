@@ -74,9 +74,9 @@ CallbackBootAndroid (
   MENU_ENTRY_PDATA *PData = Private;
 
   if(PData->BlockIo)
-    return AndroidBootFromBlockIo(PData->BlockIo, PData->mbhandle);
+    return AndroidBootFromBlockIo(PData->BlockIo, PData->mbhandle, PData->DisablePatching);
   else if(PData->File)
-    return AndroidBootFromFile(PData->File, PData->mbhandle);
+    return AndroidBootFromFile(PData->File, PData->mbhandle, PData->DisablePatching);
   else {
     MenuShowMessage("BUG", "Both BlockIo and File are NULL.");
     return EFI_INVALID_PARAMETER;
@@ -123,6 +123,21 @@ RecoveryCallback (
 }
 
 EFI_STATUS
+RecoveryLongPressCallback (
+  IN VOID* Private
+)
+{
+  RECOVERY_MENU *Menu = Private;
+
+  INT32 Selection = MenuShowDialog("Unpatched boot", "Do you want to boot without any ramdisk patching?", "OK", "CANCEL");
+  if(Selection==0) {
+    RenderBootScreen(Menu->NoPatchEntry);
+    return Menu->NoPatchEntry->Callback(Menu->NoPatchEntry->Private);
+  }
+  return EFI_SUCCESS;
+}
+
+EFI_STATUS
 RecoveryBackCallback (
   VOID
 )
@@ -149,6 +164,7 @@ CreateRecoveryMenu (
 
   MENU_ENTRY* Entry = MenuCreateEntry();
   Entry->Callback = RecoveryCallback;
+  Entry->LongPressCallback = RecoveryLongPressCallback;
   Entry->HideBootMessage = TRUE;
   Entry->Private = Menu;
   Menu->RootEntry = Entry;
@@ -479,6 +495,11 @@ FindAndroidBlockIo (
     Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
     Entry->Name = AsciiStrDup("Android (Internal)");
     RecMenu->BaseEntry = Entry;
+    RecMenu->NoPatchEntry = MenuCloneEntry(Entry);
+
+    // add nopatch entry
+    MENU_ENTRY_PDATA *PData = RecMenu->NoPatchEntry->Private;
+    PData->DisablePatching = TRUE;
 
     MenuAddEntry(RecMenu->SubMenu, Entry);
   }

@@ -70,6 +70,7 @@ typedef struct {
   EFI_BLOCK_IO_PROTOCOL *BlockIo;
   EFI_FILE_PROTOCOL     *File;
   multiboot_handle_t    *mbhandle;
+  BOOLEAN               DisablePatching;
 } MENU_ENTRY_PDATA;
 
 #define RECOVERY_MENU_SIGNATURE             SIGNATURE_32 ('r', 'e', 'c', 'm')
@@ -81,18 +82,21 @@ typedef struct {
   MENU_OPTION     *SubMenu;
   MENU_ENTRY      *RootEntry;
   MENU_ENTRY      *BaseEntry;
+  MENU_ENTRY      *NoPatchEntry;
 } RECOVERY_MENU;
 
 EFI_STATUS
 AndroidBootFromBlockIo (
   IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
-  IN multiboot_handle_t     *mbhandle
+  IN multiboot_handle_t     *mbhandle,
+  IN BOOLEAN                DisablePatching
 );
 
 EFI_STATUS
 AndroidBootFromFile (
   IN EFI_FILE_PROTOCOL  *File,
-  IN multiboot_handle_t *mbhandle
+  IN multiboot_handle_t *mbhandle,
+  IN BOOLEAN            DisablePatching
 );
 
 EFI_STATUS

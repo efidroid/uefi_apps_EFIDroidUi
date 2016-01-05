@@ -38,5 +38,5 @@ MultibootCallback (
     return Status;
   }
 
-  return AndroidBootFromFile(BootFile, mbhandle);
+  return AndroidBootFromFile(BootFile, mbhandle, FALSE);
 }

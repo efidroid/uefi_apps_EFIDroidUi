@@ -110,9 +110,21 @@ InvalidateActiveMenu(
   VOID
 );
 
+VOID
+RenderBootScreen(
+  MENU_ENTRY *Entry
+);
+
 VOID MenuShowMessage(
   CONST CHAR8* Title,
   CONST CHAR8* Message
+);
+
+INT32 MenuShowDialog(
+  CONST CHAR8* Title,
+  CONST CHAR8* Message,
+  CONST CHAR8* Button1,
+  CONST CHAR8* Button2
 );
 
 #endif /* ! MENU_H */
