@@ -45,6 +45,7 @@
 #include <Library/UEFIRamdisk.h>
 #include <Library/Util.h>
 #include <Library/Menu.h>
+#include <Library/FileBlockIo.h>
 
 #include <LittleKernel.h>
 
