@@ -73,15 +73,7 @@ CallbackBootAndroid (
 {
   MENU_ENTRY_PDATA *PData = Private;
 
-  if(PData->BlockIo)
-    return AndroidBootFromBlockIo(PData->BlockIo, PData->mbhandle, PData->DisablePatching);
-  else if(PData->File)
-    return AndroidBootFromFile(PData->File, PData->mbhandle, PData->DisablePatching);
-  else {
-    MenuShowMessage("BUG", "Both BlockIo and File are NULL.");
-    return EFI_INVALID_PARAMETER;
-  }
-  return EFI_SUCCESS;
+  return AndroidBootFromBlockIo(PData->BlockIo, PData->mbhandle, PData->DisablePatching);
 }
 
 MENU_ENTRY*
@@ -439,8 +431,10 @@ FindAndroidBlockIo (
           goto FREEBUFFER;
         }
 
-        EntryPData->BlockIo = NULL;
-        EntryPData->File = BootFile;
+        Status = FileBlockIoCreate(BootFile, &EntryPData->BlockIo);
+        if (EFI_ERROR(Status)) {
+          goto FREEBUFFER;
+        }
       }
 
       // this is a recovery partition
@@ -465,8 +459,9 @@ FindAndroidBlockIo (
     Name = AsciiStrDup("Unknown");
   }
 
-  CPIO_NEWC_HEADER *Ramdisk = AndroidGetDecompRamdiskFromBlockIo (BlockIo, AndroidHdr);
-  if(Ramdisk) {
+  CPIO_NEWC_HEADER *Ramdisk;
+  Status = AndroidGetDecompRamdiskFromBlockIo (EntryPData->BlockIo, &Ramdisk);
+  if(!EFI_ERROR(Status)) {
     CHAR8* ImgName = NULL;
     Status = GetAndroidImgInfo(AndroidHdr, Ramdisk, &Icon, &ImgName, &IsRecovery);
     if(!EFI_ERROR(Status) && ImgName) {

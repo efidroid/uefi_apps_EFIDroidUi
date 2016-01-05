@@ -457,16 +457,36 @@ FREEBUFFER:
   return EFI_SUCCESS;
 }
 
-CPIO_NEWC_HEADER*
+EFI_STATUS
 AndroidGetDecompRamdiskFromBlockIo (
   IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
-  IN boot_img_hdr_t* AndroidHdr
+  OUT CPIO_NEWC_HEADER      **DecompressedRamdiskOut
 )
 {
   VOID                      *OriginalRamdisk = NULL;
   UINT32                    RamdiskUncompressedLen = 0;
   CPIO_NEWC_HEADER          *DecompressedRamdisk = NULL;
+  UINTN                     BufferSize;
   EFI_STATUS                Status;
+  IN boot_img_hdr_t         *AndroidHdr;
+
+  // allocate a buffer for the android header aligned on the block size
+  BufferSize = ALIGN_VALUE(sizeof(boot_img_hdr_t), BlockIo->Media->BlockSize);
+  AndroidHdr = AllocatePool(BufferSize);
+  if(AndroidHdr == NULL)
+    return EFI_OUT_OF_RESOURCES;
+
+  // read android header
+  Status = BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, 0, BufferSize, AndroidHdr);
+  if(EFI_ERROR(Status)) {
+    goto FREEBUFFER;
+  }
+
+  // verify android header
+  Status = AndroidVerify(AndroidHdr);
+  if(EFI_ERROR(Status)) {
+    goto FREEBUFFER;
+  }
 
   // calculate offsets
   UINTN off_kernel  = AndroidHdr->page_size;
@@ -508,7 +528,11 @@ AndroidGetDecompRamdiskFromBlockIo (
     FreeAlignedMemoryRange((UINT32)OriginalRamdisk, AndroidHdr->ramdisk_size);
   }
 
-  return DecompressedRamdisk;
+FREEBUFFER:
+  FreePool(AndroidHdr);
+
+  *DecompressedRamdiskOut = DecompressedRamdisk;
+  return Status;
 }
 
 EFI_STATUS

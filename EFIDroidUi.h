@@ -69,7 +69,6 @@ typedef struct {
 
 typedef struct {
   EFI_BLOCK_IO_PROTOCOL *BlockIo;
-  EFI_FILE_PROTOCOL     *File;
   multiboot_handle_t    *mbhandle;
   BOOLEAN               DisablePatching;
 } MENU_ENTRY_PDATA;
@@ -105,10 +104,10 @@ AndroidVerify (
   IN VOID* Buffer
 );
 
-CPIO_NEWC_HEADER*
+EFI_STATUS
 AndroidGetDecompRamdiskFromBlockIo (
   IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
-  IN boot_img_hdr_t* AndroidHdr
+  OUT CPIO_NEWC_HEADER      **DecompressedRamdiskOut
 );
 
 EFI_STATUS
