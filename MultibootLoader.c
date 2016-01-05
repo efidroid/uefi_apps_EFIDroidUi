@@ -35,6 +35,10 @@ MultibootCallback (
                    0
                    );
   if (EFI_ERROR (Status)) {
+    UINTN Len = StrLen(mbhandle->PartitionBoot)+100;
+    CHAR8* Buf = AllocatePool(Len);
+    AsciiSPrint(Buf, Len, "Can't open %s", mbhandle->PartitionBoot);
+    MenuShowMessage("Error", Buf);
     return Status;
   }
 
