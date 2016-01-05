@@ -17,6 +17,7 @@ struct _MENU_ENTRY {
   CHAR8* Name;
   CHAR8* Description;
   EFI_STATUS (*Callback) (VOID*);
+  EFI_STATUS (*LongPressCallback) (VOID*);
   VOID *Private;
   BOOLEAN ResetGop;
   BOOLEAN HideBootMessage;

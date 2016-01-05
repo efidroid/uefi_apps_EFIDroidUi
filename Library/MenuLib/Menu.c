@@ -819,6 +819,7 @@ MenuEnter (
 {
   UINTN           WaitIndex;
   EFI_INPUT_KEY   Key;
+  MENU_ENTRY* Entry;
   while(TRUE) {
     RenderActiveMenu();
 
@@ -838,7 +839,7 @@ MenuEnter (
           if(mActiveMenu->Selection>=mActiveMenu->OptionNumber || mActiveMenu->Selection<0)
             break;
           
-          MENU_ENTRY* Entry = MenuGetEntryById(mActiveMenu, mActiveMenu->Selection);
+          Entry = MenuGetEntryById(mActiveMenu, mActiveMenu->Selection);
 
           if(!Entry->HideBootMessage)
             RenderBootScreen(Entry);
@@ -856,6 +857,19 @@ MenuEnter (
               gLKDisplay->SetFlushMode(gLKDisplay, LK_DISPLAY_FLUSH_MODE_MANUAL);
             }
           }
+          break;
+
+        // spacebar
+        case 32:
+          if(mActiveMenu->Selection>=mActiveMenu->OptionNumber || mActiveMenu->Selection<0)
+            break;
+
+          Entry = MenuGetEntryById(mActiveMenu, mActiveMenu->Selection);
+
+          if(Entry->LongPressCallback) {
+            Entry->LongPressCallback(Entry->Private);
+          }
+
           break;
       }
     }
