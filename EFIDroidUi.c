@@ -490,11 +490,13 @@ FindAndroidBlockIo (
     Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
     Entry->Name = AsciiStrDup("Android (Internal)");
     RecMenu->BaseEntry = Entry;
-    RecMenu->NoPatchEntry = MenuCloneEntry(Entry);
 
     // add nopatch entry
+    RecMenu->NoPatchEntry = MenuCloneEntry(Entry);
     MENU_ENTRY_PDATA *PData = RecMenu->NoPatchEntry->Private;
     PData->DisablePatching = TRUE;
+    FreePool(RecMenu->NoPatchEntry->Name);
+    RecMenu->NoPatchEntry->Name = AsciiStrDup(RecMenu->RootEntry->Name);
 
     MenuAddEntry(RecMenu->SubMenu, Entry);
   }
