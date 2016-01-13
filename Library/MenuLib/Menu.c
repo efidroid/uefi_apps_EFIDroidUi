@@ -601,78 +601,6 @@ RenderActiveMenu(
   VOID
 );
 
-VOID MenuDialogRender(
-  CONST CHAR8* Title,
-  CONST CHAR8* Message,
-  CONST CHAR8* Button1,
-  CONST CHAR8* Button2,
-  UINT32 Selection
-)
-{
-  int dialog_w = dc->w-libaroma_dp(48);
-  LIBAROMA_TEXT messagetextp = libaroma_text(
-    Message,
-    colorTextSecondary,
-    dialog_w-libaroma_dp(24)*2,
-    LIBAROMA_FONT(0,4)|
-    LIBAROMA_TEXT_LEFT|
-    LIBAROMA_TEXT_FIXED_INDENT|
-    LIBAROMA_TEXT_FIXED_COLOR|
-    LIBAROMA_TEXT_NOHR,
-    100
-  );
-  LIBAROMA_TEXT textp = libaroma_text(
-    Title,
-    colorTextPrimary,
-    dialog_w-libaroma_dp(24)*2,
-    LIBAROMA_FONT(1,6)|
-    LIBAROMA_TEXT_LEFT|
-    LIBAROMA_TEXT_FIXED_INDENT|
-    LIBAROMA_TEXT_FIXED_COLOR|
-    LIBAROMA_TEXT_NOHR,
-    100
-  );
-
-  int dialog_h = libaroma_dp(24)+libaroma_text_height(textp) + libaroma_dp(20)+libaroma_text_height(messagetextp)+libaroma_dp(24)+libaroma_dp(52);
-  int dialog_x = libaroma_dp(24);
-  int dialog_y = (dc->h>>1)-(dialog_h>>1);
-
-  libaroma_draw_rect(
-    dc, dialog_x, dialog_y, dialog_w, dialog_h, colorBackground, 0xff
-  );
-
-  /* draw title */
-  libaroma_text_draw(dc,textp, dialog_x+libaroma_dp(24), dialog_y+libaroma_dp(24));
-  libaroma_text_free(textp);
-
-  /* draw text */
-  libaroma_text_draw(dc,messagetextp, dialog_x+libaroma_dp(24), dialog_y+libaroma_dp(24)+libaroma_text_height(textp) + libaroma_dp(20));
-  libaroma_text_free(messagetextp);
-
-  if(Button1) {
-    // button1
-    int button_w = button_width(Button1);
-    int button_x = dialog_x+dialog_w-libaroma_dp(8)-button_w-libaroma_dp(8);
-    int button_y = dialog_y+dialog_h-libaroma_dp(16)-libaroma_dp(36);
-    button_draw(Button1, button_x, button_y, button_w, libaroma_dp(36));
-
-    if(Selection==0) {
-      libaroma_draw_rect(dc, button_x, button_y, button_w, libaroma_dp(36), colorSelection, 0x40);
-    }
-
-    // button2
-    if(Button2) {
-      button_w = button_width(Button2);
-      button_x -= (libaroma_dp(8)+button_w);
-      button_draw(Button2, button_x, button_y, button_w, libaroma_dp(36));
-
-      if(Selection==1) {
-        libaroma_draw_rect(dc, button_x, button_y, button_w, libaroma_dp(36), colorSelection, 0x40);
-      }
-    }
-  }
-}
-
 INT32 MenuShowDialog(
   CONST CHAR8* Title,
   CONST CHAR8* Message,
@@ -689,14 +617,125 @@ INT32 MenuShowDialog(
   UINT32 OldMode = mGop->Mode->Mode;
   mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
 
+  /* Mask Dark */
   libaroma_draw_rect(
     dc, 0, 0, dc->w, dc->h, RGB(000000), 0x7a
   );
+  
+  /* Init Message & Title Text */
+  int dialog_w = dc->w-libaroma_dp(48);
+  LIBAROMA_TEXT messagetextp = libaroma_text(
+    Message,
+    colorTextSecondary,
+    dialog_w-libaroma_dp(48),
+    LIBAROMA_FONT(0,4)|
+    LIBAROMA_TEXT_LEFT|
+    LIBAROMA_TEXT_FIXED_INDENT|
+    LIBAROMA_TEXT_FIXED_COLOR|
+    LIBAROMA_TEXT_NOHR,
+    100
+  );
+  LIBAROMA_TEXT textp = libaroma_text(
+    Title,
+    colorTextPrimary,
+    dialog_w-libaroma_dp(48),
+    LIBAROMA_FONT(1,6)|
+    LIBAROMA_TEXT_LEFT|
+    LIBAROMA_TEXT_FIXED_INDENT|
+    LIBAROMA_TEXT_FIXED_COLOR|
+    LIBAROMA_TEXT_NOHR,
+    100
+  );
 
+  int dialog_h =
+    libaroma_dp(120)+
+    libaroma_text_height(textp)+
+    libaroma_text_height(messagetextp);
+  int dialog_x = libaroma_dp(24);
+  int dialog_y = (dc->h>>1)-(dialog_h>>1);
+  
+  /* create & draw dialog canvas */
+  LIBAROMA_CANVASP dialog_canvas = libaroma_canvas_ex(dialog_w,dialog_h,1);
+  libaroma_canvas_setcolor(dialog_canvas,0,0);
+  libaroma_gradient(dialog_canvas,
+    0,0,
+    dialog_w, dialog_h,
+    colorBackground,colorBackground,
+    libaroma_dp(2), /* rounded 2dp */
+    0x1111 /* all corners */
+  );
+  
+  /* draw texts */
+  libaroma_text_draw(
+    dialog_canvas,
+    textp,
+    libaroma_dp(24),
+    libaroma_dp(24)
+  );
+  libaroma_text_free(textp);
+
+  /* draw text */
+  libaroma_text_draw(
+    dialog_canvas,
+    messagetextp,
+    libaroma_dp(24),
+    libaroma_dp(24)+libaroma_text_height(textp) + libaroma_dp(20)
+  );
+  libaroma_text_free(messagetextp);
+  
+#if 0
+  /* draw zshadow */
+  libaroma_draw_zshadow(
+    dc, dialog_canvas, dialog_x, dialog_y, 
+    4 /* z-index = 4 */
+  );
+#endif
+
+  /* draw dialog into display canvas */
+  libaroma_draw(dc,dialog_canvas,dialog_x, dialog_y, 1);
+  
   UINTN           WaitIndex;
   EFI_INPUT_KEY   Key;
   while(TRUE) {
-    MenuDialogRender(Title, Message, Button1, Button2, Selection);
+    int button_y = dialog_y+dialog_h-libaroma_dp(52);
+    
+    /* clean button area */
+    libaroma_draw_rect(dc, dialog_x, button_y, dialog_w, libaroma_dp(36), colorBackground, 0xff);
+      
+    if(Button1) {
+      /* button1 */
+      int button_w = button_width(Button1);
+      int button_x = dialog_x+dialog_w-button_w-libaroma_dp(16);
+      
+      if(Selection==0) {
+        libaroma_gradient_ex(dc,
+          button_x,button_y,
+          button_w, libaroma_dp(36),
+          colorSelection,colorSelection,
+          libaroma_dp(2), /* rounded 2dp */
+          0x1111, /* all corners */
+          0x40, 0x40 /* start & end alpha */
+        );
+      }
+      button_draw(Button1, button_x, button_y-libaroma_dp(2), button_w, libaroma_dp(36));
+  
+      /* button2 */
+      if(Button2) {
+        button_w = button_width(Button2);
+        button_x -= (libaroma_dp(8)+button_w);
+        if(Selection==1) {
+          libaroma_gradient_ex(dc,
+            button_x,button_y,
+            button_w, libaroma_dp(36),
+            colorSelection,colorSelection,
+            libaroma_dp(2), /* rounded 2dp */
+            0x1111, /* all corners */
+            0x40, 0x40 /* start & end alpha */
+          );
+        }
+        button_draw(Button2, button_x, button_y-libaroma_dp(2), button_w, libaroma_dp(36));
+      }
+    }
     libaroma_sync();
 
     EFI_STATUS Status = gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &WaitIndex);
