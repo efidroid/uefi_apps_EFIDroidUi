@@ -683,13 +683,21 @@ INT32 MenuShowDialog(
   );
   libaroma_text_free(messagetextp);
   
-#if 0
-  /* draw zshadow */
-  libaroma_draw_zshadow(
-    dc, dialog_canvas, dialog_x, dialog_y, 
-    4 /* z-index = 4 */
-  );
-#endif
+  /* draw fake shadow */
+  int z;
+  int shadow_sz=libaroma_dp(2);
+  byte shadow_opa = (byte) (0x60 / shadow_sz);
+  for (z=1;z<shadow_sz;z++){
+    int wp=z*2;
+    libaroma_gradient_ex(dc,
+      dialog_x-z, dialog_y+(z>>1),
+      dialog_w+wp, dialog_h+wp,
+      0,0,
+      libaroma_dp(4),
+      0x1111,
+      shadow_opa, shadow_opa
+    );
+  }
 
   /* draw dialog into display canvas */
   libaroma_draw(dc,dialog_canvas,dialog_x, dialog_y, 1);
