@@ -55,6 +55,14 @@ RangeOverlaps (
 );
 
 UINT32
+RangeLenOverlaps (
+  UINT32 x,
+  UINT32 xl,
+  UINT32 y,
+  UINT32 yl
+);
+
+UINT32
 AlignMemoryRange (
   IN UINT32 Addr,
   IN OUT UINTN *Size,

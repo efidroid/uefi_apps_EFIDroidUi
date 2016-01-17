@@ -365,8 +365,8 @@ AndroidBootFromBlockIo (
     UINTN objsize = CpioPredictObjSize(AsciiStrLen(cpio_name_mbinit), MultibootSize);
     RamdiskUncompressedLen += objsize;
 
-    if (   RangeOverlaps(AndroidHdr->ramdisk_addr, RamdiskUncompressedLen, (UINT32)Parsed.Kernel, AndroidHdr->kernel_size)
-        || RangeOverlaps(AndroidHdr->ramdisk_addr, RamdiskUncompressedLen, (UINT32)Parsed.Tags, TagsSize)
+    if (   RangeLenOverlaps(AndroidHdr->ramdisk_addr, RamdiskUncompressedLen, (UINT32)Parsed.Kernel, AndroidHdr->kernel_size)
+        || RangeLenOverlaps(AndroidHdr->ramdisk_addr, RamdiskUncompressedLen, (UINT32)Parsed.Tags, TagsSize)
        )
     {
       AndroidHdr->ramdisk_addr = MAXUINT((UINT32)Parsed.Kernel + AndroidHdr->kernel_size, Parsed.Tags + TagsSize);
