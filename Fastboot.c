@@ -301,7 +301,7 @@ FastbootCommandLoop (
 {
   INT32 r;
 	FASTBOOT_COMMAND *Command;
-  printf("fastboot: processing commands\n");
+  DEBUG((EFI_D_INFO, "fastboot: processing commands\n"));
 
   UINT8* Buffer = AllocatePool(4096);
   ASSERT(Buffer);
@@ -339,7 +339,7 @@ AGAIN:
   }
 
 	mFastbootState = STATE_OFFLINE;
-	printf("fastboot: oops!\n");
+	DEBUG((EFI_D_ERROR, "fastboot: oops!\n"));
 	FreePool(Buffer);
 
   if (DownloadBase!=NULL) {
