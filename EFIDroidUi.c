@@ -773,6 +773,15 @@ BootOptionEfiOption (
 }
 
 EFI_STATUS
+FastbootCallback (
+  IN VOID* Private
+)
+{
+  FastbootInit();
+  return EFI_SUCCESS;
+}
+
+EFI_STATUS
 RebootCallback (
   IN VOID* Private
 )
@@ -1004,6 +1013,13 @@ main (
     MenuAddEntry(mBootMenuMain, RecEntry->RootEntry);
   }
 
+  // add fastboot option
+  Entry = MenuCreateEntry();
+  Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
+  Entry->Name = AsciiStrDup("Fastboot");
+  Entry->Callback = FastbootCallback;
+  MenuAddEntry(mBootMenuMain, Entry);
+
   // add reboot option
   Entry = MenuCreateEntry();
   Entry->Icon = libaroma_stream_ramdisk("icons/reboot.png");
@@ -1032,6 +1048,8 @@ main (
       FreePool(EFIDroidErrorStr);
     }
   }
+
+  FastbootCommandsAdd();
 
   // show main menu
   SetActiveMenu(mBootMenuMain);

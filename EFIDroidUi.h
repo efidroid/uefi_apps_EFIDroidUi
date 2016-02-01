@@ -115,4 +115,43 @@ MultibootCallback (
   IN VOID *Private
 );
 
+#define FASTBOOT_COMMAND_MAX_LENGTH 64
+
+VOID
+FastbootInit (
+  VOID
+);
+
+VOID
+FastbootInfo (
+  CONST CHAR8 *Reason
+);
+
+VOID
+FastbootFail (
+  CONST CHAR8 *Reason
+);
+
+VOID
+FastbootOkay (
+  CONST CHAR8 *Info
+);
+
+VOID
+FastbootRegister (
+  CHAR8 *Prefix,
+  VOID (*Handle)(CHAR8 *Arg, VOID *Data, UINT32 Size)
+);
+
+VOID
+FastbootPublish (
+  CONST CHAR8 *Name,
+  CONST CHAR8 *Value
+);
+
+VOID
+FastbootCommandsAdd (
+  VOID
+);
+
 #endif /* __EFIDROIDUI_H__ */

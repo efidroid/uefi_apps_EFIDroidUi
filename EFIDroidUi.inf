@@ -24,6 +24,8 @@
   EFIDroidUi.c
   Loader.c
   MultibootLoader.c
+  Fastboot.c
+  FastbootCommands.c
 
 [Packages]
   ArmPkg/ArmPkg.dec
@@ -56,6 +58,7 @@
   FstabLib
   UtilLib
   FileBlockIoLib
+  CacheMaintenanceLib
 
 [Protocols]
   gEfiLoadedImageProtocolGuid
