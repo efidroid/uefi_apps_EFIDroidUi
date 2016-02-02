@@ -175,5 +175,6 @@ FileBlockIoFree (
   IN EFI_BLOCK_IO_PROTOCOL* BlockIo
   )
 {
-  FreePool(BlockIo);
+  FILEBLOCKIO_INSTANCE    *Instance = FILEBLOCKIO_INSTANCE_FROM_BLOCKIO_THIS(BlockIo);
+  FreePool(Instance);
 }
