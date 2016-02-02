@@ -11,6 +11,9 @@
 #define ROUNDUP(a, b)   (((a) + ((b)-1)) & ~((b)-1))
 #define ROUNDDOWN(a, b) ((a) & ~((b)-1))
 
+#define STACKBUF_DMA_ALIGN(var, size) \
+	UINT8 __##var[(size) + ArmDataCacheLineLength()]; UINT8 *var = (UINT8 *)(ROUNDUP((UINTN)__##var, ArmDataCacheLineLength()))
+
 CHAR8*
 Unicode2Ascii (
   CONST CHAR16* UnicodeStr
