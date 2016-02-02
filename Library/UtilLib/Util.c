@@ -126,11 +126,12 @@ UINT32
 AlignMemoryRange (
   IN UINT32 Addr,
   IN OUT UINTN *Size,
-  OUT UINTN  *AddrOffset
+  OUT UINTN  *AddrOffset,
+  IN UINTN Alignment
 )
 {
   // align range
-  UINT32 AddrAligned = ROUNDDOWN(Addr, EFI_PAGE_SIZE);
+  UINT32 AddrAligned = ROUNDDOWN(Addr, Alignment);
 
   // calculate offset
   UINTN Offset = Addr - AddrAligned;
@@ -138,7 +139,7 @@ AlignMemoryRange (
     *AddrOffset = Offset;
 
   // round and return size
-  *Size = ROUNDUP(Offset + (*Size), EFI_PAGE_SIZE);
+  *Size = ROUNDUP(Offset + (*Size), Alignment);
 
   return AddrAligned;
 }
@@ -146,13 +147,14 @@ AlignMemoryRange (
 EFI_STATUS
 FreeAlignedMemoryRange (
   IN UINT32 Address,
-  IN OUT UINTN Size
+  IN OUT UINTN Size,
+  IN UINTN Alignment
 )
 {
   UINTN      AlignedSize = Size;
   UINTN      AddrOffset = 0;
 
-  EFI_PHYSICAL_ADDRESS AllocationAddress = AlignMemoryRange(Address, &AlignedSize, &AddrOffset);
+  EFI_PHYSICAL_ADDRESS AllocationAddress = AlignMemoryRange(Address, &AlignedSize, &AddrOffset, Alignment);
 
   return gBS->FreePages(AllocationAddress, EFI_SIZE_TO_PAGES(AlignedSize));
 }

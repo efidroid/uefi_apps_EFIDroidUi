@@ -179,7 +179,7 @@ AndroidLoadImage (
   EFI_STATUS Status;
   UINTN      AlignedSize = Size;
   UINTN      AddrOffset = 0;
-  EFI_PHYSICAL_ADDRESS AllocationAddress = AlignMemoryRange(Address, &AlignedSize, &AddrOffset);
+  EFI_PHYSICAL_ADDRESS AllocationAddress = AlignMemoryRange(Address, &AlignedSize, &AddrOffset, BlockIo->Media->BlockSize);
 
   if ((Offset % BlockIo->Media->BlockSize) != 0)
     return EFI_INVALID_PARAMETER;
@@ -444,13 +444,13 @@ FREEBUFFER:
   if(Parsed.Cmdline)
     FreePool(Parsed.Cmdline);
   if(Parsed.Kernel)
-    FreeAlignedMemoryRange((UINT32)Parsed.Kernel, AndroidHdr->kernel_size);
+    FreeAlignedMemoryRange((UINT32)Parsed.Kernel, AndroidHdr->kernel_size, BlockIo->Media->BlockSize);
   if(Parsed.Ramdisk)
-    FreeAlignedMemoryRange((UINT32)Parsed.Ramdisk, RamdiskUncompressedLen);
+    FreeAlignedMemoryRange((UINT32)Parsed.Ramdisk, RamdiskUncompressedLen, BlockIo->Media->BlockSize);
   if(Parsed.Tags)
-    FreeAlignedMemoryRange((UINT32)Parsed.Tags, TagsSize);
+    FreeAlignedMemoryRange((UINT32)Parsed.Tags, TagsSize, BlockIo->Media->BlockSize);
   if(OriginalRamdisk)
-    FreeAlignedMemoryRange((UINT32)OriginalRamdisk, AndroidHdr->ramdisk_size);
+    FreeAlignedMemoryRange((UINT32)OriginalRamdisk, AndroidHdr->ramdisk_size, BlockIo->Media->BlockSize);
 
   FreePool(AndroidHdr);
 
@@ -525,7 +525,7 @@ AndroidGetDecompRamdiskFromBlockIo (
     }
 
   FreeOriginalRd:
-    FreeAlignedMemoryRange((UINT32)OriginalRamdisk, AndroidHdr->ramdisk_size);
+    FreeAlignedMemoryRange((UINT32)OriginalRamdisk, AndroidHdr->ramdisk_size, BlockIo->Media->BlockSize);
   }
 
 FREEBUFFER:

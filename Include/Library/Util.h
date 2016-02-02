@@ -66,13 +66,15 @@ UINT32
 AlignMemoryRange (
   IN UINT32 Addr,
   IN OUT UINTN *Size,
-  OUT UINTN  *AddrOffset
+  OUT UINTN  *AddrOffset,
+  IN UINTN Alignment
 );
 
 EFI_STATUS
 FreeAlignedMemoryRange (
   IN UINT32 Address,
-  IN OUT UINTN Size
+  IN OUT UINTN Size,
+  IN UINTN Alignment
 );
 
 #endif /* ! UTIL_H */
