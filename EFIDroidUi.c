@@ -1018,6 +1018,7 @@ main (
   Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
   Entry->Name = AsciiStrDup("Fastboot");
   Entry->Callback = FastbootCallback;
+  Entry->HideBootMessage = TRUE;
   MenuAddEntry(mBootMenuMain, Entry);
 
   // add reboot option

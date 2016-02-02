@@ -311,6 +311,8 @@ AGAIN:
     SetMem(Buffer, FASTBOOT_COMMAND_MAX_LENGTH, 0);
 		InvalidateDataCacheRange(Buffer, FASTBOOT_COMMAND_MAX_LENGTH);
 
+    MenuShowProgressDialog("Waiting for commands", FALSE);
+
     r = fastboot_gadget.usb_read(&fastboot_gadget, Buffer, FASTBOOT_COMMAND_MAX_LENGTH);
 		if (r < 0) break;
 
@@ -357,6 +359,8 @@ FastbootHandler (
 {
 	for (;;) {
     UINTN EventIndex;
+
+    MenuShowProgressDialog("Connect USB Cable", FALSE);
     gBS->WaitForEvent (1, &mUsbOnlineEvent, &EventIndex);
 
 		FastbootCommandLoop();
@@ -381,6 +385,8 @@ FastbootInit (
 {
   EFI_STATUS Status;
   lkapi_t *LKApi = GetLKApi();
+
+  MenuShowProgressDialog("Starting Fastboot", TRUE);
 
   Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &mUsbOnlineEvent);
   ASSERT_EFI_ERROR (Status);
