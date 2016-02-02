@@ -28,6 +28,7 @@ STATIC lkapi_usbgadget_iface_t* mUsbInterface = NULL;
 STATIC UINT32 mFastbootState = STATE_OFFLINE;
 STATIC VOID *DownloadBase = NULL;
 STATIC UINT32 DownloadSize = 0;
+STATIC UINTN DownloadPages = 0;
 STATIC FASTBOOT_COMMAND *CommandList;
 STATIC FASTBOOT_VAR *VariableList;
 
@@ -260,12 +261,16 @@ CommandDownload (
 
   // free old data
   if(DownloadBase) {
-    FreePool(DownloadBase);
+    FreeAlignedPages(DownloadBase, DownloadPages);
+    DownloadBase = NULL;
+    DownloadSize = 0;
+    DownloadPages = 0;
   }
 
   // allocate data buffer
 	DownloadSize = 0;
-  DownloadBase = AllocatePool(Length);
+  DownloadPages = ROUNDUP(Length, EFI_PAGE_SIZE)/EFI_PAGE_SIZE;
+  DownloadBase = AllocateAlignedPages(DownloadPages, EFI_PAGE_SIZE);
   if(DownloadBase == NULL) {
 		FastbootFail("data too large");
 		return;
@@ -303,7 +308,7 @@ FastbootCommandLoop (
 	FASTBOOT_COMMAND *Command;
   DEBUG((EFI_D_INFO, "fastboot: processing commands\n"));
 
-  UINT8* Buffer = AllocatePool(4096);
+  UINT8* Buffer = AllocateAlignedPages(1, EFI_PAGE_SIZE);
   ASSERT(Buffer);
 
 AGAIN:
@@ -342,12 +347,13 @@ AGAIN:
 
 	mFastbootState = STATE_OFFLINE;
 	DEBUG((EFI_D_ERROR, "fastboot: oops!\n"));
-	FreePool(Buffer);
+	FreeAlignedPages(Buffer, 1);
 
   if (DownloadBase!=NULL) {
-    FreePool(DownloadBase);
+    FreeAlignedPages(DownloadBase, DownloadPages);
     DownloadBase = NULL;
     DownloadSize = 0;
+    DownloadPages = 0;
   }
 }
 
