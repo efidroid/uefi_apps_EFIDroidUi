@@ -387,6 +387,7 @@ FastbootInit (
 )
 {
   EFI_STATUS Status;
+  INT32 r;
   lkapi_t *LKApi = GetLKApi();
 
   MenuShowProgressDialog("Starting Fastboot", TRUE);
@@ -403,9 +404,12 @@ FastbootInit (
   FastbootPublish("version", "0.5");
 
   surf_udc_device.serialno = AsciiStrDup("EFIDroid");
-  ASSERT(mUsbInterface->udc_init(mUsbInterface, &surf_udc_device)==0);
-	ASSERT(mUsbInterface->udc_register_gadget(mUsbInterface, &fastboot_gadget)==0);
-  ASSERT(mUsbInterface->udc_start(mUsbInterface)==0);
+  r = mUsbInterface->udc_init(mUsbInterface, &surf_udc_device);
+  ASSERT(r==0);
+  r= mUsbInterface->udc_register_gadget(mUsbInterface, &fastboot_gadget);
+  ASSERT(r==0);
+  r = mUsbInterface->udc_start(mUsbInterface);
+  ASSERT(r==0);
 
   Status = gBS->CreateEvent (EVT_SIGNAL_EXIT_BOOT_SERVICES, TPL_NOTIFY, ExitBootServicesEvent, NULL, &mExitBootServicesEvent);
   ASSERT_EFI_ERROR (Status);
