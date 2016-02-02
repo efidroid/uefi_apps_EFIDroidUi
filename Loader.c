@@ -184,8 +184,8 @@ AndroidLoadImage (
   if ((Offset % BlockIo->Media->BlockSize) != 0)
     return EFI_INVALID_PARAMETER;
 
-  if (Size == 0) {
-    return EFI_INVALID_PARAMETER;
+  if (AlignedSize == 0) {
+    AlignedSize = BlockIo->Media->BlockSize;
   }
 
   Status = gBS->AllocatePages (Address?AllocateAddress:AllocateAnyPages, EfiBootServicesData, EFI_SIZE_TO_PAGES(AlignedSize), &AllocationAddress);
@@ -194,7 +194,7 @@ AndroidLoadImage (
   }
   *Buffer = (VOID*)((UINTN)AllocationAddress)+AddrOffset;
 
-  if (Offset!=0) {
+  if (Offset!=0 && Size!=0) {
     // read data
     Status = BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, Offset/BlockIo->Media->BlockSize, AlignedSize, *Buffer);
     if (EFI_ERROR(Status)) {
