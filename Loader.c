@@ -552,3 +552,22 @@ AndroidBootFromFile (
 
   return Status;
 }
+
+EFI_STATUS
+AndroidBootFromBuffer (
+  IN VOID               *Buffer,
+  IN UINTN              Size,
+  IN multiboot_handle_t *mbhandle,
+  IN BOOLEAN            DisablePatching
+)
+{
+  EFI_STATUS                Status;
+  EFI_BLOCK_IO_PROTOCOL     *BlockIo;
+
+  Status = MemoryBlockIoCreate(Buffer, Size, &BlockIo);
+
+  Status = AndroidBootFromBlockIo(BlockIo, mbhandle, DisablePatching);
+  MemoryBlockIoFree(BlockIo);
+
+  return Status;
+}

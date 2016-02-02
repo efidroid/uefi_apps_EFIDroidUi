@@ -58,6 +58,7 @@
   FstabLib
   UtilLib
   FileBlockIoLib
+  MemoryBlockIoLib
   CacheMaintenanceLib
 
 [Protocols]

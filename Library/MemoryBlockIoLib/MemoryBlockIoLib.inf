@@ -1,0 +1,28 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = MemoryBlockIoLib
+  FILE_GUID                      = 69c87996-b9b0-48bf-bcce-37855c1de013
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0 
+  LIBRARY_CLASS                  = MemoryBlockIoLib
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
+#
+
+[Sources]
+  MemoryBlockIo.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  EFIDroidUEFIApps/EFIDroidUi/EFIDroidUi.dec
+
+[LibraryClasses]
+  BaseLib
+  UefiBootServicesTableLib
+  UefiLib
+  PrintLib
+
+[Depex]
+  TRUE

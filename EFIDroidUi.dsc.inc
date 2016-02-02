@@ -13,6 +13,7 @@
   UEFIRamdiskLib|EFIDroidUEFIApps/EFIDroidUi/Library/UEFIRamdiskLib/UEFIRamdiskLib.inf
   UtilLib|EFIDroidUEFIApps/EFIDroidUi/Library/UtilLib/UtilLib.inf
   FileBlockIoLib|EFIDroidUEFIApps/EFIDroidUi/Library/FileBlockIoLib/FileBlockIoLib.inf
+  MemoryBlockIoLib|EFIDroidUEFIApps/EFIDroidUi/Library/MemoryBlockIoLib/MemoryBlockIoLib.inf
 
 [PcdsFixedAtBuild]
   gEfiMdeModulePkgTokenSpaceGuid.PcdResetOnMemoryTypeInformationChange|FALSE

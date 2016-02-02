@@ -46,6 +46,7 @@
 #include <Library/Util.h>
 #include <Library/Menu.h>
 #include <Library/FileBlockIo.h>
+#include <Library/MemoryBlockIo.h>
 
 #include <LittleKernel.h>
 
@@ -95,6 +96,14 @@ AndroidBootFromBlockIo (
 EFI_STATUS
 AndroidBootFromFile (
   IN EFI_FILE_PROTOCOL  *File,
+  IN multiboot_handle_t *mbhandle,
+  IN BOOLEAN            DisablePatching
+);
+
+EFI_STATUS
+AndroidBootFromBuffer (
+  IN VOID               *Buffer,
+  IN UINTN              Size,
   IN multiboot_handle_t *mbhandle,
   IN BOOLEAN            DisablePatching
 );
