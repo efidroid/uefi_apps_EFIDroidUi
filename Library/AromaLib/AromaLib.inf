@@ -66,6 +66,9 @@
 
   ../../../../EFIDroidModules/libaroma/libs/harfbuzz-ng/src/hb-ucdn/ucdn.c
 
+[Sources.ARM]
+  ../../../../EFIDroidModules/libaroma/src/aroma/arch/arm/memset32.S
+
 [Packages]
   StdLib/StdLib.dec
   MdePkg/MdePkg.dec
@@ -91,3 +94,4 @@
 
 [BuildOptions]
   GCC:*_*_*_CC_FLAGS     = -DLIBAROMA_CONFIG_TEXT_NOHARFBUZZ=1 -DLIBAROMA_CONFIG_NOMINZIP=1 -DLIBAROMA_CONFIG_NOPNGWRITE=1 -DLIBAROMA_CONFIG_NOSVG=1 -DLIBAROMA_CONFIG_DEBUG=0
+  GCC:*_*_*_PP_FLAGS     = -DLIBAROMA_CONFIG_NO_UNWIND=1
