@@ -672,7 +672,6 @@ INT32 MenuShowDialog(
     libaroma_dp(24),
     libaroma_dp(24)
   );
-  libaroma_text_free(textp);
 
   /* draw text */
   libaroma_text_draw(
@@ -681,6 +680,7 @@ INT32 MenuShowDialog(
     libaroma_dp(24),
     libaroma_dp(24)+libaroma_text_height(textp) + libaroma_dp(20)
   );
+  libaroma_text_free(textp);
   libaroma_text_free(messagetextp);
   
   /* draw fake shadow */
