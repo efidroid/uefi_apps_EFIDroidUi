@@ -67,8 +67,7 @@ FastbootAck (
   BOOLEAN ChangeState
 )
 {
-	CHAR8* Response = AllocatePool(FASTBOOT_COMMAND_MAX_LENGTH);
-  ASSERT(Response);
+	STACKBUF_DMA_ALIGN(Response, FASTBOOT_COMMAND_MAX_LENGTH);
 
 	if (mFastbootState != STATE_COMMAND)
 		return;
@@ -76,14 +75,12 @@ FastbootAck (
 	if (Reason == 0)
 		Reason = "";
 
-	AsciiSPrint(Response, FASTBOOT_COMMAND_MAX_LENGTH, "%a%a", Code, Reason);
+	AsciiSPrint((CHAR8*)Response, FASTBOOT_COMMAND_MAX_LENGTH, "%a%a", Code, Reason);
 
-	if(fastboot_gadget.usb_write(&fastboot_gadget, Response, AsciiStrLen(Response))<0)
+	if(fastboot_gadget.usb_write(&fastboot_gadget, Response, AsciiStrLen((CHAR8*)Response))<0)
     mFastbootState = STATE_ERROR;
   else if(ChangeState)
   	mFastbootState = STATE_COMPLETE;
-
-  FreePool(Response);
 }
 
 VOID
@@ -308,7 +305,7 @@ FastbootCommandLoop (
 	FASTBOOT_COMMAND *Command;
   DEBUG((EFI_D_INFO, "fastboot: processing commands\n"));
 
-  UINT8* Buffer = AllocateAlignedPages(1, EFI_PAGE_SIZE);
+  UINT8* Buffer = AllocateAlignedPages(ArmDataCacheLineLength(), ROUNDUP(4096, ArmDataCacheLineLength()));
   ASSERT(Buffer);
 
 AGAIN:
