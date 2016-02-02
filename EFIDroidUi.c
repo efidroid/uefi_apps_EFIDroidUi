@@ -766,7 +766,7 @@ BootOptionEfiOption (
   Status = BdsLibBootViaBootOption (BootOption, BootOption->DevicePath, &ExitDataSize, &ExitData);
   if(EFI_ERROR(Status)) {
     CHAR8 Buf[100];
-    AsciiSPrint(Buf, 1024, "%r", Status);
+    AsciiSPrint(Buf, 100, "%r", Status);
     MenuShowMessage("Error", Buf);
   }
   return Status;
