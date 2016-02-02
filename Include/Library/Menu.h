@@ -127,4 +127,9 @@ INT32 MenuShowDialog(
   CONST CHAR8* Button2
 );
 
+VOID MenuShowProgressDialog(
+  CONST CHAR8* Text,
+  BOOLEAN ShowBackground
+);
+
 #endif /* ! MENU_H */

@@ -790,6 +790,42 @@ VOID MenuShowMessage(
   MenuShowDialog(Title, Message, "OK", NULL);
 }
 
+VOID MenuShowProgressDialog(
+  CONST CHAR8* Text,
+  BOOLEAN ShowBackground
+)
+{
+  if(ShowBackground) {
+    libaroma_draw_rect(
+      dc, 0, 0, dc->w, dc->h, RGB(000000), 0x7a
+    );
+  }
+
+  int dialog_w = dc->w-libaroma_dp(48);
+  int dialog_h = libaroma_dp(88);
+  int dialog_x = libaroma_dp(24);
+  int dialog_y = (dc->h>>1)-(dialog_h>>1);
+
+  libaroma_draw_rect(
+    dc, dialog_x, dialog_y, dialog_w, dialog_h, colorBackground, 0xff
+  );
+
+  LIBAROMA_TEXT txt = libaroma_text(
+    Text,
+    colorTextPrimary, dialog_w-libaroma_dp(16),
+    LIBAROMA_FONT(0,5)|LIBAROMA_TEXT_CENTER,
+    100
+  );
+
+  libaroma_text_draw(
+    dc, txt, dialog_x + libaroma_dp(8), dialog_y + (dialog_h>>1) - (libaroma_text_height(txt)>>1)
+  );
+
+  libaroma_text_free(txt);
+
+  libaroma_sync(); 
+}
+
 STATIC VOID
 RenderActiveMenu(
   VOID
@@ -850,36 +886,10 @@ RenderBootScreen(
   MENU_ENTRY *Entry
 )
 {
-  libaroma_draw_rect(
-    dc, 0, 0, dc->w, dc->h, RGB(000000), 0x7a
-  );
-
-  int dialog_w = dc->w-libaroma_dp(48);
-  int dialog_h = libaroma_dp(88);
-  int dialog_x = libaroma_dp(24);
-  int dialog_y = (dc->h>>1)-(dialog_h>>1);
-
-  libaroma_draw_rect(
-    dc, dialog_x, dialog_y, dialog_w, dialog_h, colorBackground, 0xff
-  );
-
   char text[256];
   snprintf(text, sizeof(text), "Booting %s ...", Entry->Name);
 
-  LIBAROMA_TEXT txt = libaroma_text(
-    text,
-    colorTextPrimary, dialog_w-libaroma_dp(16),
-    LIBAROMA_FONT(0,5)|LIBAROMA_TEXT_CENTER,
-    100
-  );
-
-  libaroma_text_draw(
-    dc, txt, dialog_x + libaroma_dp(8), dialog_y + (dialog_h>>1) - (libaroma_text_height(txt)>>1)
-  );
-
-  libaroma_text_free(txt);
-
-  libaroma_sync();
+  MenuShowProgressDialog(text, TRUE);
 }
 
 STATIC EFI_STATUS Status;
