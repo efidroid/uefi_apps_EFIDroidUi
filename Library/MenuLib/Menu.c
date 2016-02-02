@@ -614,8 +614,11 @@ INT32 MenuShowDialog(
   if(Initialized==FALSE)
     return -1;
 
-  UINT32 OldMode = mGop->Mode->Mode;
-  mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
+  UINT32 OldMode = UINT32_MAX;
+  if(mGop->Mode->Mode!=gLKDisplay->GetPortraitMode()) {
+    OldMode = mGop->Mode->Mode;
+    mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
+  }
 
   /* Mask Dark */
   libaroma_draw_rect(
@@ -755,7 +758,8 @@ INT32 MenuShowDialog(
       switch(Key.UnicodeChar) {
         case CHAR_CARRIAGE_RETURN:
           RenderActiveMenu();
-          mGop->SetMode(mGop, OldMode);
+          if(OldMode!=UINT32_MAX)
+            mGop->SetMode(mGop, OldMode);
           return Selection;
       }
     }
