@@ -129,7 +129,7 @@ static INT32 getline(char**lineptr, UINTN *n, CONST CHAR8* data, UINTN size, UIN
 
     // copy line
     CopyMem(*lineptr, &data[*pos], linesize);
-    *lineptr[linesize] = 0;
+    (*lineptr)[linesize] = 0;
 
     // update position
     (*pos) += linesize;
