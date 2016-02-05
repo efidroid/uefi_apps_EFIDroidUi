@@ -47,6 +47,7 @@
 #include <Library/Menu.h>
 #include <Library/FileBlockIo.h>
 #include <Library/MemoryBlockIo.h>
+#include <Library/MakeDosFs.h>
 
 #include <LittleKernel.h>
 

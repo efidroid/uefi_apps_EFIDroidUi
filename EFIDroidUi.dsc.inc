@@ -14,6 +14,7 @@
   UtilLib|EFIDroidUEFIApps/EFIDroidUi/Library/UtilLib/UtilLib.inf
   FileBlockIoLib|EFIDroidUEFIApps/EFIDroidUi/Library/FileBlockIoLib/FileBlockIoLib.inf
   MemoryBlockIoLib|EFIDroidUEFIApps/EFIDroidUi/Library/MemoryBlockIoLib/MemoryBlockIoLib.inf
+  MakeDosFsLib|EFIDroidUEFIApps/EFIDroidUi/Library/MakeDosFsLib/MakeDosFsLib.inf
 
 [PcdsFixedAtBuild]
   gEfiMdeModulePkgTokenSpaceGuid.PcdResetOnMemoryTypeInformationChange|FALSE
