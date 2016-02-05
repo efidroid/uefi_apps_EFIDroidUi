@@ -1046,3 +1046,21 @@ MenuDeInit (
   mGop->SetMode(mGop, OldMode);
   gLKDisplay->SetFlushMode(gLKDisplay, OldFlushMode);
 }
+
+VOID
+MenuPreBoot (
+  VOID
+)
+{
+  mGop->SetMode(mGop, OldMode);
+  gLKDisplay->SetFlushMode(gLKDisplay, OldFlushMode);
+}
+
+VOID
+MenuPostBoot (
+  VOID
+)
+{
+  mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
+  gLKDisplay->SetFlushMode(gLKDisplay, LK_DISPLAY_FLUSH_MODE_MANUAL);
+}

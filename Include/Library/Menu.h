@@ -132,4 +132,14 @@ VOID MenuShowProgressDialog(
   BOOLEAN ShowBackground
 );
 
+VOID
+MenuPreBoot (
+  VOID
+);
+
+VOID
+MenuPostBoot (
+  VOID
+);
+
 #endif /* ! MENU_H */
