@@ -196,17 +196,6 @@ AddMultibootSystemToRecoveryMenu (
   }
 }
 
-// Type definitions
-//
-
-typedef
-EFI_STATUS
-(EFIAPI *PROTOCOL_INSTANCE_CALLBACK)(
-  IN EFI_HANDLE           Handle,
-  IN VOID                 *Instance,
-  IN VOID                 *Context
-  );
-
 STATIC EFI_STATUS
 EFIAPI
 FindESP (
@@ -861,53 +850,6 @@ AddEfiBootOptions (
     Entry->ResetGop = TRUE;
     MenuAddEntry(mBootMenuMain, Entry);
   }
-}
-
-STATIC EFI_STATUS
-VisitAllInstancesOfProtocol (
-  IN EFI_GUID                    *Id,
-  IN PROTOCOL_INSTANCE_CALLBACK  CallBackFunction,
-  IN VOID                        *Context
-  )
-{
-  EFI_STATUS                Status;
-  UINTN                     HandleCount;
-  EFI_HANDLE                *HandleBuffer;
-  UINTN                     Index;
-  VOID                      *Instance;
-
-  //
-  // Start to check all the PciIo to find all possible device
-  //
-  HandleCount = 0;
-  HandleBuffer = NULL;
-  Status = gBS->LocateHandleBuffer (
-                  ByProtocol,
-                  Id,
-                  NULL,
-                  &HandleCount,
-                  &HandleBuffer
-                  );
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-
-  for (Index = 0; Index < HandleCount; Index++) {
-    Status = gBS->HandleProtocol (HandleBuffer[Index], Id, &Instance);
-    if (EFI_ERROR (Status)) {
-      continue;
-    }
-
-    Status = (*CallBackFunction) (
-               HandleBuffer[Index],
-               Instance,
-               Context
-               );
-  }
-
-  gBS->FreePool (HandleBuffer);
-
-  return EFI_SUCCESS;
 }
 
 STATIC

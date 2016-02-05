@@ -14,6 +14,14 @@
 #define STACKBUF_DMA_ALIGN(var, size) \
 	UINT8 __##var[(size) + ArmDataCacheLineLength()]; UINT8 *var = (UINT8 *)(ROUNDUP((UINTN)__##var, ArmDataCacheLineLength()))
 
+typedef
+EFI_STATUS
+(EFIAPI *PROTOCOL_INSTANCE_CALLBACK)(
+  IN EFI_HANDLE           Handle,
+  IN VOID                 *Instance,
+  IN VOID                 *Context
+  );
+
 CHAR8*
 Unicode2Ascii (
   CONST CHAR16* UnicodeStr
@@ -79,5 +87,12 @@ FreeAlignedMemoryRange (
   IN OUT UINTN Size,
   IN UINTN Alignment
 );
+
+EFI_STATUS
+VisitAllInstancesOfProtocol (
+  IN EFI_GUID                    *Id,
+  IN PROTOCOL_INSTANCE_CALLBACK  CallBackFunction,
+  IN VOID                        *Context
+  );
 
 #endif /* ! UTIL_H */
