@@ -61,6 +61,7 @@
   MemoryBlockIoLib
   CacheMaintenanceLib
   MakeDosFsLib
+  SquirrelLib
 
 [Protocols]
   gEfiLoadedImageProtocolGuid

@@ -1,0 +1,68 @@
+## @file
+#  NULL instance of Timer Library as a template.
+#
+#  A non-functional instance of the Timer Library that can be used as a template
+#  for the implementation of a functional timer library instance. This library instance can
+#  also be used to test build DXE, Runtime, DXE SAL, and DXE SMM modules that require timer
+#  services as well as EBC modules that require timer services.
+#
+#  Copyright (c) 2007 - 2014, Intel Corporation. All rights reserved.<BR>
+#
+#  This program and the accompanying materials
+#  are licensed and made available under the terms and conditions of the BSD License
+#  which accompanies this distribution. The full text of the license may be found at
+#  http://opensource.org/licenses/bsd-license.php.
+#  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+#
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = SquirrelLib
+  FILE_GUID                      = 1eb0fe05-41f0-4535-a581-b6f502387d46
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0 
+  LIBRARY_CLASS                  = SquirrelLib
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
+#
+
+[Sources]
+  ../../../EFIDroidModules/squirrel/squirrel/sqapi.cpp
+  ../../../EFIDroidModules/squirrel/squirrel/sqbaselib.cpp
+  ../../../EFIDroidModules/squirrel/squirrel/sqfuncstate.cpp
+  ../../../EFIDroidModules/squirrel/squirrel/sqdebug.cpp
+  ../../../EFIDroidModules/squirrel/squirrel/sqlexer.cpp
+  ../../../EFIDroidModules/squirrel/squirrel/sqobject.cpp
+  ../../../EFIDroidModules/squirrel/squirrel/sqcompiler.cpp
+  ../../../EFIDroidModules/squirrel/squirrel/sqstate.cpp
+  ../../../EFIDroidModules/squirrel/squirrel/sqtable.cpp
+  ../../../EFIDroidModules/squirrel/squirrel/sqmem.cpp
+  ../../../EFIDroidModules/squirrel/squirrel/sqvm.cpp
+  ../../../EFIDroidModules/squirrel/squirrel/sqclass.cpp
+
+  ../../../EFIDroidModules/squirrel/sqstdlib/sqstdblob.cpp
+  ../../../EFIDroidModules/squirrel/sqstdlib/sqstdio.cpp
+  ../../../EFIDroidModules/squirrel/sqstdlib/sqstdstream.cpp
+  ../../../EFIDroidModules/squirrel/sqstdlib/sqstdmath.cpp
+  ../../../EFIDroidModules/squirrel/sqstdlib/sqstdsystem.cpp
+  ../../../EFIDroidModules/squirrel/sqstdlib/sqstdstring.cpp
+  ../../../EFIDroidModules/squirrel/sqstdlib/sqstdaux.cpp
+  ../../../EFIDroidModules/squirrel/sqstdlib/sqstdrex.cpp
+
+[Packages]
+  StdLib/StdLib.dec
+  MdePkg/MdePkg.dec
+  ShellPkg/ShellPkg.dec
+  EFIDroidUEFIApps/EFIDroidUi/EFIDroidUi.dec
+
+[LibraryClasses]
+  LibC
+  LibStdio
+  LibTime
+
+[Depex]
+  TRUE
