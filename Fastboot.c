@@ -321,23 +321,31 @@ FastbootCommandLoop (
 
     mFastbootState = STATE_COMMAND;
 
+    FASTBOOT_COMMAND *MatchedCommand = NULL;
     for (Command = CommandList; Command; Command = Command->Next) {
       if (CompareMem(Buffer, Command->Prefix, Command->PrefixLen))
         continue;
 
-      CHAR8* Arg = (CHAR8*) Buffer + Command->PrefixLen;
+      if(MatchedCommand==NULL || Command->PrefixLen>MatchedCommand->PrefixLen)
+        MatchedCommand = Command;
+    }
+
+    if(MatchedCommand) {
+      CHAR8* Arg = (CHAR8*) Buffer + MatchedCommand->PrefixLen;
       if(Arg[0]==' ')
         Arg++;
 
-      Command->Handle(Arg, DownloadBase, DownloadSize);
+      MatchedCommand->Handle(Arg, DownloadBase, DownloadSize);
       if (mFastbootState == STATE_COMMAND)
         FastbootFail("unknown reason");
       goto AGAIN;
     }
 
-    FastbootInfo("unknown command");
-    FastbootInfo("See 'fastboot oem help'");
-    FastbootFail("");
+    else {
+      FastbootInfo("unknown command");
+      FastbootInfo("See 'fastboot oem help'");
+      FastbootFail("");
+    }
   }
 
   mFastbootState = STATE_OFFLINE;
