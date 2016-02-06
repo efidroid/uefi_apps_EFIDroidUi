@@ -34,8 +34,13 @@ Ascii2Unicode (
 
 CHAR8*
 AsciiStrDup (
-  CONST CHAR8* SrcStr
-);
+  IN CONST CHAR8* Str
+  );
+
+CHAR16*
+UnicodeStrDup (
+  IN CONST CHAR16* Str
+  );
 
 VOID
 PathToUnix(

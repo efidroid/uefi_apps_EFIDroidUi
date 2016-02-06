@@ -36,18 +36,18 @@ Ascii2Unicode (
 
 CHAR8*
 AsciiStrDup (
-  CONST CHAR8* SrcStr
-)
+  IN CONST CHAR8* Str
+  )
 {
-  UINTN Len = (AsciiStrLen (SrcStr) + 1) * sizeof (CHAR8);
-  CHAR8* NewStr = AllocatePool(Len);
-  if (NewStr == NULL) {
-    return NULL;
-  }
+  return AllocateCopyPool (AsciiStrSize (Str), Str);
+}
 
-  CopyMem(NewStr, SrcStr, Len);
-
-  return NewStr;
+CHAR16*
+UnicodeStrDup (
+  IN CONST CHAR16* Str
+  )
+{
+  return AllocateCopyPool (StrSize (Str), Str);
 }
 
 VOID
