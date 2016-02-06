@@ -3,6 +3,7 @@
 #include <Protocol/RamDisk.h>
 #include <IndustryStandard/PeImage.h>
 #include <Library/DevicePathLib.h>
+#include <Library/ShellLib.h>
 
 STATIC VOID
 CommandRebootInternal (
@@ -274,6 +275,86 @@ ERROR_FREE_RAMDISK:
   }
 }
 
+STATIC EFI_TEXT_STRING mOutputStringOrig = NULL;
+STATIC EFI_TEXT_STRING mErrOutputStringOrig = NULL;
+STATIC CHAR8 mOutputBuffer[FASTBOOT_COMMAND_MAX_LENGTH];
+STATIC UINTN mOutputBufferPos = 0;
+
+STATIC
+EFI_STATUS
+EFIAPI
+OutputStringHook (
+  IN EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *This,
+  IN CHAR16                          *String
+  )
+{
+  CHAR8* AsciiString = Unicode2Ascii(String);
+  if(AsciiString) {
+    UINTN i;
+    for(i=0; i<AsciiStrLen(AsciiString); i++) {
+      CHAR8 c = AsciiString[i];
+
+      mOutputBuffer[mOutputBufferPos++] = c;
+
+      if(mOutputBufferPos==sizeof(mOutputBuffer)-1-4 || c=='\n' || c=='\r') {
+        mOutputBuffer[mOutputBufferPos] = 0;
+        FastbootInfo(mOutputBuffer);
+        mOutputBufferPos = 0;
+      }
+    }
+
+    FreePool(AsciiString);
+  }
+
+  return EFI_SUCCESS;
+}
+
+STATIC VOID
+CommandShell (
+  CHAR8 *Arg,
+  VOID *Data,
+  UINT32 Size
+)
+{
+  EFI_STATUS Status;
+  EFI_STATUS CommandStatus;
+  CHAR8 Buffer[59];
+
+  // convert to unicode
+  CHAR16* UnicodeCommand = Ascii2Unicode(Arg);
+  if(UnicodeCommand==NULL) {
+    FastbootFail("Memory error");
+    return;
+  }
+
+  // initialize console hook
+  mOutputBufferPos = 0;
+  mOutputStringOrig = gST->ConOut->OutputString;
+  mErrOutputStringOrig = gST->StdErr->OutputString;
+  gST->ConOut->OutputString = OutputStringHook;
+  gST->StdErr->OutputString = OutputStringHook;
+
+  // run shell command
+  Status = ShellExecute (gImageHandle, UnicodeCommand, FALSE, NULL, &CommandStatus);
+
+  // flush output buffer
+  if(mOutputBufferPos>0)
+      FastbootInfo(mOutputBuffer);
+
+  // restore console
+  gST->StdErr->OutputString = mErrOutputStringOrig;
+  gST->ConOut->OutputString = mOutputStringOrig;
+
+  // print status
+  if(EFI_ERROR(Status)) {
+    AsciiSPrint(Buffer, 59, "Error: %r", Status);
+    FastbootFail(Buffer);
+  }
+  else {
+    FastbootOkay("");
+  }
+}
+
 VOID
 FastbootCommandsAdd (
   VOID
@@ -285,4 +366,6 @@ FastbootCommandsAdd (
   FastbootRegister("oem reboot-download", CommandRebootDownload);
   FastbootRegister("oem poweroff", CommandPowerOff);
   FastbootRegister("boot", CommandBoot);
+
+  FastbootRegister("oem shell", CommandShell);
 }
