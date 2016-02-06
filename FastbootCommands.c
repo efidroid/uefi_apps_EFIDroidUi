@@ -5,14 +5,65 @@
 #include <Library/DevicePathLib.h>
 
 STATIC VOID
+CommandRebootInternal (
+  CONST CHAR16 *Reason
+)
+{
+  FastbootOkay("");
+  gRT->ResetSystem (EfiResetCold, EFI_SUCCESS, Reason?StrLen(Reason):0, (CHAR16*)Reason);
+}
+
+STATIC VOID
 CommandReboot (
   CHAR8 *Arg,
   VOID *Data,
   UINT32 Size
 )
 {
+  CommandRebootInternal(NULL);
+}
+
+STATIC VOID
+CommandRebootRecovery (
+  CHAR8 *Arg,
+  VOID *Data,
+  UINT32 Size
+)
+{
+  CommandRebootInternal(L"recovery");
+}
+
+STATIC VOID
+CommandRebootBootloader (
+  CHAR8 *Arg,
+  VOID *Data,
+  UINT32 Size
+)
+{
+  CommandRebootInternal(L"bootloader");
+}
+
+STATIC VOID
+CommandRebootDownload (
+  CHAR8 *Arg,
+  VOID *Data,
+  UINT32 Size
+)
+{
+  CommandRebootInternal(L"download");
+}
+
+STATIC VOID
+CommandPowerOff (
+  CHAR8 *Arg,
+  VOID *Data,
+  UINT32 Size
+)
+{
+  FastbootInfo("You have 5s to unplug your USB cable :)");
   FastbootOkay("");
-  gRT->ResetSystem (EfiResetCold, EFI_SUCCESS, 0, NULL);
+  gBS->Stall(5*1000000);
+  gRT->ResetSystem (EfiResetShutdown, EFI_SUCCESS, 0, NULL);
 }
 
 STATIC
@@ -229,5 +280,9 @@ FastbootCommandsAdd (
 )
 {
   FastbootRegister("reboot", CommandReboot);
+  FastbootRegister("reboot-bootloader", CommandRebootBootloader);
+  FastbootRegister("oem reboot-recovery", CommandRebootRecovery);
+  FastbootRegister("oem reboot-download", CommandRebootDownload);
+  FastbootRegister("oem poweroff", CommandPowerOff);
   FastbootRegister("boot", CommandBoot);
 }
