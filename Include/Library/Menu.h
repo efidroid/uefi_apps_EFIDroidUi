@@ -132,6 +132,11 @@ VOID MenuShowProgressDialog(
   BOOLEAN ShowBackground
 );
 
+EFI_STATUS
+MenuShowSelectionDialog (
+  MENU_OPTION* Menu
+);
+
 VOID
 MenuPreBoot (
   VOID

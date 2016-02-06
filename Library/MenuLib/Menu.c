@@ -6,8 +6,10 @@ STATIC EFI_GRAPHICS_OUTPUT_PROTOCOL *mGop;
 STATIC EFI_LK_DISPLAY_PROTOCOL *gLKDisplay;
 STATIC MENU_OPTION* mActiveMenu = NULL;
 STATIC LIBAROMA_CANVASP dc;
-STATIC MINLIST *list = NULL;
+STATIC MINLIST *mActiveList = NULL;
 STATIC BOOLEAN Initialized = FALSE;
+STATIC UINT32 OldMode;
+STATIC LK_DISPLAY_FLUSH_MODE OldFlushMode;
 
 word colorPrimary;
 word colorPrimaryLight;
@@ -84,6 +86,8 @@ MINLIST * list_create(int width, int itemheight, word bg, word sl, word tbg, wor
   list->selalpha = alphaSelection;
   list->textcolor=tbg;
   list->textselcolor=tsl;
+  list->enableshadow = TRUE;
+  list->enablescrollbar = TRUE;
   return list;
 }
  
@@ -242,22 +246,25 @@ void list_show(MINLIST * list, int selectedid, int x, int y, int h){
     dc, list->cva, x, y+(sel_y-draw_y),0,sel_y,list->w,list->ih, 0, 0xff
   );
   /* draw scroll indicator */
-  int si_h = (h * h) / list->cv->h;
-  int si_y = draw_y * h;
-  if (si_y>0){
-    si_y /= list->cv->h;
+  if(list->enablescrollbar) {
+    int si_h = (h * h) / list->cv->h;
+    int si_y = draw_y * h;
+    if (si_y>0){
+      si_y /= list->cv->h;
+    }
+    int si_w = SCROLL_INDICATOR_WIDTH;
+    //int pad  = libaroma_dp(1);
+    byte is_dark = libaroma_color_isdark(list->bgcolor);
+    word indicator_color = is_dark?RGB(cccccc):RGB(666666);
+    /* draw indicator */
+    libaroma_draw_rect(dc, x+list->w-si_w,  y+si_y, si_w-libaroma_dp(2),
+      si_h, indicator_color, 120);
   }
-  int si_w = SCROLL_INDICATOR_WIDTH;
-  //int pad  = libaroma_dp(1);
-  byte is_dark = libaroma_color_isdark(list->bgcolor);
-  word indicator_color = is_dark?RGB(cccccc):RGB(666666);
-  /* draw indicator */
-  libaroma_draw_rect(dc, x+list->w-si_w,  y+si_y, si_w-libaroma_dp(2),
-    si_h, indicator_color, 120);
  
 syncit:
   /* draw shadow ;) */
-  libaroma_gradient_ex1(dc, x, y, list->w,libaroma_dp(5),0,0,0,0,80,0,2);
+  if(list->enableshadow)
+    libaroma_gradient_ex1(dc, x, y, list->w,libaroma_dp(5),0,0,0,0,80,0,2);
   //libaroma_sync();
 }
 
@@ -498,9 +505,9 @@ SetActiveMenu (
 {
   mActiveMenu = Menu;
 
-  if(list) {
-    list_free(list);
-    list = NULL;
+  if(mActiveList) {
+    list_free(mActiveList);
+    mActiveList = NULL;
   }
 }
 
@@ -522,28 +529,21 @@ InvalidateActiveMenu(
 
 VOID
 BuildAromaMenu (
-  VOID
+  IN MENU_OPTION* Menu,
+  IN MINLIST* list,
+  IN byte ItemFlags
 )
 {
   LIST_ENTRY   *Link;
   MENU_ENTRY   *Entry;
   UINTN        Index;
 
-  list = list_create(
-    dc->w,
-    libaroma_dp(72),
-    colorBackground,
-    colorSelection,
-    colorTextPrimary,
-    colorTextPrimary
-  );
-
-  Link = mActiveMenu->Head.ForwardLink;
+  Link = Menu->Head.ForwardLink;
   Index = 0;
-  while (Link != NULL && Link != &mActiveMenu->Head) {
+  while (Link != NULL && Link != &Menu->Head) {
     Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
 
-    list_add(list, Entry->Icon, Entry->Name, Entry->Description, LIST_ADD_WITH_SEPARATOR);
+    list_add(list, Entry->Icon, Entry->Name, Entry->Description, ItemFlags);
 
     Link = Link->ForwardLink;
     Index++;
@@ -826,6 +826,151 @@ VOID MenuShowProgressDialog(
   libaroma_sync(); 
 }
 
+STATIC
+EFI_STATUS
+MenuHandleKey (
+  IN MENU_OPTION* Menu,
+  IN EFI_INPUT_KEY Key
+)
+{
+  MENU_ENTRY* Entry;
+  EFI_STATUS Status = EFI_SUCCESS;
+
+  if(Key.ScanCode==SCAN_NULL) {
+    switch(Key.UnicodeChar) {
+      case CHAR_CARRIAGE_RETURN:
+        if(Menu->Selection==-1) {
+          Status = Menu->BackCallback();
+          break;
+        }
+
+        if(Menu->Selection>=Menu->OptionNumber || Menu->Selection<0)
+          break;
+
+        Entry = MenuGetEntryById(Menu, Menu->Selection);
+
+        if(!Entry->HideBootMessage)
+          RenderBootScreen(Entry);
+
+        if(Entry->Callback) {
+          if (Entry->ResetGop) {
+            mGop->SetMode(mGop, OldMode);
+            gLKDisplay->SetFlushMode(gLKDisplay, OldFlushMode);
+          }
+
+          Status = Entry->Callback(Entry->Private);
+
+          if (Entry->ResetGop) {
+            mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
+            gLKDisplay->SetFlushMode(gLKDisplay, LK_DISPLAY_FLUSH_MODE_MANUAL);
+          }
+        }
+        break;
+
+      // spacebar
+      case 32:
+        if(Menu->Selection>=Menu->OptionNumber || Menu->Selection<0)
+          break;
+
+        Entry = MenuGetEntryById(Menu, Menu->Selection);
+
+        if(Entry->LongPressCallback) {
+          Status = Entry->LongPressCallback(Entry->Private);
+        }
+
+        break;
+    }
+  }
+  else {
+    INT32 MinSelection = Menu->BackCallback?-1:0;
+    switch(Key.ScanCode) {
+      case SCAN_UP:
+        if(Menu->Selection>MinSelection)
+          Menu->Selection--;
+        else Menu->Selection = Menu->OptionNumber-1;
+        break;
+      case SCAN_DOWN:
+        if(Menu->Selection+1<Menu->OptionNumber)
+          Menu->Selection++;
+        else Menu->Selection = MinSelection;
+        break;
+    }
+  }
+
+  return Status;
+}
+
+EFI_STATUS
+MenuShowSelectionDialog (
+  MENU_OPTION* Menu
+)
+{
+  EFI_STATUS Status;
+
+  if(Menu==NULL)
+    return EFI_INVALID_PARAMETER;
+
+  int dialog_w = dc->w-libaroma_dp(48);
+  int dialog_h = MIN(libaroma_dp(72)*Menu->OptionNumber, dc->h-libaroma_dp(48));
+  int dialog_x = libaroma_dp(24);
+  int dialog_y = (dc->h>>1)-(dialog_h>>1);
+
+  MINLIST* list = list_create(
+    dialog_w,
+    libaroma_dp(72),
+    colorBackground,
+    colorSelection,
+    colorTextPrimary,
+    colorTextPrimary
+  );
+  if(list==NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+  list->enableshadow = FALSE;
+  list->enablescrollbar = FALSE;
+  BuildAromaMenu(Menu, list, 0);
+
+  /* Mask Dark */
+  libaroma_draw_rect(
+    dc, 0, 0, dc->w, dc->h, RGB(000000), 0x7a
+  );
+
+  /* draw fake shadow */
+  int z;
+  int shadow_sz=libaroma_dp(2);
+  byte shadow_opa = (byte) (0x60 / shadow_sz);
+  for (z=1;z<shadow_sz;z++){
+    int wp=z*2;
+    libaroma_gradient_ex(dc,
+      dialog_x-z, dialog_y+(z>>1),
+      dialog_w+wp, dialog_h+wp,
+      0,0,
+      libaroma_dp(4),
+      0x1111,
+      shadow_opa, shadow_opa
+    );
+  }
+
+  UINTN           WaitIndex;
+  EFI_INPUT_KEY   Key;
+  while(TRUE) {
+    list_show(list, Menu->Selection, dialog_x, dialog_y, dialog_h);
+    libaroma_sync();
+
+    Status = gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &WaitIndex);
+    ASSERT_EFI_ERROR (Status);
+
+    Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
+    if(!EFI_ERROR(Status)) {
+      Status = MenuHandleKey(Menu, Key);
+    }
+  }
+
+  list_free(mActiveList);
+
+  return 0;
+}
+
 STATIC VOID
 RenderActiveMenu(
   VOID
@@ -834,8 +979,17 @@ RenderActiveMenu(
   if(mActiveMenu==NULL)
     return;
 
-  if(list==NULL)
-    BuildAromaMenu();
+  if(mActiveList==NULL) {
+    mActiveList = list_create(
+      dc->w,
+      libaroma_dp(72),
+      colorBackground,
+      colorSelection,
+      colorTextPrimary,
+      colorTextPrimary
+    );
+    BuildAromaMenu(mActiveMenu, mActiveList, LIST_ADD_WITH_SEPARATOR);
+  }
 
   libaroma_canvas_blank(dc);
 
@@ -874,8 +1028,8 @@ RenderActiveMenu(
     appbar_flags
   );
 
-  if(list) {
-    list_show(list, mActiveMenu->Selection, 0, list_y, list_height);
+  if(mActiveList) {
+    list_show(mActiveList, mActiveMenu->Selection, 0, list_y, list_height);
   }
 
   libaroma_sync();
@@ -892,15 +1046,13 @@ RenderBootScreen(
   MenuShowProgressDialog(text, TRUE);
 }
 
-STATIC EFI_STATUS Status;
-STATIC UINT32     OldMode;
-STATIC LK_DISPLAY_FLUSH_MODE     OldFlushMode;
-
 VOID
 MenuInit (
   VOID
   )
 {
+  EFI_STATUS Status;
+
   // get graphics protocol
   Status = gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **) &mGop);
   if (EFI_ERROR (Status)) {
@@ -964,7 +1116,8 @@ MenuEnter (
 {
   UINTN           WaitIndex;
   EFI_INPUT_KEY   Key;
-  MENU_ENTRY* Entry;
+  EFI_STATUS      Status;
+
   while(TRUE) {
     RenderActiveMenu();
 
@@ -972,66 +1125,8 @@ MenuEnter (
     ASSERT_EFI_ERROR (Status);
 
     Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
-
-    if(Key.ScanCode==SCAN_NULL) {
-      switch(Key.UnicodeChar) {
-        case CHAR_CARRIAGE_RETURN:
-          if(mActiveMenu->Selection==-1) {
-            mActiveMenu->BackCallback();
-            break;
-          }
-
-          if(mActiveMenu->Selection>=mActiveMenu->OptionNumber || mActiveMenu->Selection<0)
-            break;
-          
-          Entry = MenuGetEntryById(mActiveMenu, mActiveMenu->Selection);
-
-          if(!Entry->HideBootMessage)
-            RenderBootScreen(Entry);
-
-          if(Entry->Callback) {
-            if (Entry->ResetGop) {
-              mGop->SetMode(mGop, OldMode);
-              gLKDisplay->SetFlushMode(gLKDisplay, OldFlushMode);
-            }
-
-            Entry->Callback(Entry->Private);
-
-            if (Entry->ResetGop) {
-              mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
-              gLKDisplay->SetFlushMode(gLKDisplay, LK_DISPLAY_FLUSH_MODE_MANUAL);
-            }
-          }
-          break;
-
-        // spacebar
-        case 32:
-          if(mActiveMenu->Selection>=mActiveMenu->OptionNumber || mActiveMenu->Selection<0)
-            break;
-
-          Entry = MenuGetEntryById(mActiveMenu, mActiveMenu->Selection);
-
-          if(Entry->LongPressCallback) {
-            Entry->LongPressCallback(Entry->Private);
-          }
-
-          break;
-      }
-    }
-    else {
-      INT32 MinSelection = mActiveMenu->BackCallback?-1:0;
-      switch(Key.ScanCode) {
-        case SCAN_UP:
-          if(mActiveMenu->Selection>MinSelection)
-            mActiveMenu->Selection--;
-          else mActiveMenu->Selection = mActiveMenu->OptionNumber-1;
-          break;
-        case SCAN_DOWN:
-          if(mActiveMenu->Selection+1<mActiveMenu->OptionNumber)
-            mActiveMenu->Selection++;
-          else mActiveMenu->Selection = MinSelection;
-          break;
-      }
+    if(!EFI_ERROR(Status)) {
+      Status = MenuHandleKey(mActiveMenu, Key);
     }
   }
 }

@@ -22,6 +22,7 @@
 #include "bootimg.h"
 
 MENU_OPTION                 *mBootMenuMain = NULL;
+MENU_OPTION                 *mPowerMenu = NULL;
 LIST_ENTRY                  mRecoveries;
 FSTAB                       *mFstab = NULL;
 
@@ -775,9 +776,32 @@ RebootCallback (
   IN VOID* Private
 )
 {
-  gRT->ResetSystem (EfiResetCold, EFI_SUCCESS, 0, NULL);
-  return EFI_UNSUPPORTED;
+  CHAR16* Reason = Private;
+  UINTN Len = Reason?StrLen(Reason):0;
+
+  gRT->ResetSystem (EfiResetCold, EFI_SUCCESS, Len, Reason);
+
+  return EFI_DEVICE_ERROR;
 }
+
+EFI_STATUS
+PowerOffCallback (
+  IN VOID* Private
+)
+{
+  gRT->ResetSystem (EfiResetShutdown, EFI_SUCCESS, 0, NULL);
+  return EFI_DEVICE_ERROR;
+}
+
+EFI_STATUS
+RebootLongPressCallback (
+  IN VOID* Private
+)
+{
+  MenuShowSelectionDialog(mPowerMenu);
+  return EFI_SUCCESS;
+}
+
 
 STATIC VOID
 AddEfiBootOptions (
@@ -910,6 +934,7 @@ main (
 
   // create menus
   mBootMenuMain = MenuCreate();
+  mPowerMenu = MenuCreate();
   InitializeListHead(&mRecoveries);
 
   // get fstab data
@@ -968,7 +993,43 @@ main (
   Entry->Icon = libaroma_stream_ramdisk("icons/reboot.png");
   Entry->Name = AsciiStrDup("Reboot");
   Entry->Callback = RebootCallback;
+  Entry->Private = NULL;
+  Entry->LongPressCallback = RebootLongPressCallback;
   MenuAddEntry(mBootMenuMain, Entry);
+
+  Entry = MenuCreateEntry();
+  Entry->Icon = libaroma_stream_ramdisk("icons/power_off.png");
+  Entry->Name = AsciiStrDup("Power Off");
+  Entry->Callback = PowerOffCallback;
+  MenuAddEntry(mPowerMenu, Entry);
+
+  Entry = MenuCreateEntry();
+  Entry->Icon = libaroma_stream_ramdisk("icons/reboot.png");
+  Entry->Name = AsciiStrDup("Reboot");
+  Entry->Callback = RebootCallback;
+  Entry->Private = NULL;
+  MenuAddEntry(mPowerMenu, Entry);
+
+  Entry = MenuCreateEntry();
+  Entry->Icon = libaroma_stream_ramdisk("icons/reboot_recovery.png");
+  Entry->Name = AsciiStrDup("Reboot to Recovery");
+  Entry->Callback = RebootCallback;
+  Entry->Private = UnicodeStrDup(L"recovery");
+  MenuAddEntry(mPowerMenu, Entry);
+
+  Entry = MenuCreateEntry();
+  Entry->Icon = libaroma_stream_ramdisk("icons/reboot_bootloader.png");
+  Entry->Name = AsciiStrDup("Reboot to Bootloader");
+  Entry->Callback = RebootCallback;
+  Entry->Private = UnicodeStrDup(L"bootloader");
+  MenuAddEntry(mPowerMenu, Entry);
+
+  Entry = MenuCreateEntry();
+  Entry->Icon = libaroma_stream_ramdisk("icons/download_mode.png");
+  Entry->Name = AsciiStrDup("Enter Download Mode");
+  Entry->Callback = RebootCallback;
+  Entry->Private = UnicodeStrDup(L"download");
+  MenuAddEntry(mPowerMenu, Entry);
 
   MenuInit();
 

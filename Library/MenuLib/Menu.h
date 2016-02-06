@@ -31,6 +31,8 @@ typedef struct {
   byte selalpha;
   word textcolor;
   word textselcolor;
+  BOOLEAN enableshadow;
+  BOOLEAN enablescrollbar;
 } MINLIST;
 
 byte libaroma_fb_init(void);
