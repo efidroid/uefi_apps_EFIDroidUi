@@ -9,17 +9,17 @@
 
 typedef struct _FASTBOOT_COMMAND FASTBOOT_COMMAND;
 struct _FASTBOOT_COMMAND {
-	struct _FASTBOOT_COMMAND *Next;
-	CONST CHAR8 *Prefix;
-	UINT32 PrefixLen;
-	VOID (*Handle)(CHAR8 *Arg, VOID *Data, UINT32 Size);
+  struct _FASTBOOT_COMMAND *Next;
+  CONST CHAR8 *Prefix;
+  UINT32 PrefixLen;
+  VOID (*Handle)(CHAR8 *Arg, VOID *Data, UINT32 Size);
 };
 
 typedef struct _FASTBOOT_VAR FASTBOOT_VAR;
 struct _FASTBOOT_VAR {
-	struct _FASTBOOT_VAR *Next;
-	CONST CHAR8 *Name;
-	CONST CHAR8 *Value;
+  struct _FASTBOOT_VAR *Next;
+  CONST CHAR8 *Name;
+  CONST CHAR8 *Value;
 };
 
 STATIC EFI_EVENT mExitBootServicesEvent;
@@ -34,8 +34,8 @@ STATIC FASTBOOT_VAR *VariableList;
 
 STATIC VOID
 FastbootNotify (
-    lkapi_udc_gadget_t *Gadget,
-    UINT32 Event
+  lkapi_udc_gadget_t *Gadget,
+  UINT32 Event
 )
 {
   if (Event == LKAPI_UDC_EVENT_ONLINE) {
@@ -44,20 +44,20 @@ FastbootNotify (
 }
 
 STATIC lkapi_udc_device_t surf_udc_device = {
-	.vendor_id    = 0x18d1,
-	.product_id   = 0xD00D,
-	.version_id   = 0x0100,
-	.manufacturer = "Google",
-	.product      = "Android",
+  .vendor_id    = 0x18d1,
+  .product_id   = 0xD00D,
+  .version_id   = 0x0100,
+  .manufacturer = "Google",
+  .product      = "Android",
 };
 
 STATIC lkapi_udc_gadget_t fastboot_gadget = {
-	.notify        = FastbootNotify,
-	.ifc_class     = 0xff,
-	.ifc_subclass  = 0x42,
-	.ifc_protocol  = 0x03,
-	.ifc_endpoints = 2,
-	.ifc_string    = "fastboot",
+  .notify        = FastbootNotify,
+  .ifc_class     = 0xff,
+  .ifc_subclass  = 0x42,
+  .ifc_protocol  = 0x03,
+  .ifc_endpoints = 2,
+  .ifc_string    = "fastboot",
 };
 
 STATIC VOID
@@ -67,20 +67,20 @@ FastbootAck (
   BOOLEAN ChangeState
 )
 {
-	STACKBUF_DMA_ALIGN(Response, FASTBOOT_COMMAND_MAX_LENGTH);
+  STACKBUF_DMA_ALIGN(Response, FASTBOOT_COMMAND_MAX_LENGTH);
 
-	if (mFastbootState != STATE_COMMAND)
-		return;
+  if (mFastbootState != STATE_COMMAND)
+    return;
 
-	if (Reason == 0)
-		Reason = "";
+  if (Reason == 0)
+    Reason = "";
 
-	AsciiSPrint((CHAR8*)Response, FASTBOOT_COMMAND_MAX_LENGTH, "%a%a", Code, Reason);
+  AsciiSPrint((CHAR8*)Response, FASTBOOT_COMMAND_MAX_LENGTH, "%a%a", Code, Reason);
 
-	if(fastboot_gadget.usb_write(&fastboot_gadget, Response, AsciiStrLen((CHAR8*)Response))<0)
+  if(fastboot_gadget.usb_write(&fastboot_gadget, Response, AsciiStrLen((CHAR8*)Response))<0)
     mFastbootState = STATE_ERROR;
   else if(ChangeState)
-  	mFastbootState = STATE_COMPLETE;
+    mFastbootState = STATE_COMPLETE;
 }
 
 VOID
@@ -96,7 +96,7 @@ FastbootFail (
   CONST CHAR8 *Reason
 )
 {
-	FastbootAck("FAIL", Reason, TRUE);
+  FastbootAck("FAIL", Reason, TRUE);
 }
 
 VOID
@@ -104,7 +104,7 @@ FastbootOkay (
   CONST CHAR8 *Info
 )
 {
-	FastbootAck("OKAY", Info, TRUE);
+  FastbootAck("OKAY", Info, TRUE);
 }
 
 VOID
@@ -113,16 +113,16 @@ FastbootRegister (
   VOID (*Handle)(CHAR8 *Arg, VOID *Data, UINT32 Size)
 )
 {
-	FASTBOOT_COMMAND *Command;
+  FASTBOOT_COMMAND *Command;
 
-	Command = AllocatePool(sizeof(*Command));
-	if (Command) {
-		Command->Prefix = Prefix;
-		Command->PrefixLen = AsciiStrLen(Prefix);
-		Command->Handle = Handle;
-		Command->Next = CommandList;
-		CommandList = Command;
-	}
+  Command = AllocatePool(sizeof(*Command));
+  if (Command) {
+    Command->Prefix = Prefix;
+    Command->PrefixLen = AsciiStrLen(Prefix);
+    Command->Handle = Handle;
+    Command->Next = CommandList;
+    CommandList = Command;
+  }
 }
 
 VOID
@@ -131,15 +131,15 @@ FastbootPublish (
   CONST CHAR8 *Value
 )
 {
-	FASTBOOT_VAR *Variable;
+  FASTBOOT_VAR *Variable;
 
-	Variable = AllocatePool(sizeof(*Variable));
-	if (Variable) {
-		Variable->Name = Name;
-		Variable->Value = Value;
-		Variable->Next = VariableList;
-		VariableList = Variable;
-	}
+  Variable = AllocatePool(sizeof(*Variable));
+  if (Variable) {
+    Variable->Name = Name;
+    Variable->Value = Value;
+    Variable->Next = VariableList;
+    VariableList = Variable;
+  }
 }
 
 STATIC VOID
@@ -147,19 +147,18 @@ GetVarAll (
   VOID
 )
 {
-	FASTBOOT_VAR *Variable;
-	char Buffer[64];
+  FASTBOOT_VAR *Variable;
+  char Buffer[64];
 
-	for (Variable = VariableList; Variable; Variable = Variable->Next)
-	{
-		AsciiStrnCpyS(Buffer, sizeof(Buffer), Variable->Name, AsciiStrLen(Variable->Name));
-		AsciiStrCatS(Buffer, sizeof(Buffer), ":");
-		AsciiStrCatS(Buffer, sizeof(Buffer), Variable->Value);
+  for (Variable = VariableList; Variable; Variable = Variable->Next) {
+    AsciiStrnCpyS(Buffer, sizeof(Buffer), Variable->Name, AsciiStrLen(Variable->Name));
+    AsciiStrCatS(Buffer, sizeof(Buffer), ":");
+    AsciiStrCatS(Buffer, sizeof(Buffer), Variable->Value);
 
-		FastbootInfo(Buffer);
-		SetMem(Buffer, sizeof(Buffer), '\0');
-	}
-	FastbootOkay("");
+    FastbootInfo(Buffer);
+    SetMem(Buffer, sizeof(Buffer), '\0');
+  }
+  FastbootOkay("");
 }
 
 STATIC VOID
@@ -169,29 +168,28 @@ CommandGetVar (
   UINT32 Size
 )
 {
-	FASTBOOT_VAR *Variable;
-	BOOLEAN All = FALSE;
-	CHAR8 Response[128];
+  FASTBOOT_VAR *Variable;
+  BOOLEAN All = FALSE;
+  CHAR8 Response[128];
 
-	All = !AsciiStrCmp("all", Arg);
+  All = !AsciiStrCmp("all", Arg);
 
-	if (!AsciiStrnCmp("all", Arg, AsciiStrLen(Arg)))
-	{
-		GetVarAll();
-		return;
-	}
+  if (!AsciiStrnCmp("all", Arg, AsciiStrLen(Arg))) {
+    GetVarAll();
+    return;
+  }
 
-	for (Variable = VariableList; Variable; Variable = Variable->Next) {
-		if (All) {
-			AsciiSPrint(Response, sizeof(Response), "\t%a: [%a]", Variable->Name, Variable->Value);
-			FastbootInfo(Response);
-		}
-		else if (!AsciiStrCmp(Variable->Name, Arg)) {
-			FastbootOkay(Variable->Value);
-			return;
-		}
-	}
-	FastbootOkay("");
+  for (Variable = VariableList; Variable; Variable = Variable->Next) {
+    if (All) {
+      AsciiSPrint(Response, sizeof(Response), "\t%a: [%a]", Variable->Name, Variable->Value);
+      FastbootInfo(Response);
+    }
+    else if (!AsciiStrCmp(Variable->Name, Arg)) {
+      FastbootOkay(Variable->Value);
+      return;
+    }
+  }
+  FastbootOkay("");
 }
 
 STATIC VOID
@@ -201,17 +199,17 @@ CommandHelp (
   UINT32 Size
 )
 {
-	FASTBOOT_COMMAND *Command;
-	CHAR8 Response[128];
+  FASTBOOT_COMMAND *Command;
+  CHAR8 Response[128];
 
-	// print commands
-	FastbootInfo("commands:");
-	for (Command = CommandList; Command; Command = Command->Next) {
-		AsciiSPrint(Response, sizeof(Response), "\t%a", Command->Prefix);
-		FastbootInfo(Response);
-	}
+  // print commands
+  FastbootInfo("commands:");
+  for (Command = CommandList; Command; Command = Command->Next) {
+    AsciiSPrint(Response, sizeof(Response), "\t%a", Command->Prefix);
+    FastbootInfo(Response);
+  }
 
-	FastbootOkay("");
+  FastbootOkay("");
 }
 
 /* todo: give lk strtoul and nuke this */
@@ -220,29 +218,29 @@ HexToUnsigned (
   CONST CHAR8 *x
 )
 {
-    UINT32 n = 0;
+  UINT32 n = 0;
 
-    while(*x) {
-        switch(*x) {
-        case '0': case '1': case '2': case '3': case '4':
-        case '5': case '6': case '7': case '8': case '9':
-            n = (n << 4) | (*x - '0');
-            break;
-        case 'a': case 'b': case 'c':
-        case 'd': case 'e': case 'f':
-            n = (n << 4) | (*x - 'a' + 10);
-            break;
-        case 'A': case 'B': case 'C':
-        case 'D': case 'E': case 'F':
-            n = (n << 4) | (*x - 'A' + 10);
-            break;
-        default:
-            return n;
-        }
-        x++;
+  while(*x) {
+    switch(*x) {
+      case '0': case '1': case '2': case '3': case '4':
+      case '5': case '6': case '7': case '8': case '9':
+        n = (n << 4) | (*x - '0');
+        break;
+      case 'a': case 'b': case 'c':
+      case 'd': case 'e': case 'f':
+        n = (n << 4) | (*x - 'a' + 10);
+        break;
+      case 'A': case 'B': case 'C':
+      case 'D': case 'E': case 'F':
+        n = (n << 4) | (*x - 'A' + 10);
+        break;
+      default:
+        return n;
     }
+    x++;
+  }
 
-    return n;
+  return n;
 }
 
 STATIC VOID
@@ -265,34 +263,34 @@ CommandDownload (
   }
 
   // allocate data buffer
-	DownloadSize = 0;
+  DownloadSize = 0;
   DownloadPages = ROUNDUP(Length, EFI_PAGE_SIZE)/EFI_PAGE_SIZE;
   DownloadBase = AllocateAlignedPages(DownloadPages, EFI_PAGE_SIZE);
   if(DownloadBase == NULL) {
-		FastbootFail("data too large");
-		return;
+    FastbootFail("data too large");
+    return;
   }
 
   // write response
-	AsciiSPrint(Response, FASTBOOT_COMMAND_MAX_LENGTH, "DATA%08x", Length);
-	if(fastboot_gadget.usb_write(&fastboot_gadget, Response, AsciiStrLen(Response))<0) {
+  AsciiSPrint(Response, FASTBOOT_COMMAND_MAX_LENGTH, "DATA%08x", Length);
+  if(fastboot_gadget.usb_write(&fastboot_gadget, Response, AsciiStrLen(Response))<0) {
     mFastbootState = STATE_ERROR;
-		return;
+    return;
   }
 
-	// Discard the cache contents before starting the download
-	InvalidateDataCacheRange(DownloadBase, Length);
+  // Discard the cache contents before starting the download
+  InvalidateDataCacheRange(DownloadBase, Length);
 
   // read data
-	r = fastboot_gadget.usb_read(&fastboot_gadget, DownloadBase, Length);
-	if ((r < 0) || ((UINT32) r != Length)) {
-		mFastbootState = STATE_ERROR;
-		return;
-	}
+  r = fastboot_gadget.usb_read(&fastboot_gadget, DownloadBase, Length);
+  if ((r < 0) || ((UINT32) r != Length)) {
+    mFastbootState = STATE_ERROR;
+    return;
+  }
 
   // set size and send OKAY
-	DownloadSize = Length;
-	FastbootOkay("");
+  DownloadSize = Length;
+  FastbootOkay("");
 }
 
 STATIC
@@ -302,49 +300,49 @@ FastbootCommandLoop (
 )
 {
   INT32 r;
-	FASTBOOT_COMMAND *Command;
+  FASTBOOT_COMMAND *Command;
   DEBUG((EFI_D_INFO, "fastboot: processing commands\n"));
 
   UINT8* Buffer = AllocateAlignedPages(ArmDataCacheLineLength(), ROUNDUP(4096, ArmDataCacheLineLength()));
   ASSERT(Buffer);
 
-AGAIN:
+  AGAIN:
   while (mFastbootState != STATE_ERROR) {
     SetMem(Buffer, FASTBOOT_COMMAND_MAX_LENGTH, 0);
-		InvalidateDataCacheRange(Buffer, FASTBOOT_COMMAND_MAX_LENGTH);
+    InvalidateDataCacheRange(Buffer, FASTBOOT_COMMAND_MAX_LENGTH);
 
     MenuShowProgressDialog("Waiting for commands", FALSE);
 
     r = fastboot_gadget.usb_read(&fastboot_gadget, Buffer, FASTBOOT_COMMAND_MAX_LENGTH);
-		if (r < 0) break;
+    if (r < 0) break;
 
     // Commands aren't null-terminated. Let's get a null-terminated version.
-		Buffer[r] = 0;
+    Buffer[r] = 0;
 
     mFastbootState = STATE_COMMAND;
 
-		for (Command = CommandList; Command; Command = Command->Next) {
-			if (CompareMem(Buffer, Command->Prefix, Command->PrefixLen))
-				continue;
+    for (Command = CommandList; Command; Command = Command->Next) {
+      if (CompareMem(Buffer, Command->Prefix, Command->PrefixLen))
+        continue;
 
-			CHAR8* Arg = (CHAR8*) Buffer + Command->PrefixLen;
-			if(Arg[0]==' ')
-				Arg++;
+      CHAR8* Arg = (CHAR8*) Buffer + Command->PrefixLen;
+      if(Arg[0]==' ')
+        Arg++;
 
-			Command->Handle(Arg, DownloadBase, DownloadSize);
-			if (mFastbootState == STATE_COMMAND)
-				FastbootFail("unknown reason");
-			goto AGAIN;
-		}
+      Command->Handle(Arg, DownloadBase, DownloadSize);
+      if (mFastbootState == STATE_COMMAND)
+        FastbootFail("unknown reason");
+      goto AGAIN;
+    }
 
-		FastbootInfo("unknown command");
-		FastbootInfo("See 'fastboot oem help'");
-		FastbootFail("");
+    FastbootInfo("unknown command");
+    FastbootInfo("See 'fastboot oem help'");
+    FastbootFail("");
   }
 
-	mFastbootState = STATE_OFFLINE;
-	DEBUG((EFI_D_ERROR, "fastboot: oops!\n"));
-	FreeAlignedPages(Buffer, 1);
+  mFastbootState = STATE_OFFLINE;
+  DEBUG((EFI_D_ERROR, "fastboot: oops!\n"));
+  FreeAlignedPages(Buffer, 1);
 
   if (DownloadBase!=NULL) {
     FreeAlignedPages(DownloadBase, DownloadPages);
@@ -360,14 +358,14 @@ FastbootHandler (
   VOID
 )
 {
-	for (;;) {
+  for (;;) {
     UINTN EventIndex;
 
     MenuShowProgressDialog("Connect USB Cable", FALSE);
     gBS->WaitForEvent (1, &mUsbOnlineEvent, &EventIndex);
 
-		FastbootCommandLoop();
-	}
+    FastbootCommandLoop();
+  }
 }
 
 STATIC
@@ -398,9 +396,9 @@ FastbootInit (
   mUsbInterface = LKApi->usbgadget_get_interface();
   ASSERT(mUsbInterface);
 
-	FastbootRegister("oem help", CommandHelp);
-	FastbootRegister("getvar:", CommandGetVar);
-	FastbootRegister("download:", CommandDownload);
+  FastbootRegister("oem help", CommandHelp);
+  FastbootRegister("getvar:", CommandGetVar);
+  FastbootRegister("download:", CommandDownload);
   FastbootPublish("version", "0.5");
 
   surf_udc_device.serialno = AsciiStrDup("EFIDroid");
