@@ -763,6 +763,39 @@ BootOptionEfiOption (
 }
 
 EFI_STATUS
+BootShell (
+  IN VOID* Private
+  )
+{
+  EFI_STATUS       Status;
+  EFI_DEVICE_PATH* EfiShellDevicePath;
+
+  // Find the EFI Shell
+  Status = LocateEfiApplicationInFvByName (L"Shell", &EfiShellDevicePath);
+  if (Status == EFI_NOT_FOUND) {
+    Print (L"Error: EFI Application not found.\n");
+    return Status;
+  } else if (EFI_ERROR (Status)) {
+    Print (L"Error: Status Code: 0x%X\n", (UINT32)Status);
+    return Status;
+  } else {
+    // Need to connect every drivers to ensure no dependencies are missing for the application
+    Status = BdsConnectAllDrivers ();
+    if (EFI_ERROR (Status)) {
+      DEBUG ((EFI_D_ERROR, "FAIL to connect all drivers\n"));
+      return Status;
+    }
+
+    CONST CHAR16* Args = L"";
+    UINTN LoadOptionsSize = (UINT32)StrSize (Args);
+    VOID *LoadOptions     = AllocatePool (LoadOptionsSize);
+    StrCpy (LoadOptions, Args);
+
+    return BdsStartEfiApplication (gImageHandle, EfiShellDevicePath, LoadOptionsSize, LoadOptions);
+  }
+}
+
+EFI_STATUS
 FastbootCallback (
   IN VOID* Private
 )
@@ -859,15 +892,16 @@ AddEfiBootOptions (
       }
     }
 
+    // skip shell
+    if(!StrCmp(Option->Description, L"EFI Internal Shell"))
+      continue;
+
     MENU_ENTRY *Entry = MenuCreateEntry();
     if(Entry == NULL) {
       break;
     }
 
-    if(!StrCmp(Option->Description, L"EFI Internal Shell"))
-      Entry->Icon = libaroma_stream_ramdisk("icons/efi_shell.png");
-    else
-      Entry->Icon = libaroma_stream_ramdisk("icons/uefi.png");
+    Entry->Icon = libaroma_stream_ramdisk("icons/uefi.png");
     Entry->Name = Unicode2Ascii(Option->Description);
     Entry->Callback = BootOptionEfiOption;
     Entry->Private = Option;
@@ -968,6 +1002,14 @@ main (
 
   // add default EFI options
   AddEfiBootOptions();
+
+  // add shell
+  Entry = MenuCreateEntry();
+  Entry->Icon = libaroma_stream_ramdisk("icons/efi_shell.png");
+  Entry->Name = AsciiStrDup("EFI Internal Shell");
+  Entry->Callback = BootShell;
+  Entry->ResetGop = TRUE;
+  MenuAddEntry(mBootMenuMain, Entry);
 
   // add recovery items
   LIST_ENTRY* Link;
