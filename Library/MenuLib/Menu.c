@@ -102,7 +102,7 @@ void list_free(MINLIST * list){
 #define LIST_ADD_MASK_ICON_COLOR        0x1 /* mask icon with text color */
 #define LIST_ADD_WITH_SEPARATOR         0x2 /* add separator below item */
 #define LIST_ADD_SEPARATOR_ALIGN_TEXT   0x4 /* align the separator line with text position */
-void list_add(MINLIST * list, LIBAROMA_STREAMP icon, const char * title, const char * subtitle, byte flags){
+void list_add(MINLIST * list, LIBAROMA_STREAMP icon, const char * title, const char * subtitle, byte flags, BOOLEAN hasmore){
   int new_n  = list->n + 1;
   int item_y = list->n * list->ih;
   LIBAROMA_CANVASP cv = libaroma_canvas(list->w, list->ih*new_n);
@@ -200,6 +200,30 @@ void list_add(MINLIST * list, LIBAROMA_STREAMP icon, const char * title, const c
       colorSeparator,
       alphaSeparator
     );
+  }
+
+  if(hasmore) {
+    LIBAROMA_STREAMP icon = libaroma_stream_ramdisk("icons/ic_more_vert_white_24dp.png");
+    LIBAROMA_CANVASP ico  = libaroma_image_ex(icon, 0, 0);
+    if(ico) {
+      int dpsz=libaroma_dp(30);
+      int icoy=item_y + ((list->ih>>1) - (dpsz>>1));
+      int icox=list->w - ico->w - libaroma_dp(16);
+
+      libaroma_draw_scale_smooth(
+        cv, ico,
+        icox,icoy,
+        dpsz, dpsz,
+        0, 0, ico->w, ico->h
+      );
+
+      libaroma_draw_scale_smooth(
+        cva, ico,
+        icox,icoy,
+        dpsz, dpsz,
+        0, 0, ico->w, ico->h
+      );
+    }
   }
  
   list->cv  = cv;
@@ -543,7 +567,7 @@ BuildAromaMenu (
   while (Link != NULL && Link != &Menu->Head) {
     Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
 
-    list_add(list, Entry->Icon, Entry->Name, Entry->Description, ItemFlags);
+    list_add(list, Entry->Icon, Entry->Name, Entry->Description, ItemFlags, !!Entry->LongPressCallback);
 
     Link = Link->ForwardLink;
     Index++;
