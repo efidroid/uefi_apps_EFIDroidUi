@@ -1,6 +1,8 @@
 #include "EFIDroidUi.h"
 #include <Protocol/DevicePath.h>
 #include <Protocol/RamDisk.h>
+#include <Protocol/GraphicsOutput.h>
+#include <Protocol/LKDisplay.h>
 #include <IndustryStandard/PeImage.h>
 #include <Library/DevicePathLib.h>
 #include <Library/ShellLib.h>
@@ -355,6 +357,107 @@ CommandShell (
   }
 }
 
+STATIC VOID
+CommandDisplayInfo (
+  CHAR8 *Arg,
+  VOID *Data,
+  UINT32 Size
+)
+{
+  CHAR8                                Buffer[59];
+  EFI_GRAPHICS_OUTPUT_PROTOCOL         *Gop;
+  EFI_LK_DISPLAY_PROTOCOL              *LKDisplay;
+  UINT32                               ModeIndex;
+  UINTN                                MaxMode;
+  UINTN                                SizeOfInfo;
+  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info;
+  EFI_STATUS                           Status;
+
+  // get graphics protocol
+  Status = gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **) &Gop);
+  if (EFI_ERROR (Status)) {
+    AsciiSPrint(Buffer, 59, "Error: %r", Status);
+    FastbootFail(Buffer);
+    return;
+  }
+
+  MaxMode = Gop->Mode->MaxMode;
+
+  AsciiSPrint(Buffer, 59, "%u mode%a", MaxMode, MaxMode>1?"s":"");
+  FastbootInfo(Buffer);
+
+  AsciiSPrint(Buffer, 59, "buffer: 0x%08x-0x%08x",
+    (UINTN)Gop->Mode->FrameBufferBase,
+    (UINTN)Gop->Mode->FrameBufferBase+Gop->Mode->FrameBufferSize
+  );
+  FastbootInfo(Buffer);
+
+  // get LKDisplay protocol
+  Status = gBS->LocateProtocol (&gEfiLKDisplayProtocolGuid, NULL, (VOID **) &LKDisplay);
+  if (!EFI_ERROR (Status)) {
+    AsciiSPrint(Buffer, 59, "density: %u", LKDisplay->GetDensity(LKDisplay));
+    FastbootInfo(Buffer);
+
+    LK_DISPLAY_FLUSH_MODE FlushMode = LKDisplay->GetFlushMode(LKDisplay);
+    if (FlushMode==LK_DISPLAY_FLUSH_MODE_AUTO)
+      AsciiSPrint(Buffer, 59, "flush_mode: auto");
+    else if (FlushMode==LK_DISPLAY_FLUSH_MODE_MANUAL)
+      AsciiSPrint(Buffer, 59, "flush_mode: manual");
+    else
+      AsciiSPrint(Buffer, 59, "flush_mode: invalid");
+    FastbootInfo(Buffer);
+
+    AsciiSPrint(Buffer, 59, "portrait mode: %u", LKDisplay->GetPortraitMode());
+    FastbootInfo(Buffer);
+
+    AsciiSPrint(Buffer, 59, "landscape mode: %u", LKDisplay->GetLandscapeMode());
+    FastbootInfo(Buffer);
+  }
+
+  for (ModeIndex = 0; ModeIndex < MaxMode; ModeIndex++) {
+    Status = Gop->QueryMode (
+                       Gop,
+                       ModeIndex,
+                       &SizeOfInfo,
+                       &Info
+                       );
+    if (!EFI_ERROR (Status)) {
+
+      AsciiSPrint(Buffer, 59, "mode %u:%a", ModeIndex, ModeIndex==Gop->Mode->Mode?" (active)":"");
+      FastbootInfo(Buffer);
+
+      AsciiSPrint(Buffer, 59, "  res: %ux%u", Info->HorizontalResolution, Info->VerticalResolution);
+      FastbootInfo(Buffer);
+
+      AsciiSPrint(Buffer, 59, "  scanline: %upx", Info->PixelsPerScanLine);
+      FastbootInfo(Buffer);
+
+      if (Info->PixelFormat==PixelRedGreenBlueReserved8BitPerColor)
+        AsciiSPrint(Buffer, 59, "  format: RGB888");
+      else if (Info->PixelFormat==PixelBlueGreenRedReserved8BitPerColor)
+        AsciiSPrint(Buffer, 59, "  format: BGR888");
+      else if (Info->PixelFormat==PixelBitMask) {
+        AsciiSPrint(Buffer, 59, "  format: mask %08x/%08x/%08x",
+          Info->PixelInformation.RedMask,
+          Info->PixelInformation.GreenMask,
+          Info->PixelInformation.BlueMask
+        );
+      }
+      else if (Info->PixelFormat==PixelBltOnly)
+        AsciiSPrint(Buffer, 59, "  format: unknown");
+      else
+        AsciiSPrint(Buffer, 59, "  format: invalid");
+
+
+      FastbootInfo(Buffer);
+
+      FreePool (Info);
+    }
+  }
+
+  FastbootOkay("");
+}
+
 VOID
 FastbootCommandsAdd (
   VOID
@@ -368,4 +471,5 @@ FastbootCommandsAdd (
   FastbootRegister("boot", CommandBoot);
 
   FastbootRegister("oem shell", CommandShell);
+  FastbootRegister("oem displayinfo", CommandDisplayInfo);
 }
