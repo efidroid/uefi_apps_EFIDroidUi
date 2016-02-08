@@ -35,6 +35,7 @@ struct _MENU_OPTION {
   LIST_ENTRY      Head;
   UINTN           OptionNumber;
   INT32           Selection;
+  CHAR8           *Title;
   VOID            *Private;
   EFI_STATUS      (*BackCallback) (struct _MENU_OPTION* This);
 

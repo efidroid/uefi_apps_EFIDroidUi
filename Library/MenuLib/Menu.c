@@ -412,6 +412,9 @@ MenuFree (
   Menu->OptionNumber = 0;
   Menu->Selection = 0;
 
+  if(Menu->Title)
+    FreePool(Menu->Title);
+
   InvalidateMenu(Menu);
 
   FreePool(Menu);
@@ -1047,7 +1050,7 @@ RenderActiveMenu(
 
   /* set appbar */
   appbar_draw(
-    "Please Select OS",
+    mActiveMenu->Title?:"",
     colorPrimary,
     colorText,
     statusbar_height,
