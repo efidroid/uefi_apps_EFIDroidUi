@@ -413,6 +413,8 @@ MenuFree (
   Menu->Selection = 0;
 
   InvalidateMenu(Menu);
+
+  FreePool(Menu);
 }
 
 MENU_ENTRY*
