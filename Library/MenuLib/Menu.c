@@ -865,7 +865,7 @@ MenuHandleKey (
     switch(Key.UnicodeChar) {
       case CHAR_CARRIAGE_RETURN:
         if(Menu->Selection==-1) {
-          Status = Menu->BackCallback();
+          Status = Menu->BackCallback(Menu);
           break;
         }
 
@@ -883,7 +883,7 @@ MenuHandleKey (
             gLKDisplay->SetFlushMode(gLKDisplay, OldFlushMode);
           }
 
-          Status = Entry->Callback(Entry->Private);
+          Status = Entry->Callback(Entry);
 
           if (Entry->ResetGop) {
             mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
@@ -900,7 +900,7 @@ MenuHandleKey (
         Entry = MenuGetEntryById(Menu, Menu->Selection);
 
         if(Entry->LongPressCallback) {
-          Status = Entry->LongPressCallback(Entry->Private);
+          Status = Entry->LongPressCallback(Entry);
         }
 
         break;

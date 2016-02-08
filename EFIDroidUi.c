@@ -69,10 +69,10 @@ MenuBootEntryCloneCallback (
 
 EFI_STATUS
 CallbackBootAndroid (
-  IN VOID* Private
+  IN MENU_ENTRY* This
 )
 {
-  MENU_ENTRY_PDATA *PData = Private;
+  MENU_ENTRY_PDATA *PData = This->Private;
 
   return AndroidBootFromBlockIo(PData->BlockIo, PData->mbhandle, PData->DisablePatching);
 }
@@ -106,10 +106,10 @@ MenuCreateBootEntry (
 
 EFI_STATUS
 RecoveryCallback (
-  IN VOID* Private
+  IN MENU_ENTRY* This
 )
 {
-  RECOVERY_MENU *Menu = Private;
+  RECOVERY_MENU *Menu = This->Private;
   Menu->SubMenu->Selection = 0;
   SetActiveMenu(Menu->SubMenu);
   return EFI_SUCCESS;
@@ -117,22 +117,22 @@ RecoveryCallback (
 
 EFI_STATUS
 RecoveryLongPressCallback (
-  IN VOID* Private
+  IN MENU_ENTRY* This
 )
 {
-  RECOVERY_MENU *Menu = Private;
+  RECOVERY_MENU *Menu = This->Private;
 
   INT32 Selection = MenuShowDialog("Unpatched boot", "Do you want to boot without any ramdisk patching?", "OK", "CANCEL");
   if(Selection==0) {
     RenderBootScreen(Menu->NoPatchEntry);
-    return Menu->NoPatchEntry->Callback(Menu->NoPatchEntry->Private);
+    return Menu->NoPatchEntry->Callback(Menu->NoPatchEntry);
   }
   return EFI_SUCCESS;
 }
 
 EFI_STATUS
 RecoveryBackCallback (
-  VOID
+  MENU_OPTION* This
 )
 {
   SetActiveMenu(mBootMenuMain);
@@ -729,10 +729,10 @@ NEXT:
 
 EFI_STATUS
 BootOptionEfiOption (
-  IN VOID* Private
+  IN MENU_ENTRY* This
 )
 {
-  BDS_COMMON_OPTION *BootOption = (BDS_COMMON_OPTION*)Private;
+  BDS_COMMON_OPTION *BootOption = (BDS_COMMON_OPTION*)This->Private;
   UINTN             ExitDataSize;
   CHAR16            *ExitData;
   EFI_STATUS        Status;
@@ -764,7 +764,7 @@ BootOptionEfiOption (
 
 EFI_STATUS
 BootShell (
-  IN VOID* Private
+  IN MENU_ENTRY* This
   )
 {
   EFI_STATUS       Status;
@@ -797,7 +797,7 @@ BootShell (
 
 EFI_STATUS
 FastbootCallback (
-  IN VOID* Private
+  IN MENU_ENTRY* This
 )
 {
   FastbootInit();
@@ -806,10 +806,10 @@ FastbootCallback (
 
 EFI_STATUS
 RebootCallback (
-  IN VOID* Private
+  IN MENU_ENTRY* This
 )
 {
-  CHAR16* Reason = Private;
+  CHAR16* Reason = This->Private;
   UINTN Len = Reason?StrLen(Reason):0;
 
   gRT->ResetSystem (EfiResetCold, EFI_SUCCESS, Len, Reason);
@@ -819,7 +819,7 @@ RebootCallback (
 
 EFI_STATUS
 PowerOffCallback (
-  IN VOID* Private
+  IN MENU_ENTRY* This
 )
 {
   gRT->ResetSystem (EfiResetShutdown, EFI_SUCCESS, 0, NULL);
@@ -828,7 +828,7 @@ PowerOffCallback (
 
 EFI_STATUS
 RebootLongPressCallback (
-  IN VOID* Private
+  IN MENU_ENTRY* This
 )
 {
   MenuShowSelectionDialog(mPowerMenu);

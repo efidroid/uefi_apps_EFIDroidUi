@@ -122,7 +122,7 @@ AndroidGetDecompRamdiskFromBlockIo (
 
 EFI_STATUS
 MultibootCallback (
-  IN VOID *Private
+  IN MENU_ENTRY *This
 );
 
 #define FASTBOOT_COMMAND_MAX_LENGTH 64

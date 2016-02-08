@@ -17,11 +17,11 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 EFI_STATUS
 MultibootCallback (
-  IN VOID *Private
+  IN MENU_ENTRY *This
 )
 {
   EFI_STATUS                Status;
-  multiboot_handle_t        *mbhandle = Private;
+  multiboot_handle_t        *mbhandle = This->Private;
   EFI_FILE_PROTOCOL         *BootFile;
 
   DEBUG((EFI_D_ERROR, "Booting %a ...\n", mbhandle->Name));

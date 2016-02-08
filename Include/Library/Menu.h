@@ -18,8 +18,8 @@ struct _MENU_ENTRY {
 
   CHAR8* Name;
   CHAR8* Description;
-  EFI_STATUS (*Callback) (VOID*);
-  EFI_STATUS (*LongPressCallback) (VOID*);
+  EFI_STATUS (*Callback) (struct _MENU_ENTRY* This);
+  EFI_STATUS (*LongPressCallback) (struct _MENU_ENTRY* This);
   VOID *Private;
   BOOLEAN ResetGop;
   BOOLEAN HideBootMessage;
@@ -29,16 +29,18 @@ struct _MENU_ENTRY {
   EFI_STATUS (*CloneCallback)(struct _MENU_ENTRY* BaseEntry, struct _MENU_ENTRY* Entry);
 };
 
-typedef struct {
+typedef struct _MENU_OPTION MENU_OPTION;
+struct _MENU_OPTION {
   UINTN           Signature;
   LIST_ENTRY      Head;
   UINTN           OptionNumber;
   INT32           Selection;
-  EFI_STATUS      (*BackCallback) (VOID);
+  VOID            *Private;
+  EFI_STATUS      (*BackCallback) (struct _MENU_OPTION* This);
 
   // private
   MINLIST* AromaList;
-} MENU_OPTION;
+};
 
 VOID
 MenuInit (
