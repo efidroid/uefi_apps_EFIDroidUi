@@ -111,4 +111,19 @@ UtilFileInfo (
   IN EFI_GUID             *InfoType
   );
 
+CHAR16*
+UtilGetTypeFromName (
+  IN CHAR16   *FileName
+  );
+
+VOID
+UtilToLowerString (
+  IN CHAR16  *String
+  );
+
+CHAR16*
+UtilGetExtensionLower (
+  IN UINT16  *FileName
+  );
+
 #endif /* ! UTIL_H */

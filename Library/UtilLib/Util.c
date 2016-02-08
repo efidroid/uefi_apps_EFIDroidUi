@@ -295,3 +295,84 @@ UtilFileInfo (
 
   return Buffer;
 }
+
+/**
+
+  Get file type base on the file name.
+  Just cut the file name, from the ".". eg ".efi"
+
+  @param FileName  File need to be checked.
+
+  @retval the file type string.
+
+**/
+CHAR16*
+UtilGetTypeFromName (
+  IN CHAR16   *FileName
+  )
+{
+  UINTN    Index;
+
+  Index = StrLen (FileName) - 1;
+  while ((FileName[Index] != L'.') && (Index != 0)) {
+    Index--;
+  }
+
+  Index++;
+
+  return Index == 0 ? NULL : &FileName[Index];
+}
+
+/**
+  Converts the unicode character of the string from uppercase to lowercase.
+  This is a internal function.
+
+  @param ConfigString  String to be converted
+
+**/
+VOID
+UtilToLowerString (
+  IN CHAR16  *String
+  )
+{
+  CHAR16      *TmpStr;
+
+  for (TmpStr = String; *TmpStr != L'\0'; TmpStr++) {
+    if (*TmpStr >= L'A' && *TmpStr <= L'Z') {
+      *TmpStr = (CHAR16) (*TmpStr - L'A' + L'a');
+    }
+  }
+}
+
+/**
+
+  Check whether current FileName point to a valid
+  Efi Image File.
+
+  @param FileName  File need to be checked.
+
+  @retval TRUE  Is Efi Image
+  @retval FALSE Not a valid Efi Image
+
+**/
+CHAR16*
+UtilGetExtensionLower (
+  IN UINT16  *FileName
+  )
+{
+  CHAR16     *InputFileType;
+  CHAR16     *TmpStr;
+
+  InputFileType = UtilGetTypeFromName (FileName);
+  //
+  // If the file not has *.* style, always return TRUE.
+  //
+  if (InputFileType == NULL) {
+    return NULL;
+  }
+
+  TmpStr = AllocateCopyPool (StrSize (InputFileType), InputFileType);
+  UtilToLowerString(TmpStr);
+
+  return TmpStr;
+}
