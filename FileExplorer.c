@@ -161,8 +161,18 @@ FindFiles (
       Entry->HideBootMessage = TRUE;
       if (ItemContext->IsDir)
         Entry->Icon = libaroma_stream_ramdisk("icons/ic_fso_folder.png");
-      else
-        Entry->Icon = libaroma_stream_ramdisk("icons/ic_fso_default.png");
+      else {
+        CHAR16* Ext = UtilGetExtensionLower(DirInfo->FileName);
+        if(Ext) {
+          if(StrStr (L"efi", Ext))
+            Entry->Icon = libaroma_stream_ramdisk("icons/uefi.png");
+
+          FreePool(Ext);
+        }
+
+        if(!Entry->Icon)
+          Entry->Icon = libaroma_stream_ramdisk("icons/ic_fso_default.png");
+      }
       MenuAddEntry(Menu, Entry);
     }
   }
