@@ -100,4 +100,15 @@ VisitAllInstancesOfProtocol (
   IN VOID                        *Context
   );
 
+EFI_FILE_HANDLE
+UtilOpenRoot (
+  IN EFI_HANDLE                   DeviceHandle
+  );
+
+VOID *
+UtilFileInfo (
+  IN EFI_FILE_HANDLE      FHand,
+  IN EFI_GUID             *InfoType
+  );
+
 #endif /* ! UTIL_H */

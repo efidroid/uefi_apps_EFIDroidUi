@@ -3,6 +3,7 @@
 #include <Library/MemoryAllocationLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/UefiBootServicesTableLib.h>
+#include <Library/DebugLib.h>
 
 CHAR8*
 Unicode2Ascii (
@@ -204,4 +205,93 @@ VisitAllInstancesOfProtocol (
   gBS->FreePool (HandleBuffer);
 
   return EFI_SUCCESS;
+}
+
+/**
+
+  Function opens and returns a file handle to the root directory of a volume.
+
+  @param DeviceHandle    A handle for a device
+
+  @return A valid file handle or NULL is returned
+
+**/
+EFI_FILE_HANDLE
+UtilOpenRoot (
+  IN EFI_HANDLE                   DeviceHandle
+  )
+{
+  EFI_STATUS                      Status;
+  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Volume;
+  EFI_FILE_HANDLE                 File;
+
+  File = NULL;
+
+  //
+  // File the file system interface to the device
+  //
+  Status = gBS->HandleProtocol (
+                  DeviceHandle,
+                  &gEfiSimpleFileSystemProtocolGuid,
+                  (VOID *) &Volume
+                  );
+
+  //
+  // Open the root directory of the volume
+  //
+  if (!EFI_ERROR (Status)) {
+    Status = Volume->OpenVolume (
+                      Volume,
+                      &File
+                      );
+  }
+  //
+  // Done
+  //
+  return EFI_ERROR (Status) ? NULL : File;
+}
+
+/**
+
+  Function gets the file information from an open file descriptor, and stores it
+  in a buffer allocated from pool.
+
+  @param FHand           File Handle.
+  @param InfoType        Info type need to get.
+
+  @retval                A pointer to a buffer with file information or NULL is returned
+
+**/
+VOID *
+UtilFileInfo (
+  IN EFI_FILE_HANDLE      FHand,
+  IN EFI_GUID             *InfoType
+  )
+{
+  EFI_STATUS    Status;
+  EFI_FILE_INFO *Buffer;
+  UINTN         BufferSize;
+
+  Buffer      = NULL;
+  BufferSize  = 0;
+
+  Status = FHand->GetInfo (
+                    FHand,
+                    InfoType,
+                    &BufferSize,
+                    Buffer
+                    );
+  if (Status == EFI_BUFFER_TOO_SMALL) {
+    Buffer = AllocatePool (BufferSize);
+    ASSERT (Buffer != NULL);
+  }
+
+  Status = FHand->GetInfo (
+                    FHand,
+                    InfoType,
+                    &BufferSize,
+                    Buffer
+                    );
+
+  return Buffer;
 }
