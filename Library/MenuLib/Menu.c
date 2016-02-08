@@ -225,6 +225,11 @@ void list_add(MINLIST * list, LIBAROMA_STREAMP icon, const char * title, const c
     }
   }
  
+  if (list->cv)
+    libaroma_canvas_free(list->cv);
+  if (list->cva)
+    libaroma_canvas_free(list->cva);
+
   list->cv  = cv;
   list->cva = cva;
   list->n   = new_n;
