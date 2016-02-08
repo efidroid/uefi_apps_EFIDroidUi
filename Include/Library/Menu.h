@@ -9,6 +9,8 @@
 #define MENU_SIGNATURE             SIGNATURE_32 ('m', 'e', 'n', 'u')
 #define MENU_ENTRY_SIGNATURE       SIGNATURE_32 ('e', 'n', 't', 'r')
 
+typedef struct _MINLIST MINLIST;
+
 typedef struct _MENU_ENTRY MENU_ENTRY;
 struct _MENU_ENTRY {
   UINTN           Signature;
@@ -33,6 +35,9 @@ typedef struct {
   UINTN           OptionNumber;
   INT32           Selection;
   EFI_STATUS      (*BackCallback) (VOID);
+
+  // private
+  MINLIST* AromaList;
 } MENU_OPTION;
 
 VOID
@@ -106,8 +111,8 @@ GetActiveMenu(
 );
 
 VOID
-InvalidateActiveMenu(
-  VOID
+InvalidateMenu(
+  MENU_OPTION  *Menu
 );
 
 VOID

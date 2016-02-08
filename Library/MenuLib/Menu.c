@@ -6,7 +6,6 @@ STATIC EFI_GRAPHICS_OUTPUT_PROTOCOL *mGop;
 STATIC EFI_LK_DISPLAY_PROTOCOL *gLKDisplay;
 STATIC MENU_OPTION* mActiveMenu = NULL;
 STATIC LIBAROMA_CANVASP dc;
-STATIC MINLIST *mActiveList = NULL;
 STATIC BOOLEAN Initialized = FALSE;
 STATIC UINT32 OldMode;
 STATIC LK_DISPLAY_FLUSH_MODE OldFlushMode;
@@ -407,7 +406,8 @@ MenuFree (
   }
   Menu->OptionNumber = 0;
   Menu->Selection = 0;
-  InvalidateActiveMenu();
+
+  InvalidateMenu(Menu);
 }
 
 MENU_ENTRY*
@@ -486,7 +486,6 @@ MenuAddEntry (
 {
   Menu->OptionNumber++;
   InsertTailList (&Menu->Head, &Entry->Link);
-  InvalidateActiveMenu();
 }
 
 VOID
@@ -497,7 +496,6 @@ MenuRemoveEntry (
 {
   RemoveEntryList (&Entry->Link);
   Menu->OptionNumber--;
-  InvalidateActiveMenu();
 }
 
 MENU_ENTRY *
@@ -528,11 +526,6 @@ SetActiveMenu (
 )
 {
   mActiveMenu = Menu;
-
-  if(mActiveList) {
-    list_free(mActiveList);
-    mActiveList = NULL;
-  }
 }
 
 MENU_OPTION*
@@ -544,11 +537,14 @@ GetActiveMenu(
 }
 
 VOID
-InvalidateActiveMenu(
-  VOID
+InvalidateMenu(
+  MENU_OPTION  *Menu
 )
 {
-  SetActiveMenu(mActiveMenu);
+  if(Menu->AromaList) {
+    list_free(Menu->AromaList);
+    Menu->AromaList = NULL;
+  }
 }
 
 VOID
@@ -990,7 +986,7 @@ MenuShowSelectionDialog (
     }
   }
 
-  list_free(mActiveList);
+  list_free(list);
 
   return 0;
 }
@@ -1003,8 +999,8 @@ RenderActiveMenu(
   if(mActiveMenu==NULL)
     return;
 
-  if(mActiveList==NULL) {
-    mActiveList = list_create(
+  if(mActiveMenu->AromaList==NULL) {
+    mActiveMenu->AromaList = list_create(
       dc->w,
       libaroma_dp(72),
       colorBackground,
@@ -1012,7 +1008,7 @@ RenderActiveMenu(
       colorTextPrimary,
       colorTextPrimary
     );
-    BuildAromaMenu(mActiveMenu, mActiveList, LIST_ADD_WITH_SEPARATOR);
+    BuildAromaMenu(mActiveMenu, mActiveMenu->AromaList, LIST_ADD_WITH_SEPARATOR);
   }
 
   libaroma_canvas_blank(dc);
@@ -1052,8 +1048,8 @@ RenderActiveMenu(
     appbar_flags
   );
 
-  if(mActiveList) {
-    list_show(mActiveList, mActiveMenu->Selection, 0, list_y, list_height);
+  if(mActiveMenu->AromaList) {
+    list_show(mActiveMenu->AromaList, mActiveMenu->Selection, 0, list_y, list_height);
   }
 
   libaroma_sync();

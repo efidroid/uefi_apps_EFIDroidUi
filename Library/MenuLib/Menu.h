@@ -20,7 +20,8 @@
 
 #define SCROLL_INDICATOR_WIDTH libaroma_dp(5)
 
-typedef struct {
+typedef struct _MINLIST MINLIST;
+struct _MINLIST {
   LIBAROMA_CANVASP cv;
   LIBAROMA_CANVASP cva;
   int n;  /* item count */
@@ -33,7 +34,7 @@ typedef struct {
   word textselcolor;
   BOOLEAN enableshadow;
   BOOLEAN enablescrollbar;
-} MINLIST;
+};
 
 byte libaroma_fb_init(void);
 byte libaroma_fb_release(void);
