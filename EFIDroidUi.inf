@@ -26,6 +26,7 @@
   MultibootLoader.c
   Fastboot.c
   FastbootCommands.c
+  FileExplorer.c
 
 [Packages]
   ArmPkg/ArmPkg.dec
@@ -74,3 +75,4 @@
 [Guids]
   gEFIDroidVariableGuid
   gLKVNORGuid
+  gEfiFileSystemVolumeLabelInfoIdGuid

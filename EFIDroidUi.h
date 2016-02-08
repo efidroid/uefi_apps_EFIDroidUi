@@ -125,6 +125,11 @@ MultibootCallback (
   IN MENU_ENTRY *This
 );
 
+EFI_STATUS
+FileExplorerCallback (
+  IN MENU_ENTRY* This
+);
+
 #define FASTBOOT_COMMAND_MAX_LENGTH 64
 
 VOID

@@ -1024,6 +1024,14 @@ main (
 
   // add fastboot option
   Entry = MenuCreateEntry();
+  Entry->Icon = libaroma_stream_ramdisk("icons/fileexplorer.png");
+  Entry->Name = AsciiStrDup("File Explorer");
+  Entry->Callback = FileExplorerCallback;
+  Entry->HideBootMessage = TRUE;
+  MenuAddEntry(mBootMenuMain, Entry);
+
+  // add fastboot option
+  Entry = MenuCreateEntry();
   Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
   Entry->Name = AsciiStrDup("Fastboot");
   Entry->Callback = FastbootCallback;
