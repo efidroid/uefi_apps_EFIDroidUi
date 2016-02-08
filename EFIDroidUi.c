@@ -154,6 +154,7 @@ CreateRecoveryMenu (
   Menu->Signature = RECOVERY_MENU_SIGNATURE;
   Menu->SubMenu = MenuCreate();
   Menu->SubMenu->BackCallback = RecoveryBackCallback;
+  Menu->SubMenu->Title = AsciiStrDup("Please Select OS");
 
   MENU_ENTRY* Entry = MenuCreateEntry();
   Entry->Callback = RecoveryCallback;
@@ -970,6 +971,8 @@ main (
   mBootMenuMain = MenuCreate();
   mPowerMenu = MenuCreate();
   InitializeListHead(&mRecoveries);
+
+  mBootMenuMain->Title = AsciiStrDup("Please Select OS");
 
   // get fstab data
   Status = UEFIRamdiskGetFile ("fstab.multiboot", (VOID **) &FstabBin, &FstabSize);

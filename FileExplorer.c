@@ -59,6 +59,16 @@ MenuItemCallback (
       return Status;
     }
 
+    CHAR16* FileName = NULL;
+    Status = FileHandleGetFileName(File, &FileName);
+    if (EFI_ERROR (Status)) {
+      Menu->Title = Unicode2Ascii(ItemContext->FileName);
+    }
+    else {
+      Menu->Title = Unicode2Ascii(FileName);
+      FreePool(FileName);
+    }
+
     FindFiles(Menu, File, ItemContext->FileName, ItemContext->Handle);    
     SetActiveMenu(Menu);
   }
@@ -249,6 +259,7 @@ FileExplorerCallback (
   FileSystemMenu = MenuCreate();
   FileSystemMenu->Private = OldMenu;
   FileSystemMenu->BackCallback = FileExplorerBackCallback;
+  FileSystemMenu->Title = AsciiStrDup("Select Filesystem");
 
   // find filesystems
   VisitAllInstancesOfProtocol (
