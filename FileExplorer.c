@@ -83,13 +83,13 @@ MenuItemFreeCallback (
 {
   MENU_ITEM_CONTEXT* ItemContext = This->Private;
 
-  if(This==NULL)
+  if(This==NULL || This->Private==NULL)
     return;
 
   if(ItemContext->FileName)
     FreePool(ItemContext->FileName);
 
-  FreePool(This);
+  FreePool(ItemContext);
 }
 
 STATIC
