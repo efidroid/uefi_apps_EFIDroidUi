@@ -20,7 +20,7 @@
 
 #include <Library/BaseLib.h>
 
-typedef struct boot_img_hdr boot_img_hdr_t;
+typedef PACKED struct boot_img_hdr boot_img_hdr_t;
 
 #define BOOT_MAGIC "ANDROID!"
 #define BOOT_MAGIC_SIZE 8
@@ -28,7 +28,7 @@ typedef struct boot_img_hdr boot_img_hdr_t;
 #define BOOT_ARGS_SIZE 512
 #define BOOT_EXTRA_ARGS_SIZE 1024
 
-struct boot_img_hdr {
+PACKED struct boot_img_hdr {
 	CHAR8 magic[BOOT_MAGIC_SIZE];
 
 	UINT32 kernel_size;	/* size in bytes */
