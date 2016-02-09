@@ -1,12 +1,15 @@
 #include "EFIDroidUi.h"
 #include <Guid/FileSystemVolumeLabelInfo.h>
+#include <Library/ShellCommandLib.h>
 
 typedef struct {
   MENU_OPTION     *ParentMenu;
   EFI_HANDLE      Handle;
+  CHAR16          *ShellFilePath;
   EFI_FILE_HANDLE Root;
   UINT16          *FileName;
   BOOLEAN         IsDir;
+  CHAR16          *FileExtension;
 } MENU_ITEM_CONTEXT;
 
 STATIC
@@ -15,7 +18,8 @@ FindFiles (
   IN MENU_OPTION               *Menu,
   IN EFI_FILE_HANDLE           FileHandle,
   IN UINT16                    *FileName,
-  IN EFI_HANDLE                DeviceHandle
+  IN EFI_HANDLE                DeviceHandle,
+  IN CHAR16                    *ShellFilePath
   );
 
 STATIC
@@ -69,8 +73,82 @@ MenuItemCallback (
       FreePool(FileName);
     }
 
-    FindFiles(Menu, File, ItemContext->FileName, ItemContext->Handle);    
+    FindFiles(Menu, File, ItemContext->FileName, ItemContext->Handle, ItemContext->ShellFilePath);
     SetActiveMenu(Menu);
+  }
+
+  else if (ItemContext->FileExtension) {
+    if(!StrCmp(ItemContext->FileExtension, L"efi")) {
+      // open file
+      EFI_FILE_HANDLE File = NULL;
+      Status = ItemContext->Root->Open (
+                       ItemContext->Root,
+                       &File,
+                       ItemContext->FileName,
+                       EFI_FILE_MODE_READ,
+                       0
+                       );
+      if (EFI_ERROR (Status)) {
+        CHAR8 Buf[100];
+        AsciiSPrint(Buf, 100, "Can't open file: %r", Status);
+        MenuShowMessage("Error", Buf);
+
+        return Status;
+      }
+
+      // get filename
+      CHAR16* FileName = NULL;
+      Status = FileHandleGetFileName(File, &FileName);
+      if (EFI_ERROR (Status)) {
+        UINTN Size = StrSize(ItemContext->FileName)+1*sizeof(CHAR16);
+        FileName = AllocateZeroPool(Size);
+        if(FileName==NULL) {
+          MenuShowMessage("Error", "Can't allocate filename");
+          return EFI_OUT_OF_RESOURCES;
+        }
+
+        // this is a workaround for the FV filesystem
+        UnicodeSPrint(FileName, Size, L"\\%s", ItemContext->FileName);
+      }
+
+      // build absolute execution path
+      UINTN PathLen = (StrLen(ItemContext->ShellFilePath)+StrLen(FileName)+1)*sizeof(CHAR16);
+      CHAR16* Path = AllocateZeroPool(PathLen);
+      if(Path==NULL) {
+        MenuShowMessage("Error", "Out of memory");
+        FreePool(FileName);
+        return EFI_OUT_OF_RESOURCES;
+      }
+      UnicodeSPrint(Path, PathLen, L"%s%s", ItemContext->ShellFilePath, FileName);
+      FreePool(FileName);
+
+      // shut down menu
+      MenuPreBoot();
+
+      // start efi application
+      EFI_STATUS CommandStatus;
+      Status = ShellExecute (gImageHandle, Path, FALSE, NULL, &CommandStatus);
+
+      // restart menu
+      MenuPostBoot();
+
+      // free path memory
+      FreePool(Path);
+
+      // show loader error
+      if (EFI_ERROR(Status)) {
+        CHAR8 Buf[100];
+        AsciiSPrint(Buf, 100, "Error loading: %r", Status);
+        MenuShowMessage("Error", Buf);
+      }
+
+      // show application error
+      else if (EFI_ERROR(CommandStatus)) {
+        CHAR8 Buf[100];
+        AsciiSPrint(Buf, 100, "Application returned: %r", CommandStatus);
+        MenuShowMessage("Error", Buf);
+      }
+    }
   }
 
   return EFI_SUCCESS;
@@ -88,6 +166,8 @@ MenuItemFreeCallback (
 
   if(ItemContext->FileName)
     FreePool(ItemContext->FileName);
+  if(ItemContext->FileExtension)
+    FreePool(ItemContext->FileExtension);
 
   FreePool(ItemContext);
 }
@@ -98,7 +178,8 @@ FindFiles (
   IN MENU_OPTION               *Menu,
   IN EFI_FILE_HANDLE           FileHandle,
   IN UINT16                    *FileName,
-  IN EFI_HANDLE                DeviceHandle
+  IN EFI_HANDLE                DeviceHandle,
+  IN CHAR16                    *ShellFilePath
   )
 {
   EFI_FILE_INFO   *DirInfo;
@@ -150,8 +231,14 @@ FindFiles (
       ItemContext->ParentMenu = Menu;
       ItemContext->Handle = DeviceHandle;
       ItemContext->Root = FileHandle;
-      ItemContext->FileName = UnicodeStrDup(DirInfo->FileName);
       ItemContext->IsDir = (BOOLEAN) ((DirInfo->Attribute & EFI_FILE_DIRECTORY) == EFI_FILE_DIRECTORY);
+      ItemContext->ShellFilePath = ShellFilePath;
+
+      ItemContext->FileName = UnicodeStrDup(DirInfo->FileName);
+      if (ItemContext->FileName == NULL) {
+        FreePool(ItemContext);
+        return EFI_OUT_OF_RESOURCES;
+      }
 
       Entry = MenuCreateEntry();
       Entry->Name = Unicode2Ascii(DirInfo->FileName);
@@ -167,7 +254,7 @@ FindFiles (
           if(StrStr (L"efi", Ext))
             Entry->Icon = libaroma_stream_ramdisk("icons/uefi.png");
 
-          FreePool(Ext);
+          ItemContext->FileExtension = Ext;
         }
 
         if(!Entry->Icon)
@@ -197,8 +284,22 @@ AddSFS (
   MENU_ENTRY      *Entry;
   EFI_PARTITION_NAME_PROTOCOL  *PartitionName;
   EFI_FILE_SYSTEM_VOLUME_LABEL *Info;
+  EFI_DEVICE_PATH_PROTOCOL     *DevicePath;
+  CHAR16                       *ShellFilePath;
 
   Status = EFI_SUCCESS;
+
+  DevicePath = DevicePathFromHandle(Handle);
+  if (DevicePath==NULL) {
+    Status = EFI_OUT_OF_RESOURCES;
+    goto DONE;
+  }
+
+  ShellFilePath = gEfiShellProtocol->GetFilePathFromDevicePath(DevicePath);
+  if (ShellFilePath == NULL) {
+    Status = EFI_OUT_OF_RESOURCES;
+    goto DONE;
+  }
 
   Root = UtilOpenRoot(Handle);
   if (Root == NULL) {
@@ -215,6 +316,7 @@ AddSFS (
   ItemContext->Root = Root;
   ItemContext->FileName = UnicodeStrDup(L"\\");
   ItemContext->IsDir = TRUE;
+  ItemContext->ShellFilePath = ShellFilePath;
 
   Entry = MenuCreateEntry();
   Entry->Callback = MenuItemCallback;
