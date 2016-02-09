@@ -73,6 +73,8 @@ MenuItemCallback (
       FreePool(FileName);
     }
 
+    MenuShowProgressDialog("Loading list of files", TRUE);
+
     FindFiles(Menu, File, ItemContext->FileName, ItemContext->Handle, ItemContext->ShellFilePath);
     SetActiveMenu(Menu);
   }
