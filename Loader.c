@@ -188,11 +188,13 @@ AndroidLoadImage (
     AlignedSize = BlockIo->Media->BlockSize;
   }
 
-  Status = gBS->AllocatePages (Address?AllocateAddress:AllocateAnyPages, EfiBootServicesData, EFI_SIZE_TO_PAGES(AlignedSize), &AllocationAddress);
-  if (EFI_ERROR(Status)) {
-    return Status;
+  if((*Buffer) == NULL) {
+    Status = gBS->AllocatePages (Address?AllocateAddress:AllocateAnyPages, EfiBootServicesData, EFI_SIZE_TO_PAGES(AlignedSize), &AllocationAddress);
+    if (EFI_ERROR(Status)) {
+      return Status;
+    }
+    *Buffer = (VOID*)((UINTN)AllocationAddress)+AddrOffset;
   }
-  *Buffer = (VOID*)((UINTN)AllocationAddress)+AddrOffset;
 
   if (Offset!=0 && Size!=0) {
     // read data
@@ -244,13 +246,14 @@ AndroidBootFromBlockIo (
   EFI_STATUS                Status;
   UINTN                     BufferSize;
   boot_img_hdr_t            *AndroidHdr;
-  android_parsed_bootimg_t  Parsed;
+  android_parsed_bootimg_t  Parsed = {0};
   LINUX_KERNEL              LinuxKernel;
   UINTN                     TagsSize = 0;
   lkapi_t                   *LKApi = GetLKApi();
   VOID                      *OriginalRamdisk = NULL;
   UINT32                    RamdiskUncompressedLen = 0;
   BOOLEAN                   RecoveryMode = FALSE;
+  CHAR8                     Buf[100];
 
   // initialize parsed data
   SetMem(&Parsed, sizeof(Parsed), 0);
@@ -266,7 +269,8 @@ AndroidBootFromBlockIo (
   // read and verify the android header
   Status = BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, 0, BufferSize, AndroidHdr);
   if (EFI_ERROR(Status)) {
-    MenuShowMessage("Error", "Can't read boot image header.");
+    AsciiSPrint(Buf, sizeof(Buf), "Can't read boot image header: %r", Status);
+    MenuShowMessage("Error", Buf);
     goto FREEBUFFER;
   }
 
@@ -297,7 +301,8 @@ AndroidBootFromBlockIo (
   // load kernel
   Status = AndroidLoadImage(BlockIo, off_kernel, AndroidHdr->kernel_size, &Parsed.Kernel, AndroidHdr->kernel_addr);
   if (EFI_ERROR(Status)) {
-    MenuShowMessage("Error", "Can't load kernel.");
+    AsciiSPrint(Buf, sizeof(Buf), "Can't load kernel: %r", Status);
+    MenuShowMessage("Error", Buf);
     goto FREEBUFFER;
   }
 
@@ -305,7 +310,6 @@ AndroidBootFromBlockIo (
   TagsSize = AndroidHdr->dt_size;
   if (AndroidHdr->dt_size==0) {
     TagsSize = ATAG_MAX_SIZE;
-    off_tags = 0;
   }
   else {
     // the DTB may get expanded
@@ -313,18 +317,30 @@ AndroidBootFromBlockIo (
   }
 
 
-  // allocate tag memory and load dtb if available
-  Status = AndroidLoadImage(BlockIo, off_tags, TagsSize, &Parsed.Tags, AndroidHdr->tags_addr);
+  // allocate tag memory
+  Status = AndroidLoadImage(BlockIo, 0, TagsSize, &Parsed.Tags, AndroidHdr->tags_addr);
   if (EFI_ERROR(Status)) {
-    MenuShowMessage("Error", "Can't load tags.");
+    AsciiSPrint(Buf, sizeof(Buf), "Can't allocate tags: %r", Status);
+    MenuShowMessage("Error", Buf);
     goto FREEBUFFER;
+  }
+
+  // load DT
+  if (AndroidHdr->dt_size) {
+    Status = AndroidLoadImage(BlockIo, off_tags, AndroidHdr->dt_size, &Parsed.Tags, AndroidHdr->tags_addr);
+    if (EFI_ERROR(Status)) {
+      AsciiSPrint(Buf, sizeof(Buf), "Can't load tags: %r", Status);
+      MenuShowMessage("Error", Buf);
+      goto FREEBUFFER;
+    }
   }
 
   if(DisablePatching) {
     // load ramdisk
     Status = AndroidLoadImage(BlockIo, off_ramdisk, AndroidHdr->ramdisk_size, &Parsed.Ramdisk, AndroidHdr->ramdisk_addr);
     if (EFI_ERROR(Status)) {
-      MenuShowMessage("Error", "Can't load ramdisk.");
+      AsciiSPrint(Buf, sizeof(Buf), "Can't load ramdisk: %r", Status);
+      MenuShowMessage("Error", Buf);
       goto FREEBUFFER;
     }
   }
@@ -333,7 +349,8 @@ AndroidBootFromBlockIo (
     // load ramdisk into UEFI memory
     Status = AndroidLoadImage(BlockIo, off_ramdisk, AndroidHdr->ramdisk_size, &OriginalRamdisk, 0);
     if (EFI_ERROR(Status)) {
-      MenuShowMessage("Error", "Can't load ramdisk.");
+      AsciiSPrint(Buf, sizeof(Buf), "Can't load ramdisk: %r", Status);
+      MenuShowMessage("Error", Buf);
       goto FREEBUFFER;
     }
 
@@ -376,7 +393,8 @@ AndroidBootFromBlockIo (
     // allocate uncompressed ramdisk memory in boot memory
     Status = AndroidLoadImage(BlockIo, 0, RamdiskUncompressedLen, &Parsed.Ramdisk, AndroidHdr->ramdisk_addr);
     if (EFI_ERROR(Status)) {
-      MenuShowMessage("Error", "Can't allocate memory for decompressing ramdisk.");
+      AsciiSPrint(Buf, sizeof(Buf), "Can't allocate memory for decompressing ramdisk: %r", Status);
+      MenuShowMessage("Error", Buf);
       goto FREEBUFFER;
     }
 
@@ -403,7 +421,8 @@ AndroidBootFromBlockIo (
   // load cmdline
   Status = AndroidLoadCmdline(&Parsed, mbhandle, RecoveryMode, DisablePatching);
   if (EFI_ERROR(Status)) {
-    MenuShowMessage("Error", "Can't load cmdline.");
+    AsciiSPrint(Buf, sizeof(Buf), "Can't load cmdline: %r", Status);
+    MenuShowMessage("Error", Buf);
     goto FREEBUFFER;
   }
 
