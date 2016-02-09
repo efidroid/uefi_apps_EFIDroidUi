@@ -338,6 +338,10 @@ FastbootCommandLoop (
       MatchedCommand->Handle(Arg, DownloadBase, DownloadSize);
       if (mFastbootState == STATE_COMMAND)
         FastbootFail("unknown reason");
+
+      RenderActiveMenu();
+      MenuDrawDarkBackground();
+
       goto AGAIN;
     }
 

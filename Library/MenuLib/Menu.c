@@ -626,10 +626,16 @@ int button_width(const char* text) {
   return w;
 }
 
-STATIC VOID
-RenderActiveMenu(
+VOID
+MenuDrawDarkBackground (
   VOID
-);
+)
+{
+  /* Mask Dark */
+  libaroma_draw_rect(
+    dc, 0, 0, dc->w, dc->h, RGB(000000), 0x7a
+  );
+}
 
 INT32 MenuShowDialog(
   CONST CHAR8* Title,
@@ -650,10 +656,7 @@ INT32 MenuShowDialog(
     mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
   }
 
-  /* Mask Dark */
-  libaroma_draw_rect(
-    dc, 0, 0, dc->w, dc->h, RGB(000000), 0x7a
-  );
+  MenuDrawDarkBackground();
   
   /* Init Message & Title Text */
   int dialog_w = dc->w-libaroma_dp(48);
@@ -826,9 +829,7 @@ VOID MenuShowProgressDialog(
 )
 {
   if(ShowBackground) {
-    libaroma_draw_rect(
-      dc, 0, 0, dc->w, dc->h, RGB(000000), 0x7a
-    );
+    MenuDrawDarkBackground();
   }
 
   int dialog_w = dc->w-libaroma_dp(48);
@@ -960,10 +961,7 @@ MenuShowSelectionDialog (
   list->enablescrollbar = FALSE;
   BuildAromaMenu(Menu, list, 0);
 
-  /* Mask Dark */
-  libaroma_draw_rect(
-    dc, 0, 0, dc->w, dc->h, RGB(000000), 0x7a
-  );
+  MenuDrawDarkBackground();
 
   /* draw fake shadow */
   int z;
@@ -1001,7 +999,7 @@ MenuShowSelectionDialog (
   return 0;
 }
 
-STATIC VOID
+VOID
 RenderActiveMenu(
   VOID
 )
@@ -1061,8 +1059,6 @@ RenderActiveMenu(
   if(mActiveMenu->AromaList) {
     list_show(mActiveMenu->AromaList, mActiveMenu->Selection, 0, list_y, list_height);
   }
-
-  libaroma_sync();
 }
 
 VOID
@@ -1150,6 +1146,7 @@ MenuEnter (
 
   while(TRUE) {
     RenderActiveMenu();
+    libaroma_sync();
 
     Status = gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &WaitIndex);
     ASSERT_EFI_ERROR (Status);

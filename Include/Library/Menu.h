@@ -123,6 +123,11 @@ RenderBootScreen(
   MENU_ENTRY *Entry
 );
 
+VOID
+MenuDrawDarkBackground (
+  VOID
+);
+
 VOID MenuShowMessage(
   CONST CHAR8* Title,
   CONST CHAR8* Message
@@ -152,6 +157,11 @@ MenuPreBoot (
 
 VOID
 MenuPostBoot (
+  VOID
+);
+
+VOID
+RenderActiveMenu(
   VOID
 );
 
