@@ -334,7 +334,7 @@ AddSFS (
                   &gEfiPartitionNameProtocolGuid,
                   (VOID **)&PartitionName
                   );
-  if (!EFI_ERROR (Status)) {
+  if (!EFI_ERROR (Status) && PartitionName->Name && PartitionName->Name[0]) {
     Entry->Name = Unicode2Ascii(PartitionName->Name);
   }
 
