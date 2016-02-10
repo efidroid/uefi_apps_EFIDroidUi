@@ -429,3 +429,46 @@ FastbootInit (
   Status = gBS->CloseEvent(mExitBootServicesEvent);
   mUsbInterface->udc_stop(mUsbInterface);
 }
+
+STATIC
+VOID
+FastbootSendBufInternal (
+  IN CONST VOID *Data,
+  IN UINTN Size
+)
+{
+  UINTN Index;
+  CHAR8 Buffer[FASTBOOT_COMMAND_MAX_LENGTH];
+  UINT8* Data8 = (UINT8*)Data;
+
+  for (Index=0; Index<Size; Index+=FASTBOOT_COMMAND_MAX_LENGTH-5) {
+    UINTN CopySize = MIN(Size-Index, FASTBOOT_COMMAND_MAX_LENGTH-5);
+    CopyMem(Buffer, &Data8[Index], CopySize);
+    Buffer[CopySize] = 0;
+    FastbootInfo(Buffer);
+  }
+}
+
+VOID
+FastbootSendBuf (
+  IN CONST VOID *Data,
+  IN UINTN Size
+)
+{
+  UINTN B64DataSize = BASE64_ENCODED_SIZE(Size);
+  CHAR8* B64Data = AllocatePool(B64DataSize);
+  if (B64Data==NULL) {
+    FastbootFail("out of memory");
+    return;
+  }
+
+  INT32 Ret = UtilBase64Encode (Data, Size, B64Data, B64DataSize);
+  if (Ret<=0) {
+    FastbootFail("encoding error");
+    return;
+  }
+
+  FastbootSendBufInternal(B64Data, Ret);
+
+  FreePool(B64Data);
+}

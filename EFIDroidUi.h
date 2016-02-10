@@ -169,4 +169,10 @@ FastbootCommandsAdd (
   VOID
 );
 
+VOID
+FastbootSendBuf (
+  IN CONST VOID *Data,
+  IN UINTN Size
+);
+
 #endif /* __EFIDROIDUI_H__ */
