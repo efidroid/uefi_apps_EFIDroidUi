@@ -46,13 +46,11 @@
 [LibraryClasses]
   BaseLib
   BaseMemoryLib
-  BdsLib
   DebugLib
   DevicePathLib
   MemoryAllocationLib
   UefiBootServicesTableLib
   PcdLib
-  GenericBdsLib
   LKApiLib
   AromaLib
   UEFIRamdiskLib
