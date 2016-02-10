@@ -25,6 +25,7 @@
   MODULE_TYPE                    = BASE
   VERSION_STRING                 = 1.0 
   LIBRARY_CLASS                  = UEFIRamdiskLib
+  CONSTRUCTOR                    = UEFIRamdiskLibConstructor
 
 #
 #  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
@@ -40,6 +41,7 @@
 
 [LibraryClasses]
   CpioLib
+  DxeServicesLib
 
 [FixedPcd]
   gLittleKernelTokenSpaceGuid.PcdUEFIRamdisk

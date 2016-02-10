@@ -16,6 +16,7 @@
 #define __EFIDROIDUI_H__
 
 #include <PiDxe.h>
+#include <Protocol/FirmwareVolume2.h>
 #include <Protocol/BlockIo.h>
 #include <Protocol/PartitionName.h>
 #include <Protocol/EfiShellParameters.h>
