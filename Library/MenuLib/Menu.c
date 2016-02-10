@@ -5,11 +5,12 @@
 SCREENSHOT *gScreenShotList;
 
 STATIC EFI_GRAPHICS_OUTPUT_PROTOCOL *mGop;
-STATIC EFI_LK_DISPLAY_PROTOCOL *gLKDisplay;
+STATIC EFI_LK_DISPLAY_PROTOCOL *gLKDisplay = NULL;
 STATIC MENU_OPTION* mActiveMenu = NULL;
 STATIC LIBAROMA_CANVASP dc;
 STATIC BOOLEAN Initialized = FALSE;
-STATIC UINT32 OldMode;
+STATIC UINT32 mOldMode;
+STATIC UINT32 mOurMode;
 STATIC LK_DISPLAY_FLUSH_MODE OldFlushMode;
 
 word colorPrimary;
@@ -653,9 +654,9 @@ INT32 MenuShowDialog(
     return -1;
 
   UINT32 OldMode = UINT32_MAX;
-  if(mGop->Mode->Mode!=gLKDisplay->GetPortraitMode()) {
+  if(mGop->Mode->Mode!=mOurMode) {
     OldMode = mGop->Mode->Mode;
-    mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
+    mGop->SetMode(mGop, mOurMode);
   }
 
   MenuDrawDarkBackground();
@@ -930,15 +931,17 @@ MenuHandleKey (
 
         if(Entry->Callback) {
           if (Entry->ResetGop) {
-            mGop->SetMode(mGop, OldMode);
-            gLKDisplay->SetFlushMode(gLKDisplay, OldFlushMode);
+            mGop->SetMode(mGop, mOldMode);
+            if(gLKDisplay)
+              gLKDisplay->SetFlushMode(gLKDisplay, OldFlushMode);
           }
 
           Status = Entry->Callback(Entry);
 
           if (Entry->ResetGop) {
-            mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
-            gLKDisplay->SetFlushMode(gLKDisplay, LK_DISPLAY_FLUSH_MODE_MANUAL);
+            mGop->SetMode(mGop, mOurMode);
+            if(gLKDisplay)
+              gLKDisplay->SetFlushMode(gLKDisplay, LK_DISPLAY_FLUSH_MODE_MANUAL);
           }
         }
         break;
@@ -1147,17 +1150,50 @@ MenuInit (
   // get LKDisplay protocol
   Status = gBS->LocateProtocol (&gEfiLKDisplayProtocolGuid, NULL, (VOID **) &gLKDisplay);
   if (EFI_ERROR (Status)) {
-    ASSERT(FALSE);
-    return;
+    gLKDisplay = NULL;
   }
 
-  // use portrait mode
-  OldMode = mGop->Mode->Mode;
-  mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
+  // backup current mode
+  mOldMode = mGop->Mode->Mode;
 
-  // manual flush mode
-  OldFlushMode = gLKDisplay->GetFlushMode(gLKDisplay);
-  gLKDisplay->SetFlushMode(gLKDisplay, LK_DISPLAY_FLUSH_MODE_MANUAL);
+  if(gLKDisplay) {
+    // set our mode id
+    mOurMode = gLKDisplay->GetPortraitMode();
+
+    // manual flush mode
+    OldFlushMode = gLKDisplay->GetFlushMode(gLKDisplay);
+    gLKDisplay->SetFlushMode(gLKDisplay, LK_DISPLAY_FLUSH_MODE_MANUAL);
+  }
+  else {
+    UINTN                                MaxMode;
+    UINT32                               ModeIndex;
+    UINTN                                SizeOfInfo;
+    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info;
+    UINT32                               BestModePixels = 0;
+    UINT32                               BestModeIndex  = 0;
+
+    // get max mode
+    MaxMode = mGop->Mode->MaxMode;
+
+    // get best GOP Mode
+    for (ModeIndex = 0; ModeIndex < MaxMode; ModeIndex++) {
+      Status = mGop->QueryMode (mGop, ModeIndex, &SizeOfInfo, &Info);
+      if (!EFI_ERROR (Status)) {
+        UINT32 Pixels = Info->HorizontalResolution * Info->VerticalResolution;
+        if(ModeIndex==0 || BestModePixels<Pixels) {
+          BestModePixels = ModeIndex;
+          BestModeIndex = ModeIndex;
+        }
+
+        FreePool (Info);
+      }
+    }
+
+    // set our mode
+    mOurMode = BestModeIndex;
+  }
+
+  mGop->SetMode(mGop, mOurMode);
 
   Status = AromaInit();
   if (EFI_ERROR (Status)) {
@@ -1223,8 +1259,9 @@ MenuDeInit (
 {
   Initialized = FALSE;
   AromaRelease();
-  mGop->SetMode(mGop, OldMode);
-  gLKDisplay->SetFlushMode(gLKDisplay, OldFlushMode);
+  mGop->SetMode(mGop, mOldMode);
+  if(gLKDisplay)
+    gLKDisplay->SetFlushMode(gLKDisplay, OldFlushMode);
 }
 
 VOID
@@ -1232,8 +1269,9 @@ MenuPreBoot (
   VOID
 )
 {
-  mGop->SetMode(mGop, OldMode);
-  gLKDisplay->SetFlushMode(gLKDisplay, OldFlushMode);
+  mGop->SetMode(mGop, mOldMode);
+  if(gLKDisplay)
+    gLKDisplay->SetFlushMode(gLKDisplay, OldFlushMode);
 }
 
 VOID
@@ -1241,6 +1279,7 @@ MenuPostBoot (
   VOID
 )
 {
-  mGop->SetMode(mGop, gLKDisplay->GetPortraitMode());
-  gLKDisplay->SetFlushMode(gLKDisplay, LK_DISPLAY_FLUSH_MODE_MANUAL);
+  mGop->SetMode(mGop, mOurMode);
+  if(gLKDisplay)
+    gLKDisplay->SetFlushMode(gLKDisplay, LK_DISPLAY_FLUSH_MODE_MANUAL);
 }
