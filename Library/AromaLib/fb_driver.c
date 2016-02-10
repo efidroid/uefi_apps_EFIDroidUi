@@ -174,8 +174,7 @@ byte UEFIFBDR_init(LIBAROMA_FBP me) {
   // get LKDisplay protocol
   Status = gBS->LocateProtocol (&gEfiLKDisplayProtocolGuid, NULL, (VOID **) &mi->lk_display);
   if (EFI_ERROR (Status)) {
-    ASSERT(FALSE);
-    goto error;
+    mi->lk_display = NULL;
   }
   
   /* set internal address */
@@ -228,7 +227,8 @@ byte UEFIFBDR_init(LIBAROMA_FBP me) {
   me->end_post    = &UEFIFBDR_end_post;
   me->snapshoot   = &UEFIFBDR_snapshot;
 
-  me->dpi = mi->lk_display->GetDensity(mi->lk_display);
+  if(mi->lk_display)
+    me->dpi = mi->lk_display->GetDensity(mi->lk_display);
   
   /* ok */
   goto ok;
@@ -270,7 +270,8 @@ byte UEFIFBDR_flush(LIBAROMA_FBP me) {
   }
   UEFIFBDR_INTERNALP mi = (UEFIFBDR_INTERNALP) me->internal;
 
-  mi->lk_display->FlushScreen(mi->lk_display);
+  if(mi->lk_display)
+    mi->lk_display->FlushScreen(mi->lk_display);
 
   return 1;
 } /* End of UEFIFBDR_flush */
