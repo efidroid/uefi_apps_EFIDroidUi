@@ -781,11 +781,7 @@ BootShell (
     return Status;
   } else {
     // Need to connect every drivers to ensure no dependencies are missing for the application
-    Status = BdsConnectAllDrivers ();
-    if (EFI_ERROR (Status)) {
-      DEBUG ((EFI_D_ERROR, "FAIL to connect all drivers\n"));
-      return Status;
-    }
+    BdsLibConnectAll ();
 
     CONST CHAR16* Args = L"";
     UINTN LoadOptionsSize = (UINT32)StrSize (Args);

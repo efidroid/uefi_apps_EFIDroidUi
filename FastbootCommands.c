@@ -231,11 +231,7 @@ CommandBoot (
     }
 
     // Need to connect every drivers to ensure no dependencies are missing for the application
-    Status = BdsConnectAllDrivers ();
-    if (EFI_ERROR (Status)) {
-      FastbootFail("failed to connect all drivers");
-      goto ERROR_UNREGISTER_RAMDISK;
-    }
+    BdsLibConnectAll ();
 
     // build arguments
     CONST CHAR16* Args = L"";
