@@ -905,7 +905,8 @@ STATIC
 EFI_STATUS
 MenuHandleKey (
   IN MENU_OPTION* Menu,
-  IN EFI_INPUT_KEY Key
+  IN EFI_INPUT_KEY Key,
+  IN BOOLEAN SelectableBackItem
 )
 {
   MENU_ENTRY* Entry;
@@ -958,12 +959,17 @@ MenuHandleKey (
       // 's'
       case 0x73:
         MenuTakeScreenShot();
+        break;
 
+      // 'e'
+      case 0x65:
+        if (Menu->BackCallback)
+          Status = Menu->BackCallback(Menu);
         break;
     }
   }
   else {
-    INT32 MinSelection = Menu->BackCallback?-1:0;
+    INT32 MinSelection = (SelectableBackItem&&Menu->BackCallback)?-1:0;
     switch(Key.ScanCode) {
       case SCAN_UP:
         if(Menu->Selection>MinSelection)
@@ -1040,7 +1046,9 @@ MenuShowSelectionDialog (
 
     Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
     if(!EFI_ERROR(Status)) {
-      Status = MenuHandleKey(Menu, Key);
+      Status = MenuHandleKey(Menu, Key, FALSE);
+      if (Status == EFI_ABORTED)
+        break;
     }
   }
 
@@ -1203,7 +1211,7 @@ MenuEnter (
 
     Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
     if(!EFI_ERROR(Status)) {
-      Status = MenuHandleKey(mActiveMenu, Key);
+      Status = MenuHandleKey(mActiveMenu, Key, TRUE);
     }
   }
 }
