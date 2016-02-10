@@ -17,7 +17,6 @@
 MENU_OPTION                 *mBootMenuMain = NULL;
 MENU_OPTION                 *mPowerMenu = NULL;
 
-#if defined (MDE_CPU_ARM)
 EFI_STATUS
 BootOptionEfiOption (
   IN MENU_ENTRY* This
@@ -51,35 +50,6 @@ BootOptionEfiOption (
     MenuShowMessage("Error", Buf);
   }
   return Status;
-}
-
-EFI_STATUS
-BootShell (
-  IN MENU_ENTRY* This
-  )
-{
-  EFI_STATUS       Status;
-  EFI_DEVICE_PATH* EfiShellDevicePath;
-
-  // Find the EFI Shell
-  Status = LocateEfiApplicationInFvByName (L"Shell", &EfiShellDevicePath);
-  if (Status == EFI_NOT_FOUND) {
-    Print (L"Error: EFI Application not found.\n");
-    return Status;
-  } else if (EFI_ERROR (Status)) {
-    Print (L"Error: Status Code: 0x%X\n", (UINT32)Status);
-    return Status;
-  } else {
-    // Need to connect every drivers to ensure no dependencies are missing for the application
-    BdsLibConnectAll ();
-
-    CONST CHAR16* Args = L"";
-    UINTN LoadOptionsSize = (UINT32)StrSize (Args);
-    VOID *LoadOptions     = AllocatePool (LoadOptionsSize);
-    StrCpy (LoadOptions, Args);
-
-    return BdsStartEfiApplication (gImageHandle, EfiShellDevicePath, LoadOptionsSize, LoadOptions);
-  }
 }
 
 STATIC VOID
@@ -156,6 +126,36 @@ AddEfiBootOptions (
   }
 }
 
+#if defined (MDE_CPU_ARM)
+EFI_STATUS
+BootShell (
+  IN MENU_ENTRY* This
+  )
+{
+  EFI_STATUS       Status;
+  EFI_DEVICE_PATH* EfiShellDevicePath;
+
+  // Find the EFI Shell
+  Status = LocateEfiApplicationInFvByName (L"Shell", &EfiShellDevicePath);
+  if (Status == EFI_NOT_FOUND) {
+    Print (L"Error: EFI Application not found.\n");
+    return Status;
+  } else if (EFI_ERROR (Status)) {
+    Print (L"Error: Status Code: 0x%X\n", (UINT32)Status);
+    return Status;
+  } else {
+    // Need to connect every drivers to ensure no dependencies are missing for the application
+    BdsLibConnectAll ();
+
+    CONST CHAR16* Args = L"";
+    UINTN LoadOptionsSize = (UINT32)StrSize (Args);
+    VOID *LoadOptions     = AllocatePool (LoadOptionsSize);
+    StrCpy (LoadOptions, Args);
+
+    return BdsStartEfiApplication (gImageHandle, EfiShellDevicePath, LoadOptionsSize, LoadOptions);
+  }
+}
+
 EFI_STATUS
 FastbootCallback (
   IN MENU_ENTRY* This
@@ -227,10 +227,12 @@ main (
   // add android options
   AndroidLocatorInit();
   AndroidLocatorAddItems();
+#endif
 
   // add default EFI options
   AddEfiBootOptions();
 
+#if defined (MDE_CPU_ARM)
   // add shell
   Entry = MenuCreateEntry();
   Entry->Icon = libaroma_stream_ramdisk("icons/efi_shell.png");
