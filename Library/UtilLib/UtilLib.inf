@@ -46,6 +46,7 @@
   UefiLib
   PrintLib
   FileHandleLib
+  BsdSocketLib
 
 [Depex]
   TRUE

@@ -14,6 +14,14 @@
 #define STACKBUF_DMA_ALIGN(var, size) \
 	UINT8 __##var[(size) + ArmDataCacheLineLength()]; UINT8 *var = (UINT8 *)(ROUNDUP((UINTN)__##var, ArmDataCacheLineLength()))
 
+#define BASE64_ENCODED_SIZE(n) (ROUNDUP(4*((n)/3)+1, 4)+1)
+
+#define UtilBase64Encode __b64_ntop
+#define UtilBase64Decode __b64_pton
+
+INT32 __b64_ntop (UINT8 CONST *, UINTN, CHAR8 *, UINTN);
+INT32 __b64_pton (CHAR8 CONST *, UINT8 *, UINTN);
+
 typedef
 EFI_STATUS
 (EFIAPI *PROTOCOL_INSTANCE_CALLBACK)(
