@@ -6,7 +6,10 @@
 
 #include <Library/BaseLib.h>
 #include <Library/FileHandleLib.h>
+
+#ifndef LIBUTIL_NOAROMA
 #include <aroma.h>
+#endif
 
 #define ROUNDUP(a, b)   (((a) + ((b)-1)) & ~((b)-1))
 #define ROUNDDOWN(a, b) ((a) & ~((b)-1))
@@ -73,10 +76,12 @@ NodeIsDir (
   IN EFI_FILE_INFO      *NodeInfo
   );
 
+#ifndef LIBUTIL_NOAROMA
 LIBAROMA_STREAMP
 libaroma_stream_ramdisk(
   CONST CHAR8* Path
 );
+#endif
 
 UINT32
 RangeOverlaps (
