@@ -16,6 +16,8 @@
 
 #if defined (MDE_CPU_IA32)
 #define CACHE_LINE 32
+#elif defined (MDE_CPU_X64)
+#define CACHE_LINE 32
 #elif defined (MDE_CPU_ARM)
 #define CACHE_LINE ArmDataCacheLineLength()
 #else
