@@ -24,9 +24,7 @@
 #include <Protocol/DevicePathFromText.h>
 #include <Protocol/DevicePathToText.h>
 
-#include <Library/ArmLib.h>
 #include <Library/BaseMemoryLib.h>
-#include <Library/BdsLib.h>
 #include <Library/DebugLib.h>
 #include <Library/HiiLib.h>
 #include <Library/MemoryAllocationLib.h>
@@ -49,12 +47,20 @@
 #include <Library/FileBlockIo.h>
 #include <Library/MemoryBlockIo.h>
 #include <Library/MakeDosFs.h>
+#include <Library/UefiApplicationEntryPoint.h>
+#include <Library/Fstab.h>
+
+#if defined (MDE_CPU_ARM)
+#include <Library/ArmLib.h>
+#include <Library/BdsLib.h>
+#endif
 
 #include <LittleKernel.h>
 
 #include "bootimg.h"
 
 extern EFI_GUID gEFIDroidVariableGuid;
+extern MENU_OPTION *mBootMenuMain;
 
 typedef struct {
   // ini values
@@ -87,6 +93,16 @@ typedef struct {
   MENU_ENTRY      *BaseEntry;
   MENU_ENTRY      *NoPatchEntry;
 } RECOVERY_MENU;
+
+EFI_STATUS
+AndroidLocatorInit (
+  VOID
+);
+
+EFI_STATUS
+AndroidLocatorAddItems (
+  VOID
+);
 
 EFI_STATUS
 AndroidBootFromBlockIo (

@@ -22,14 +22,9 @@
 
 [Sources]
   EFIDroidUi.c
-  Loader.c
-  MultibootLoader.c
-  Fastboot.c
-  FastbootCommands.c
   FileExplorer.c
 
 [Packages]
-  ArmPkg/ArmPkg.dec
   StdLib/StdLib.dec
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
@@ -41,8 +36,7 @@
 
 [LibraryClasses]
   LibC
-  ArmLib
-  BdsLib
+  GenericBdsLib
   DebugLib
   DxeServicesTableLib
   HiiLib
@@ -60,9 +54,24 @@
   UtilLib
   FileBlockIoLib
   MemoryBlockIoLib
-  CacheMaintenanceLib
   MakeDosFsLib
   SquirrelLib
+
+# ARM support
+[Sources.ARM]
+  AndroidLocator.c
+  Loader.c
+  MultibootLoader.c
+  Fastboot.c
+  FastbootCommands.c
+
+[Packages.ARM]
+  ArmPkg/ArmPkg.dec
+
+[LibraryClasses.ARM]
+  ArmLib
+  BdsLib
+  CacheMaintenanceLib
 
 [Protocols]
   gEfiLoadedImageProtocolGuid
