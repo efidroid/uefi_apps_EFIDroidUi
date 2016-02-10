@@ -458,6 +458,46 @@ CommandDisplayInfo (
   FastbootOkay("");
 }
 
+STATIC
+VOID
+CommandScreenShot (
+  CHAR8 *Arg,
+  VOID *Data,
+  UINT32 Size
+)
+{
+  SCREENSHOT *ScreenShot;
+  CHAR8 Response[128];
+  UINTN Index;
+
+  // show list of screenshots
+  if(Arg[0]==0) {
+    FastbootInfo("available screenshots:");
+
+    for (ScreenShot = gScreenShotList,Index=0; ScreenShot; ScreenShot = ScreenShot->Next,Index++) {
+      AsciiSPrint(Response, sizeof(Response), "\t%d: %u bytes", Index, ScreenShot->Len);
+      FastbootInfo(Response);
+    }
+
+    FastbootOkay("");
+  }
+
+  else {
+    UINT8 ScreenShotIndex = atoi (Arg);
+    for (ScreenShot = gScreenShotList,Index=0; ScreenShot; ScreenShot = ScreenShot->Next,Index++) {
+      if(Index!=ScreenShotIndex)
+        continue;
+
+      FastbootSendBuf(ScreenShot->Data, ScreenShot->Len);
+      FastbootOkay("");
+
+      return;
+    }
+
+    FastbootFail("screenshot not found");
+  }
+}
+
 VOID
 FastbootCommandsAdd (
   VOID
@@ -472,4 +512,5 @@ FastbootCommandsAdd (
 
   FastbootRegister("oem shell", CommandShell);
   FastbootRegister("oem displayinfo", CommandDisplayInfo);
+  FastbootRegister("oem screenshot", CommandScreenShot);
 }

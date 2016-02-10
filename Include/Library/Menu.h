@@ -43,6 +43,15 @@ struct _MENU_OPTION {
   MINLIST* AromaList;
 };
 
+typedef struct _SCREENSHOT SCREENSHOT;
+struct _SCREENSHOT {
+  struct _SCREENSHOT *Next;
+  VOID *Data;
+  UINTN Len;
+};
+
+extern SCREENSHOT *gScreenShotList;
+
 VOID
 MenuInit (
   VOID

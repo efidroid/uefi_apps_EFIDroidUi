@@ -2,6 +2,8 @@
 
 #include "Menu.h"
 
+SCREENSHOT *gScreenShotList;
+
 STATIC EFI_GRAPHICS_OUTPUT_PROTOCOL *mGop;
 STATIC EFI_LK_DISPLAY_PROTOCOL *gLKDisplay;
 STATIC MENU_OPTION* mActiveMenu = NULL;
@@ -858,6 +860,48 @@ VOID MenuShowProgressDialog(
 }
 
 STATIC
+VOID
+MenuAddScreenShot (
+  VOID* Data,
+  UINTN Len
+)
+{
+  SCREENSHOT *ScreenShot;
+
+  ScreenShot = AllocatePool(sizeof(*ScreenShot));
+  if (ScreenShot) {
+    ScreenShot->Data = Data;
+    ScreenShot->Len = Len;
+    ScreenShot->Next = gScreenShotList;
+    gScreenShotList = ScreenShot;
+  }
+}
+
+STATIC
+EFI_STATUS
+MenuTakeScreenShot (
+  VOID
+)
+{
+  UINTN Len = dc->w*dc->h*4;
+  VOID* Buffer = AllocateZeroPool(Len);
+  if (Buffer ==NULL)
+    return EFI_OUT_OF_RESOURCES;
+
+  int rc = libaroma_png_save_buffer(dc, Buffer, Len);
+  if(rc<=0) {
+    FreePool(Buffer);
+    return EFI_DEVICE_ERROR;
+  }
+
+  MenuAddScreenShot(Buffer, rc);
+  MenuShowMessage("Info", "Screenshot taken");
+
+  return EFI_SUCCESS;
+}
+
+
+STATIC
 EFI_STATUS
 MenuHandleKey (
   IN MENU_OPTION* Menu,
@@ -908,6 +952,12 @@ MenuHandleKey (
         if(Entry->LongPressCallback) {
           Status = Entry->LongPressCallback(Entry);
         }
+
+        break;
+
+      // 's'
+      case 0x73:
+        MenuTakeScreenShot();
 
         break;
     }
