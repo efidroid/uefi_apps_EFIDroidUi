@@ -955,6 +955,14 @@ InitializeEspData (
   return EFI_SUCCESS;
 }
 
+EFI_STATUS
+PowerMenuBackCallback (
+  MENU_OPTION* This
+)
+{
+  return EFI_ABORTED;
+}
+
 INT32
 main (
   IN INT32  Argc,
@@ -969,8 +977,10 @@ main (
 
   // create menus
   mBootMenuMain = MenuCreate();
-  mPowerMenu = MenuCreate();
   InitializeListHead(&mRecoveries);
+
+  mPowerMenu = MenuCreate();
+  mPowerMenu->BackCallback = PowerMenuBackCallback;
 
   mBootMenuMain->Title = AsciiStrDup("Please Select OS");
 
