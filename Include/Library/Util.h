@@ -11,8 +11,16 @@
 #define ROUNDUP(a, b)   (((a) + ((b)-1)) & ~((b)-1))
 #define ROUNDDOWN(a, b) ((a) & ~((b)-1))
 
+#if defined (MDE_CPU_IA32)
+#define CACHE_LINE 32
+#elif defined (MDE_CPU_ARM)
+#define CACHE_LINE ArmDataCacheLineLength()
+#else
+#error "Unsupported platform"
+#endif
+
 #define STACKBUF_DMA_ALIGN(var, size) \
-	UINT8 __##var[(size) + ArmDataCacheLineLength()]; UINT8 *var = (UINT8 *)(ROUNDUP((UINTN)__##var, ArmDataCacheLineLength()))
+	UINT8 __##var[(size) + CACHE_LINE]; UINT8 *var = (UINT8 *)(ROUNDUP((UINTN)__##var, CACHE_LINE))
 
 #define BASE64_ENCODED_SIZE(n) (ROUNDUP(4*((n)/3)+1, 4)+1)
 
