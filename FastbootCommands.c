@@ -7,6 +7,10 @@
 #include <Library/DevicePathLib.h>
 #include <Library/ShellLib.h>
 
+#define SIDELOAD_MAPPING  L"srd0:"
+#define SIDELOAD_FILENAME L"Sideload.efi"
+#define SIDELOAD_FULLPATH SIDELOAD_MAPPING L"\\" SIDELOAD_FILENAME
+
 STATIC VOID
 CommandRebootInternal (
   CONST CHAR16 *Reason
@@ -205,7 +209,7 @@ CommandBoot (
     Status = Root->Open (
                      Root,
                      &EfiFile,
-                     L"Sideload.efi",
+                     SIDELOAD_FILENAME,
                      EFI_FILE_MODE_READ|EFI_FILE_MODE_WRITE|EFI_FILE_MODE_CREATE,
                      0
                      );
@@ -222,22 +226,12 @@ CommandBoot (
       goto ERROR_UNREGISTER_RAMDISK;
     }
 
-    // build device path
-    EFI_DEVICE_PATH_PROTOCOL *LoaderDevicePath;
-    LoaderDevicePath = FileDevicePath(FSHandle, L"Sideload.efi");
-    if (LoaderDevicePath==NULL) {
-      FastbootFail("Can't build file device path");
+    // add shell mapping
+    Status = gEfiShellProtocol->SetMap(DevicePath, SIDELOAD_MAPPING);
+    if (EFI_ERROR (Status)) {
+      FastbootFail("Can't add shell mapping");
       goto ERROR_UNREGISTER_RAMDISK;
     }
-
-    // Need to connect every drivers to ensure no dependencies are missing for the application
-    BdsLibConnectAll ();
-
-    // build arguments
-    CONST CHAR16* Args = L"";
-    UINTN LoadOptionsSize = (UINT32)StrSize (Args);
-    VOID *LoadOptions     = AllocatePool (LoadOptionsSize);
-    StrCpy (LoadOptions, Args);
 
     // send OKAY
     FastbootOkay("");
@@ -246,10 +240,14 @@ CommandBoot (
     MenuPreBoot();
 
     // start efi application
-    Status = BdsStartEfiApplication (gImageHandle, LoaderDevicePath, LoadOptionsSize, LoadOptions);
+    EFI_STATUS CommandStatus;
+    Status = ShellExecute (gImageHandle, SIDELOAD_FULLPATH, FALSE, NULL, &CommandStatus);
 
     // restart menu
     MenuPostBoot();
+
+    // remove shell mapping
+    gEfiShellProtocol->SetMap(NULL, SIDELOAD_MAPPING);
 
 ERROR_UNREGISTER_RAMDISK:
     // unregister ramdisk
