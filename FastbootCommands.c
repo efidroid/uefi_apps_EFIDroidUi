@@ -452,6 +452,17 @@ CommandDisplayInfo (
   FastbootOkay("");
 }
 
+STATIC VOID
+CommandExit (
+  CHAR8 *Arg,
+  VOID *Data,
+  UINT32 Size
+)
+{
+  FastbootOkay("");
+  FastbootRequestStop();
+}
+
 STATIC
 VOID
 CommandScreenShot (
@@ -506,5 +517,6 @@ FastbootCommandsAdd (
 
   FastbootRegister("oem shell", CommandShell);
   FastbootRegister("oem displayinfo", CommandDisplayInfo);
+  FastbootRegister("oem exit", CommandExit);
   FastbootRegister("oem screenshot", CommandScreenShot);
 }

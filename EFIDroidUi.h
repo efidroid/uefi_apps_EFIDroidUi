@@ -187,6 +187,11 @@ FastbootCommandsAdd (
 );
 
 VOID
+FastbootRequestStop (
+  VOID
+);
+
+VOID
 FastbootSendBuf (
   IN CONST VOID *Data,
   IN UINTN Size

@@ -6,6 +6,7 @@
 #define STATE_COMMAND	1
 #define STATE_COMPLETE	2
 #define STATE_ERROR	3
+#define STATE_STOP	4
 
 typedef struct _FASTBOOT_COMMAND FASTBOOT_COMMAND;
 struct _FASTBOOT_COMMAND {
@@ -336,6 +337,8 @@ FastbootCommandLoop (
         Arg++;
 
       MatchedCommand->Handle(Arg, DownloadBase, DownloadSize);
+      if (mFastbootState == STATE_STOP)
+        break;
       if (mFastbootState == STATE_COMMAND)
         FastbootFail("unknown reason");
 
@@ -352,8 +355,10 @@ FastbootCommandLoop (
     }
   }
 
-  mFastbootState = STATE_OFFLINE;
-  DEBUG((EFI_D_ERROR, "fastboot: oops!\n"));
+  if (mFastbootState!=STATE_STOP) {
+    mFastbootState = STATE_OFFLINE;
+    DEBUG((EFI_D_ERROR, "fastboot: oops!\n"));
+  }
   FreeAlignedPages(Buffer, 1);
 
   if (DownloadBase!=NULL) {
@@ -377,6 +382,8 @@ FastbootHandler (
     gBS->WaitForEvent (1, &mUsbOnlineEvent, &EventIndex);
 
     FastbootCommandLoop();
+    if (mFastbootState==STATE_STOP)
+      break;
   }
 }
 
@@ -402,6 +409,7 @@ FastbootInit (
 
   MenuShowProgressDialog("Starting Fastboot", TRUE);
 
+  mFastbootState = STATE_OFFLINE;
   Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &mUsbOnlineEvent);
   ASSERT_EFI_ERROR (Status);
 
@@ -428,6 +436,14 @@ FastbootInit (
 
   Status = gBS->CloseEvent(mExitBootServicesEvent);
   mUsbInterface->udc_stop(mUsbInterface);
+}
+
+VOID
+FastbootRequestStop (
+  VOID
+)
+{
+  mFastbootState = STATE_STOP;
 }
 
 STATIC
