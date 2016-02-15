@@ -6,5 +6,6 @@ if you want to use it as a closed source application.
 
 List of directories containing 3rd Party code and the sites where you can find their original source code:
 Library/DecompressLib: https://github.com/torvalds/linux
-Library/Freetype2Lib: http://git.savannah.gnu.org/cgit/freetype/freetype2.git
+Library/FstabLib: https://github.com/CyanogenMod/android_system_core/tree/cm-13.0/fs_mgr
 Library/IniLib: https://github.com/benhoyt/inih
+Library/MakeDosFsLib: https://github.com/dosfstools/dosfstools
