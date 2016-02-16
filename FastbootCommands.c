@@ -583,7 +583,6 @@ CommandSetNvVar (
   CONST CHAR8 *Name;
   CONST CHAR8 *Value;
   CHAR8       *Ptr;
-  CHAR16      *Name16;
 
   Status = EFI_SUCCESS;
 
@@ -597,22 +596,7 @@ CommandSetNvVar (
     }
   }
 
-  Name16 = Ascii2Unicode(Name);
-  if(Name16==NULL) {
-    Status = EFI_OUT_OF_RESOURCES;
-    goto DONE;
-  }
-
-  Status = gRT->SetVariable (
-                  Name16,
-                  &gEFIDroidVariableGuid,
-                  (EFI_VARIABLE_NON_VOLATILE|EFI_VARIABLE_BOOTSERVICE_ACCESS|EFI_VARIABLE_RUNTIME_ACCESS),
-                  Value?AsciiStrSize(Value):0, (VOID*)Value
-                );
-
-  FreePool(Name16);
-
-DONE:
+  Status = UtilSetEFIDroidVariable(Name, Value);
   if(EFI_ERROR(Status)) {
     AsciiSPrint(Buf, sizeof(Buf), "%r", Status);
     FastbootFail(Buf);
