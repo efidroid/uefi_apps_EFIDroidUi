@@ -28,6 +28,12 @@ word colorSeparator;
 byte alphaSeparator;
 word colorBackground;
 
+STATIC
+EFI_STATUS
+MenuTakeScreenShot (
+  VOID
+);
+
 EFI_STATUS
 AromaInit (
   VOID
@@ -659,6 +665,7 @@ INT32 MenuShowDialog(
     mGop->SetMode(mGop, mOurMode);
   }
 
+REDRAW:
   MenuDrawDarkBackground();
   
   /* Init Message & Title Text */
@@ -797,6 +804,12 @@ INT32 MenuShowDialog(
           if(OldMode!=UINT32_MAX)
             mGop->SetMode(mGop, OldMode);
           return Selection;
+
+      // 's'
+      case 0x73:
+        MenuTakeScreenShot();
+        goto REDRAW;
+        break;
       }
     }
     else {
