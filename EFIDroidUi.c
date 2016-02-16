@@ -313,6 +313,20 @@ main (
     }
   }
 
+  // set default value for multiboot-debuglevel
+  Size = 0;
+  Status = gRT->GetVariable (L"multiboot-debuglevel", &gEFIDroidVariableGuid, NULL, &Size, NULL);
+  if (Status == EFI_NOT_FOUND) {
+    // allocate memory
+    CONST CHAR8* DebugLevel = "4"; // LOGI_LEVEL
+    Status = gRT->SetVariable (
+                L"multiboot-debuglevel",
+                &gEFIDroidVariableGuid,
+                (EFI_VARIABLE_NON_VOLATILE|EFI_VARIABLE_BOOTSERVICE_ACCESS|EFI_VARIABLE_RUNTIME_ACCESS),
+                AsciiStrSize(DebugLevel), (VOID*)DebugLevel
+              );
+  }
+
   // show main menu
   SetActiveMenu(mBootMenuMain);
   MenuEnter (0, TRUE);
