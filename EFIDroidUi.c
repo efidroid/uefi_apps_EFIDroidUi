@@ -320,6 +320,13 @@ main (
     UtilSetEFIDroidVariable("multiboot-debuglevel", "4");
   }
 
+  // set default value for fastboot-enable-boot-patch
+  Size = 0;
+  Status = gRT->GetVariable (L"fastboot-enable-boot-patch", &gEFIDroidVariableGuid, NULL, &Size, NULL);
+  if (Status == EFI_NOT_FOUND) {
+    UtilSetEFIDroidVariable("fastboot-enable-boot-patch", "0");
+  }
+
   // show main menu
   SetActiveMenu(mBootMenuMain);
   MenuEnter (0, TRUE);

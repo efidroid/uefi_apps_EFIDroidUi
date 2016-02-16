@@ -266,8 +266,15 @@ ERROR_FREE_RAMDISK:
     // send OKAY
     FastbootOkay("");
 
+    BOOLEAN DisablePatching = TRUE;
+    CHAR8* Var = UtilGetEFIDroidVariable("fastboot-enable-boot-patch");
+    if (Var && !AsciiStrCmp(Var, "1")) {
+      DisablePatching = FALSE;
+      FreePool(Var);
+    }
+
     // boot Android
-    AndroidBootFromBuffer(Data, Size, NULL, TRUE);
+    AndroidBootFromBuffer(Data, Size, NULL, DisablePatching);
   }
 }
 
