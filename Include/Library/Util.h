@@ -43,6 +43,17 @@ EFI_STATUS
   IN VOID                 *Context
   );
 
+typedef
+RETURN_STATUS
+(EFIAPI *VARIABLE_ITERATION_CALLBACK)(
+  IN  VOID                         *Context,
+  IN  CHAR16                       *VariableName,
+  IN  EFI_GUID                     *VendorGuid,
+  IN  UINT32                       Attributes,
+  IN  UINTN                        DataSize,
+  IN  VOID                         *Data
+  );
+
 CHAR8*
 Unicode2Ascii (
   CONST CHAR16* UnicodeStr
@@ -148,5 +159,11 @@ CHAR16*
 UtilGetExtensionLower (
   IN UINT16  *FileName
   );
+
+EFI_STATUS
+UtilIterateVariables (
+  IN VARIABLE_ITERATION_CALLBACK CallbackFunction,
+  IN VOID                        *Context
+);
 
 #endif /* ! UTIL_H */

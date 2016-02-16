@@ -3,6 +3,7 @@
 #include <Library/MemoryAllocationLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/UefiBootServicesTableLib.h>
+#include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/DebugLib.h>
 
 CHAR8*
@@ -375,4 +376,145 @@ UtilGetExtensionLower (
   UtilToLowerString(TmpStr);
 
   return TmpStr;
+}
+
+EFI_STATUS
+UtilIterateVariables (
+  IN VARIABLE_ITERATION_CALLBACK CallbackFunction,
+  IN VOID                        *Context
+)
+{
+  RETURN_STATUS               Status;
+  UINTN                       VariableNameBufferSize;
+  UINTN                       VariableNameSize;
+  CHAR16                      *VariableName;
+  EFI_GUID                    VendorGuid;
+  UINTN                       VariableDataBufferSize;
+  UINTN                       VariableDataSize;
+  VOID                        *VariableData;
+  UINT32                      VariableAttributes;
+  VOID                        *NewBuffer;
+
+  //
+  // Initialize the variable name and data buffer variables.
+  //
+  VariableNameBufferSize = sizeof (CHAR16);
+  VariableName = AllocateZeroPool (VariableNameBufferSize);
+
+  VariableDataBufferSize = 0;
+  VariableData = NULL;
+
+  for (;;) {
+    //
+    // Get the next variable name and guid
+    //
+    VariableNameSize = VariableNameBufferSize;
+    Status = gRT->GetNextVariableName (
+                    &VariableNameSize,
+                    VariableName,
+                    &VendorGuid
+                    );
+    if (Status == EFI_BUFFER_TOO_SMALL) {
+      //
+      // The currently allocated VariableName buffer is too small,
+      // so we allocate a larger buffer, and copy the old buffer
+      // to it.
+      //
+      NewBuffer = AllocatePool (VariableNameSize);
+      if (NewBuffer == NULL) {
+        Status = EFI_OUT_OF_RESOURCES;
+        break;
+      }
+      CopyMem (NewBuffer, VariableName, VariableNameBufferSize);
+      if (VariableName != NULL) {
+        FreePool (VariableName);
+      }
+      VariableName = NewBuffer;
+      VariableNameBufferSize = VariableNameSize;
+
+      //
+      // Try to get the next variable name again with the larger buffer.
+      //
+      Status = gRT->GetNextVariableName (
+                      &VariableNameSize,
+                      VariableName,
+                      &VendorGuid
+                      );
+    }
+
+    if (EFI_ERROR (Status)) {
+      if (Status == EFI_NOT_FOUND) {
+        Status = EFI_SUCCESS;
+      }
+      break;
+    }
+
+    //
+    // Get the variable data and attributes
+    //
+    VariableDataSize = VariableDataBufferSize;
+    Status = gRT->GetVariable (
+                    VariableName,
+                    &VendorGuid,
+                    &VariableAttributes,
+                    &VariableDataSize,
+                    VariableData
+                    );
+    if (Status == EFI_BUFFER_TOO_SMALL) {
+      //
+      // The currently allocated VariableData buffer is too small,
+      // so we allocate a larger buffer.
+      //
+      if (VariableDataBufferSize != 0) {
+        FreePool (VariableData);
+        VariableData = NULL;
+        VariableDataBufferSize = 0;
+      }
+      VariableData = AllocatePool (VariableDataSize);
+      if (VariableData == NULL) {
+        Status = EFI_OUT_OF_RESOURCES;
+        break;
+      }
+      VariableDataBufferSize = VariableDataSize;
+
+      //
+      // Try to read the variable again with the larger buffer.
+      //
+      Status = gRT->GetVariable (
+                      VariableName,
+                      &VendorGuid,
+                      &VariableAttributes,
+                      &VariableDataSize,
+                      VariableData
+                      );
+    }
+    if (EFI_ERROR (Status)) {
+      break;
+    }
+
+    //
+    // Run the callback function
+    //
+    Status = (*CallbackFunction) (
+               Context,
+               VariableName,
+               &VendorGuid,
+               VariableAttributes,
+               VariableDataSize,
+               VariableData
+               );
+    if (EFI_ERROR (Status)) {
+      break;
+    }
+  }
+
+  if (VariableName != NULL) {
+    FreePool (VariableName);
+  }
+
+  if (VariableData != NULL) {
+    FreePool (VariableData);
+  }
+
+  return Status;
 }
