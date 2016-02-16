@@ -446,10 +446,9 @@ FastbootRequestStop (
   mFastbootState = STATE_STOP;
 }
 
-STATIC
 VOID
-FastbootSendBufInternal (
-  IN CONST VOID *Data,
+FastbootSendString (
+  IN CONST CHAR8 *Data,
   IN UINTN Size
 )
 {
@@ -484,7 +483,7 @@ FastbootSendBuf (
     return;
   }
 
-  FastbootSendBufInternal(B64Data, Ret);
+  FastbootSendString(B64Data, Ret);
 
   FreePool(B64Data);
 }
