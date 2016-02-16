@@ -293,24 +293,19 @@ main (
 
   MenuInit();
 
-  // get size of 'EFIDroidErrorStr'
-  Size = 0;
-  Status = gRT->GetVariable (L"EFIDroidErrorStr", &gEFIDroidVariableGuid, NULL, &Size, NULL);
-  if (Status == EFI_BUFFER_TOO_SMALL) {
-    // allocate memory
-    CHAR8* EFIDroidErrorStr = AllocateZeroPool(Size);
-    if (EFIDroidErrorStr) {
-      // get actual variable value
-      Status = gRT->GetVariable (L"EFIDroidErrorStr", &gEFIDroidVariableGuid, NULL, &Size, EFIDroidErrorStr);
-      if (Status == EFI_SUCCESS) {
-        MenuShowMessage("Previous boot failed", EFIDroidErrorStr);
+  // show previous boot error
+  CHAR8* EFIDroidErrorStr = UtilGetEFIDroidVariable("EFIDroidErrorStr");
+  if (EFIDroidErrorStr != NULL) {
+    MenuShowMessage("Previous boot failed", EFIDroidErrorStr);
 
-        // delete variable
-        Status = gRT->SetVariable (L"EFIDroidErrorStr", &gEFIDroidVariableGuid, 0, 0, NULL);
-      }
+    // delete variable
+    UtilSetEFIDroidVariable("EFIDroidErrorStr", NULL);
 
-      FreePool(EFIDroidErrorStr);
-    }
+    // backup variable
+    UtilSetEFIDroidVariable("EFIDroidErrorStrPrev", EFIDroidErrorStr);
+
+    // free pool
+    FreePool(EFIDroidErrorStr);
   }
 
   // set default value for multiboot-debuglevel
