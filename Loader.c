@@ -4,6 +4,7 @@
 #define DTB_PAD_SIZE    0x1000
 
 CONST CHAR8* CMDLINE_MULTIBOOTPATH = " multibootpath=";
+CONST CHAR8* CMDLINE_MULTIBOOTDEBUG= " multiboot.debug=";
 CONST CHAR8* CMDLINE_RDINIT        = " rdinit=/init.multiboot";
 CONST CHAR8* CMDLINE_PERMISSIVE    = " androidboot.selinux=permissive";
 
@@ -128,8 +129,18 @@ AndroidLoadCmdline (
     len_cmdline_mbpath += AsciiStrLen(mbhandle->MultibootConfig);
   }
 
+  UINTN len_cmdline_multibootdebug = 0;
+  UINTN len_cmdline_multibootdebug_val = 0;
+
+  CHAR8* DebugValue = UtilGetEFIDroidVariable("multiboot-debuglevel");
+  if (DebugValue) {
+    len_cmdline_multibootdebug = AsciiStrLen(CMDLINE_MULTIBOOTDEBUG);
+    len_cmdline_multibootdebug_val = AsciiStrLen(DebugValue);
+  }
+
   UINTN CmdlineLenMax = len_cmdline + len_cmdline_extra + len_cmdline_rdinit + 
-                        len_cmdline_permissive + len_cmdline_mbpath + 1;
+                        len_cmdline_permissive + len_cmdline_mbpath +
+                        len_cmdline_multibootdebug + len_cmdline_multibootdebug_val + 1;
   Parsed->Cmdline = AllocateZeroPool(CmdlineLenMax);
   if (Parsed->Cmdline == NULL)
     return EFI_OUT_OF_RESOURCES;
@@ -147,6 +158,11 @@ AndroidLoadCmdline (
     AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, CMDLINE_MULTIBOOTPATH);
     AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, DevPathString);
     AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, mbhandle->MultibootConfig);
+  }
+
+  if (DebugValue) {
+    AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, CMDLINE_MULTIBOOTDEBUG);
+    AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, DebugValue);
   }
 
   return EFI_SUCCESS;
