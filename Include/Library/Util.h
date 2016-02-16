@@ -166,4 +166,15 @@ UtilIterateVariables (
   IN VOID                        *Context
 );
 
+EFI_STATUS
+UtilSetEFIDroidVariable (
+  IN CONST CHAR8* Name,
+  IN CONST CHAR8* Value
+);
+
+CHAR8*
+UtilGetEFIDroidVariable (
+  IN CONST CHAR8* Name
+);
+
 #endif /* ! UTIL_H */

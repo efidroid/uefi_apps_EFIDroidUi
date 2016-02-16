@@ -6,6 +6,8 @@
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/DebugLib.h>
 
+extern EFI_GUID gEFIDroidVariableGuid;
+
 CHAR8*
 Unicode2Ascii (
   CONST CHAR16* UnicodeStr
@@ -517,4 +519,73 @@ UtilIterateVariables (
   }
 
   return Status;
+}
+
+EFI_STATUS
+UtilSetEFIDroidVariable (
+  IN CONST CHAR8* Name,
+  IN CONST CHAR8* Value
+)
+{
+  EFI_STATUS Status;
+  CHAR16     *Name16;
+
+  // convert name to unicode
+  Name16 = Ascii2Unicode(Name);
+  if (Name16 == NULL)
+    return EFI_OUT_OF_RESOURCES;
+
+  // set variable
+  Status = gRT->SetVariable (
+              Name16,
+              &gEFIDroidVariableGuid,
+              (EFI_VARIABLE_NON_VOLATILE|EFI_VARIABLE_BOOTSERVICE_ACCESS|EFI_VARIABLE_RUNTIME_ACCESS),
+              Value?AsciiStrSize(Value):0, (VOID*)Value
+            );
+
+  // free name
+  FreePool(Name16);
+
+  return Status;
+}
+
+CHAR8*
+UtilGetEFIDroidVariable (
+  IN CONST CHAR8* Name
+)
+{
+  EFI_STATUS Status;
+  UINTN      Size;
+  CHAR16     *Name16;
+  CHAR8*     ReturnValue;
+
+  ReturnValue = NULL;
+
+  // convert name to unicode
+  Name16 = Ascii2Unicode(Name);
+  if (Name16 == NULL)
+    return NULL;
+
+  // get size of 'EFIDroidErrorStr'
+  Size = 0;
+  Status = gRT->GetVariable (Name16, &gEFIDroidVariableGuid, NULL, &Size, NULL);
+  if (Status == EFI_BUFFER_TOO_SMALL) {
+    // allocate memory
+    CHAR8* Data = AllocateZeroPool(Size);
+    if (Data) {
+      // get actual variable value
+      Status = gRT->GetVariable (Name16, &gEFIDroidVariableGuid, NULL, &Size, Data);
+      if (Status == EFI_SUCCESS) {
+        ReturnValue = Data;
+      }
+      else {
+        FreePool(Data);
+      }
+    }
+  }
+
+  // free name
+  FreePool(Name16);
+
+  return ReturnValue;
 }
