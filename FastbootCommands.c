@@ -503,6 +503,125 @@ CommandScreenShot (
   }
 }
 
+STATIC
+RETURN_STATUS
+EFIAPI
+IterateVariablesCallbackPrint (
+  IN  VOID                         *Context,
+  IN  CHAR16                       *VariableName,
+  IN  EFI_GUID                     *VendorGuid,
+  IN  UINT32                       Attributes,
+  IN  UINTN                        DataSize,
+  IN  VOID                         *Data
+  )
+{
+  EFI_STATUS          Status;
+  CONST CHAR16        *Arg;
+
+  Status = EFI_SUCCESS;
+  Arg = Context;
+
+  // show our variables only
+  if (!CompareGuid(VendorGuid, &gEFIDroidVariableGuid))
+    return Status;
+
+  // show specific variable only
+  if (Arg && StrCmp(VariableName, Arg))
+    return Status;
+
+  UINTN BufSize = StrLen(VariableName) + DataSize + 10 + 1;
+  CHAR8 *Buf = AllocatePool(BufSize);
+  if (Buf == NULL)
+    return EFI_OUT_OF_RESOURCES;
+
+  AsciiSPrint(Buf, BufSize, "%s: %a\n", VariableName, (CONST CHAR8*)Data);
+  FastbootSendString(Buf, AsciiStrLen(Buf));
+
+  FreePool(Buf);
+
+  return Status;
+}
+
+STATIC
+VOID
+CommandGetNvVar (
+  CHAR8 *Arg,
+  VOID *Data,
+  UINT32 Size
+)
+{
+  EFI_STATUS Status;
+  CHAR8      Buf[100];
+  CHAR16     *Arg16;
+
+  Arg16 = NULL;
+  if(AsciiStrLen(Arg)>0)
+    Arg16 = Ascii2Unicode(Arg);
+
+  Status = UtilIterateVariables(IterateVariablesCallbackPrint, Arg16);
+  FreePool(Arg16);
+
+  if(EFI_ERROR(Status)) {
+    AsciiSPrint(Buf, sizeof(Buf), "%r", Status);
+    FastbootFail(Buf);
+  }
+  else {
+    FastbootOkay("");
+  }
+}
+
+STATIC
+VOID
+CommandSetNvVar (
+  CHAR8 *Arg,
+  VOID *Data,
+  UINT32 Size
+)
+{
+  EFI_STATUS  Status;
+  CHAR8       Buf[100];
+  CONST CHAR8 *Name;
+  CONST CHAR8 *Value;
+  CHAR8       *Ptr;
+  CHAR16      *Name16;
+
+  Status = EFI_SUCCESS;
+
+  Name = Arg;
+  Value = NULL;
+  for (Ptr=Arg; *Ptr; Ptr++) {
+    if(Ptr[0]==' ') {
+      Ptr[0] = '\0';
+      Value = &Ptr[1];
+      break;
+    }
+  }
+
+  Name16 = Ascii2Unicode(Name);
+  if(Name16==NULL) {
+    Status = EFI_OUT_OF_RESOURCES;
+    goto DONE;
+  }
+
+  Status = gRT->SetVariable (
+                  Name16,
+                  &gEFIDroidVariableGuid,
+                  (EFI_VARIABLE_NON_VOLATILE|EFI_VARIABLE_BOOTSERVICE_ACCESS|EFI_VARIABLE_RUNTIME_ACCESS),
+                  Value?AsciiStrSize(Value):0, (VOID*)Value
+                );
+
+  FreePool(Name16);
+
+DONE:
+  if(EFI_ERROR(Status)) {
+    AsciiSPrint(Buf, sizeof(Buf), "%r", Status);
+    FastbootFail(Buf);
+  }
+  else {
+    FastbootOkay("");
+  }
+}
+
 VOID
 FastbootCommandsAdd (
   VOID
@@ -519,4 +638,6 @@ FastbootCommandsAdd (
   FastbootRegister("oem displayinfo", CommandDisplayInfo);
   FastbootRegister("oem exit", CommandExit);
   FastbootRegister("oem screenshot", CommandScreenShot);
+  FastbootRegister("oem getnvvar", CommandGetNvVar);
+  FastbootRegister("oem setnvvar", CommandSetNvVar);
 }
