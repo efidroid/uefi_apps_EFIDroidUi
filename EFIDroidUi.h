@@ -131,11 +131,6 @@ AndroidGetDecompRamdiskFromBlockIo (
 );
 
 EFI_STATUS
-MultibootCallback (
-  IN MENU_ENTRY *This
-);
-
-EFI_STATUS
 FileExplorerCallback (
   IN MENU_ENTRY* This
 );

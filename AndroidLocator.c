@@ -727,16 +727,38 @@ ENUMERATE:
 
     // add menu entry
     if(mbhandle->Name && mbhandle->PartitionBoot) {
+      EFI_FILE_PROTOCOL     *BootFile;
+      EFI_BLOCK_IO_PROTOCOL *BlockIo;
+
+      // open boot file
+      Status = mbhandle->ROMDirectory->Open (
+                       mbhandle->ROMDirectory,
+                       &BootFile,
+                       mbhandle->PartitionBoot,
+                       EFI_FILE_MODE_READ,
+                       0
+                       );
+      if (EFI_ERROR (Status)) {
+        return Status;
+      }
+
+      // create block IO
+      Status = FileBlockIoCreate(BootFile, &BlockIo);
+      if (EFI_ERROR(Status)) {
+        return Status;
+      }
+
       // create new menu entry
-      MENU_ENTRY *Entry = MenuCreateEntry();
+      MENU_ENTRY *Entry = MenuCreateBootEntry();
       if(Entry == NULL) {
         return EFI_OUT_OF_RESOURCES;
       }
+      MENU_ENTRY_PDATA* EntryPData = Entry->Private;
       Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
       Entry->Name = AsciiStrDup(mbhandle->Name);
       Entry->Description = AsciiStrDup(mbhandle->Description);
-      Entry->Private = mbhandle;
-      Entry->Callback = MultibootCallback;
+      EntryPData->BlockIo = BlockIo;
+      EntryPData->mbhandle = mbhandle;
       MenuAddEntry(mBootMenuMain, Entry);
 
       AddMultibootSystemToRecoveryMenu(mbhandle);

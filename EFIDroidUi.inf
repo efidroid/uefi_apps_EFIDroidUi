@@ -47,7 +47,6 @@
 [Sources.ARM]
   AndroidLocator.c
   Loader.c
-  MultibootLoader.c
   Fastboot.c
   FastbootCommands.c
 
