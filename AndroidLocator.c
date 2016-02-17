@@ -226,7 +226,6 @@ FindESP (
   Status = Volume->OpenVolume (
                      Volume,
                      &Root
-
                      );
   if (EFI_ERROR (Status) || Root==NULL) {
     return Status;
@@ -255,7 +254,6 @@ FindESP (
 
 STATIC EFI_STATUS
 GetAndroidImgInfo (
-  IN boot_img_hdr_t     *AndroidHdr,
   IN CPIO_NEWC_HEADER   *Ramdisk,
   CONST CHAR8           **IconPath,
   CHAR8                 **ImgName,
@@ -319,6 +317,7 @@ FindAndroidBlockIo (
   CONST CHAR8               *IconPath = NULL;
   LIBAROMA_STREAMP          Icon = NULL;
   CHAR8                     *Name = NULL;
+  MENU_ENTRY                *Entry = NULL;
 
   Status = EFI_SUCCESS;
 
@@ -353,14 +352,6 @@ FindAndroidBlockIo (
     goto FREEBUFFER;
   }
 
-  MENU_ENTRY* Entry = MenuCreateBootEntry();
-  if(Entry == NULL) {
-    Status = EFI_OUT_OF_RESOURCES;
-    goto FREEBUFFER;
-  }
-  MENU_ENTRY_PDATA* EntryPData = Entry->Private;
-  EntryPData->BlockIo = BlockIo;
-
   //
   // Get the PartitionName protocol on that handle
   //
@@ -379,7 +370,10 @@ FindAndroidBlockIo (
 
     if(Rec) {
       // this partition needs a ESP redirect
-      if(FstabIsUEFI(Rec) && mEspDir) {
+      if(FstabIsUEFI(Rec)) {
+        if (mEspDir == NULL)
+          goto FREEBUFFER;
+
         // build filename
         UINTN PathBufSize = 100*sizeof(CHAR16);
         CHAR16 *PathBuf = AllocateZeroPool(PathBufSize);
@@ -400,8 +394,21 @@ FindAndroidBlockIo (
           goto FREEBUFFER;
         }
 
-        Status = FileBlockIoCreate(BootFile, &EntryPData->BlockIo);
+        Status = FileBlockIoCreate(BootFile, &BlockIo);
         if (EFI_ERROR(Status)) {
+          goto FREEBUFFER;
+        }
+
+        // read android header
+        SetMem(AndroidHdr, BufferSize, 0);
+        Status = BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, 0, BufferSize, AndroidHdr);
+        if(EFI_ERROR(Status)) {
+          goto FREEBUFFER;
+        }
+
+        // verify android header
+        Status = AndroidVerify(AndroidHdr);
+        if(EFI_ERROR(Status)) {
           goto FREEBUFFER;
         }
       }
@@ -453,10 +460,10 @@ FindAndroidBlockIo (
   }
 
   CPIO_NEWC_HEADER *Ramdisk;
-  Status = AndroidGetDecompRamdiskFromBlockIo (EntryPData->BlockIo, &Ramdisk);
+  Status = AndroidGetDecompRamdiskFromBlockIo (BlockIo, &Ramdisk);
   if(!EFI_ERROR(Status)) {
     CHAR8* ImgName = NULL;
-    Status = GetAndroidImgInfo(AndroidHdr, Ramdisk, &IconPath, &ImgName, &IsRecovery);
+    Status = GetAndroidImgInfo(Ramdisk, &IconPath, &ImgName, &IsRecovery);
     if(!EFI_ERROR(Status) && ImgName) {
       // write to cache
       if (Crc32) {
@@ -486,6 +493,14 @@ FindAndroidBlockIo (
   }
 
 SKIP:
+  Entry = MenuCreateBootEntry();
+  if(Entry == NULL) {
+    Status = EFI_OUT_OF_RESOURCES;
+    goto FREEBUFFER;
+  }
+  MENU_ENTRY_PDATA* EntryPData = Entry->Private;
+  EntryPData->BlockIo = BlockIo;
+
   if(Icon==NULL) {
     Icon = libaroma_stream_ramdisk("icons/android.png");
   }
