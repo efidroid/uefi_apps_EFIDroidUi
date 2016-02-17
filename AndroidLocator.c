@@ -751,6 +751,8 @@ InitializeEspData (
   VOID
 )
 {
+  EFI_STATUS Status;
+
   // get ESP
   FSTAB_REC* EspRec = FstabGetESP(mFstab);
   if(!EspRec)
@@ -785,6 +787,22 @@ InitializeEspData (
     FindESP,
     NULL
     );
+
+  // publish filename to fastboot
+  if (mEspDir) {
+    CHAR16* FileName = NULL;
+    Status = FileHandleGetFileName(mEspDir, &FileName);
+    if (!EFI_ERROR (Status)) {
+      FastbootPublish("esp-dir", Unicode2Ascii(FileName));
+      FreePool(FileName);
+    }
+    else {
+      FastbootPublish("esp-dir", "<name-error>");
+    }
+  }
+  else {
+    FastbootPublish("esp-dir", "<null>");
+  }
 
   return EFI_SUCCESS;
 }
