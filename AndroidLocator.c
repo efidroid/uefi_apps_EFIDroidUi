@@ -257,7 +257,7 @@ STATIC EFI_STATUS
 GetAndroidImgInfo (
   IN boot_img_hdr_t     *AndroidHdr,
   IN CPIO_NEWC_HEADER   *Ramdisk,
-  LIBAROMA_STREAMP      *Icon,
+  CONST CHAR8           **IconPath,
   CHAR8                 **ImgName,
   BOOLEAN               *IsRecovery
 )
@@ -268,31 +268,31 @@ GetAndroidImgInfo (
 
     // set icon and description
     if (CpioGetByName(Ramdisk, "sbin/twrp")) {
-      *Icon = libaroma_stream_ramdisk("icons/recovery_twrp.png");
+      *IconPath = "icons/recovery_twrp.png";
       *ImgName = AsciiStrDup("TWRP");
     }
     else if (CpioGetByName(Ramdisk, "sbin/raw-backup.sh")) {
-      *Icon = libaroma_stream_ramdisk("icons/recovery_clockwork.png");
+      *IconPath = "icons/recovery_clockwork.png";
       *ImgName = AsciiStrDup("PhilZ Touch");
     }
     else if (CpioGetByName(Ramdisk, "res/images/icon_clockwork.png")) {
-      *Icon = libaroma_stream_ramdisk("icons/recovery_clockwork.png");
+      *IconPath = "icons/recovery_clockwork.png";
       *ImgName = AsciiStrDup("ClockworkMod Recovery");
     }
     else if (CpioGetByName(Ramdisk, "res/images/font_log.png")) {
-      *Icon = libaroma_stream_ramdisk("icons/recovery_cyanogen.png");
+      *IconPath = "icons/recovery_cyanogen.png";
       *ImgName = AsciiStrDup("Cyanogen Recovery");
     }
     else if (CpioGetByName(Ramdisk, "sbin/lafd")) {
-      *Icon = libaroma_stream_ramdisk("icons/recovery_lglaf.png");
+      *IconPath = "icons/recovery_lglaf.png";
       *ImgName = AsciiStrDup("LG Laf Recovery");
     }
     else if (CpioGetByName(Ramdisk, "res/images/icon_smile.png")) {
-      *Icon = libaroma_stream_ramdisk("icons/recovery_xiaomi.png");
+      *IconPath = "icons/recovery_xiaomi.png";
       *ImgName = AsciiStrDup("Xiaomi Recovery");
     }
     else {
-      *Icon = libaroma_stream_ramdisk("icons/android.png");
+      *IconPath = "icons/android.png";
       *ImgName = AsciiStrDup("Recovery");
     }
 
@@ -316,6 +316,7 @@ FindAndroidBlockIo (
   UINTN                     BufferSize;
   boot_img_hdr_t            *AndroidHdr;
   BOOLEAN                   IsRecovery = FALSE;
+  CONST CHAR8               *IconPath = NULL;
   LIBAROMA_STREAMP          Icon = NULL;
   CHAR8                     *Name = NULL;
 
@@ -427,12 +428,49 @@ FindAndroidBlockIo (
     Name = AsciiStrDup("Unknown");
   }
 
+  UINT32 Crc32 = 0;
+  Status = gBS->CalculateCrc32(AndroidHdr, sizeof(*AndroidHdr), &Crc32);
+  if (!EFI_ERROR(Status)) {
+    CHAR16 Buf[50];
+    UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", Crc32);
+    IMGINFO_CACHE* Cache = UtilGetEFIDroidDataVariable(Buf);
+    if (Cache) {
+      Icon = libaroma_stream_ramdisk(Cache->IconPath);
+      IsRecovery = Cache->IsRecovery;
+
+      FreePool(Name);
+      Name = AllocateZeroPool(4096);
+      if(Name) {
+        AsciiSPrint(Name, 4096, "%a (Internal)", Cache->Name);
+      }
+      else {
+        Name = AsciiStrDup(Cache->Name);
+      }
+
+      FreePool(Cache);
+      goto SKIP;
+    }
+  }
+
   CPIO_NEWC_HEADER *Ramdisk;
   Status = AndroidGetDecompRamdiskFromBlockIo (EntryPData->BlockIo, &Ramdisk);
   if(!EFI_ERROR(Status)) {
     CHAR8* ImgName = NULL;
-    Status = GetAndroidImgInfo(AndroidHdr, Ramdisk, &Icon, &ImgName, &IsRecovery);
+    Status = GetAndroidImgInfo(AndroidHdr, Ramdisk, &IconPath, &ImgName, &IsRecovery);
     if(!EFI_ERROR(Status) && ImgName) {
+      // write to cache
+      if (Crc32) {
+        IMGINFO_CACHE Cache;
+        AsciiSPrint(Cache.Name, sizeof(Cache.Name), "%a", ImgName);
+        AsciiSPrint(Cache.IconPath, sizeof(Cache.IconPath), "%a", IconPath);
+        Cache.IsRecovery = IsRecovery;
+
+        CHAR16 Buf[50];
+        UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", Crc32);
+        UtilSetEFIDroidDataVariable(Buf, &Cache, sizeof(Cache));
+      }
+
+      Icon = libaroma_stream_ramdisk(IconPath);
       FreePool(Name);
       Name = AllocateZeroPool(4096);
       if(Name) {
@@ -446,6 +484,8 @@ FindAndroidBlockIo (
 
     FreePool(Ramdisk);
   }
+
+SKIP:
   if(Icon==NULL) {
     Icon = libaroma_stream_ramdisk("icons/android.png");
   }

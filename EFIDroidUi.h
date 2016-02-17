@@ -81,6 +81,12 @@ typedef struct {
   MENU_ENTRY      *NoPatchEntry;
 } RECOVERY_MENU;
 
+typedef struct {
+  CHAR8 Name[30];
+  CHAR8 IconPath[30];
+  BOOLEAN IsRecovery;
+} IMGINFO_CACHE;
+
 EFI_STATUS
 AndroidLocatorInit (
   VOID
