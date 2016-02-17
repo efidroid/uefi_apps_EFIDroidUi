@@ -805,16 +805,20 @@ InitializeEspData (
 
   // build path for UEFIESP directory
   UINTN BufSize = 5000*sizeof(CHAR16);
+  BOOLEAN IsDataMedia = FALSE;
   mEspPartitionPath = AllocateZeroPool(BufSize);
   ASSERT(mEspPartitionPath);
   if(EspRec->esp[0]=='/')
     UnicodeSPrint(mEspPartitionPath, BufSize, L"%s/UEFIESP", EspRec->esp);
-  else if(!AsciiStrCmp(EspRec->esp, "datamedia"))
+  else if(!AsciiStrCmp(EspRec->esp, "datamedia")) {
     UnicodeSPrint(mEspPartitionPath, BufSize, L"/media/UEFIESP");
+    IsDataMedia = TRUE;
+  }
   else {
     return EFI_INVALID_PARAMETER;
   }
 
+AGAIN:
   // convert path
   PathToUefi(mEspPartitionPath);
 
@@ -824,6 +828,11 @@ InitializeEspData (
     FindESP,
     NULL
     );
+
+  if (!mEspDir && IsDataMedia) {
+    UnicodeSPrint(mEspPartitionPath, BufSize, L"/media/0/UEFIESP");
+    goto AGAIN;
+  }
 
   // publish filename to fastboot
   if (mEspDir) {
