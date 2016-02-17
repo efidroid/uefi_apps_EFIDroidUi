@@ -46,6 +46,7 @@
 #include "bootimg.h"
 
 extern EFI_GUID gEFIDroidVariableGuid;
+extern EFI_GUID gEFIDroidVariableDataGuid;
 extern MENU_OPTION *mBootMenuMain;
 
 typedef struct {

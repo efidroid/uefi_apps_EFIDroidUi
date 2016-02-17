@@ -177,4 +177,16 @@ UtilGetEFIDroidVariable (
   IN CONST CHAR8* Name
 );
 
+EFI_STATUS
+UtilSetEFIDroidDataVariable (
+  IN CONST CHAR16 *Name,
+  IN CONST VOID   *Value,
+  IN UINTN        Size
+);
+
+VOID*
+UtilGetEFIDroidDataVariable (
+  IN CONST CHAR16* Name
+);
+
 #endif /* ! UTIL_H */

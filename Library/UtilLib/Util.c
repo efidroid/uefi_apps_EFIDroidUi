@@ -7,6 +7,7 @@
 #include <Library/DebugLib.h>
 
 extern EFI_GUID gEFIDroidVariableGuid;
+extern EFI_GUID gEFIDroidVariableDataGuid;
 
 CHAR8*
 Unicode2Ascii (
@@ -586,6 +587,58 @@ UtilGetEFIDroidVariable (
 
   // free name
   FreePool(Name16);
+
+  return ReturnValue;
+}
+
+EFI_STATUS
+UtilSetEFIDroidDataVariable (
+  IN CONST CHAR16 *Name,
+  IN CONST VOID   *Value,
+  IN UINTN        Size
+)
+{
+  EFI_STATUS Status;
+
+  // set variable
+  Status = gRT->SetVariable (
+              (CHAR16*)Name,
+              &gEFIDroidVariableDataGuid,
+              (EFI_VARIABLE_NON_VOLATILE|EFI_VARIABLE_BOOTSERVICE_ACCESS|EFI_VARIABLE_RUNTIME_ACCESS),
+              Size, (VOID*)Value
+            );
+
+  return Status;
+}
+
+VOID*
+UtilGetEFIDroidDataVariable (
+  IN CONST CHAR16* Name
+)
+{
+  EFI_STATUS Status;
+  UINTN      Size;
+  CHAR8*     ReturnValue;
+
+  ReturnValue = NULL;
+
+  // get size of 'EFIDroidErrorStr'
+  Size = 0;
+  Status = gRT->GetVariable ((CHAR16*)Name, &gEFIDroidVariableDataGuid, NULL, &Size, NULL);
+  if (Status == EFI_BUFFER_TOO_SMALL) {
+    // allocate memory
+    CHAR8* Data = AllocateZeroPool(Size);
+    if (Data) {
+      // get actual variable value
+      Status = gRT->GetVariable ((CHAR16*)Name, &gEFIDroidVariableDataGuid, NULL, &Size, Data);
+      if (Status == EFI_SUCCESS) {
+        ReturnValue = Data;
+      }
+      else {
+        FreePool(Data);
+      }
+    }
+  }
 
   return ReturnValue;
 }
