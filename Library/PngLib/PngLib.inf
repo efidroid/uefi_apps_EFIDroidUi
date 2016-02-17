@@ -31,21 +31,21 @@
 #
 
 [Sources]
-  ../../../EFIDroidModules/libaroma/libs/png/png.c
-  ../../../EFIDroidModules/libaroma/libs/png/pngerror.c
-  ../../../EFIDroidModules/libaroma/libs/png/pngget.c
-  ../../../EFIDroidModules/libaroma/libs/png/pngmem.c
-  ../../../EFIDroidModules/libaroma/libs/png/pngpread.c
-  ../../../EFIDroidModules/libaroma/libs/png/pngread.c
-  ../../../EFIDroidModules/libaroma/libs/png/pngrio.c
-  ../../../EFIDroidModules/libaroma/libs/png/pngrtran.c
-  ../../../EFIDroidModules/libaroma/libs/png/pngrutil.c
-  ../../../EFIDroidModules/libaroma/libs/png/pngset.c
-  ../../../EFIDroidModules/libaroma/libs/png/pngtrans.c
-  ../../../EFIDroidModules/libaroma/libs/png/pngwio.c
-  ../../../EFIDroidModules/libaroma/libs/png/pngwrite.c
-  ../../../EFIDroidModules/libaroma/libs/png/pngwtran.c
-  ../../../EFIDroidModules/libaroma/libs/png/pngwutil.c
+  ../../../../EFIDroidModules/libaroma/libs/png/png.c
+  ../../../../EFIDroidModules/libaroma/libs/png/pngerror.c
+  ../../../../EFIDroidModules/libaroma/libs/png/pngget.c
+  ../../../../EFIDroidModules/libaroma/libs/png/pngmem.c
+  ../../../../EFIDroidModules/libaroma/libs/png/pngpread.c
+  ../../../../EFIDroidModules/libaroma/libs/png/pngread.c
+  ../../../../EFIDroidModules/libaroma/libs/png/pngrio.c
+  ../../../../EFIDroidModules/libaroma/libs/png/pngrtran.c
+  ../../../../EFIDroidModules/libaroma/libs/png/pngrutil.c
+  ../../../../EFIDroidModules/libaroma/libs/png/pngset.c
+  ../../../../EFIDroidModules/libaroma/libs/png/pngtrans.c
+  ../../../../EFIDroidModules/libaroma/libs/png/pngwio.c
+  ../../../../EFIDroidModules/libaroma/libs/png/pngwrite.c
+  ../../../../EFIDroidModules/libaroma/libs/png/pngwtran.c
+  ../../../../EFIDroidModules/libaroma/libs/png/pngwutil.c
 
 [Packages]
   StdLib/StdLib.dec
@@ -61,4 +61,4 @@
   TRUE
 
 [BuildOptions]
-  GCC:*_*_*_CC_FLAGS     = -Wno-unused-variable
+  GCC:*_*_*_CC_FLAGS     = -Wno-unused-variable -include pnglibconf_uefi.h

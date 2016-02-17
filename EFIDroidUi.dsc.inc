@@ -1,7 +1,7 @@
 [LibraryClasses]
   Freetype2Lib|EFIDroidUEFIApps/EFIDroidUi/Library/Freetype2Lib.inf
   ZLib|EFIDroidUEFIApps/EFIDroidUi/Library/ZLib.inf
-  PngLib|EFIDroidUEFIApps/EFIDroidUi/Library/PngLib.inf
+  PngLib|EFIDroidUEFIApps/EFIDroidUi/Library/PngLib/PngLib.inf
   JpegLib|EFIDroidUEFIApps/EFIDroidUi/Library/JpegLib.inf
   AromaLib|EFIDroidUEFIApps/EFIDroidUi/Library/AromaLib/AromaLib.inf
   SquirrelLib|EFIDroidUEFIApps/EFIDroidUi/Library/SquirrelLib.inf
