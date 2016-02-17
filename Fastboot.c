@@ -144,25 +144,6 @@ FastbootPublish (
 }
 
 STATIC VOID
-GetVarAll (
-  VOID
-)
-{
-  FASTBOOT_VAR *Variable;
-  char Buffer[64];
-
-  for (Variable = VariableList; Variable; Variable = Variable->Next) {
-    AsciiStrnCpyS(Buffer, sizeof(Buffer), Variable->Name, AsciiStrLen(Variable->Name));
-    AsciiStrCatS(Buffer, sizeof(Buffer), ":");
-    AsciiStrCatS(Buffer, sizeof(Buffer), Variable->Value);
-
-    FastbootInfo(Buffer);
-    SetMem(Buffer, sizeof(Buffer), '\0');
-  }
-  FastbootOkay("");
-}
-
-STATIC VOID
 CommandGetVar (
   CHAR8 *Arg,
   VOID *Data,
@@ -174,11 +155,6 @@ CommandGetVar (
   CHAR8 Response[128];
 
   All = !AsciiStrCmp("all", Arg);
-
-  if (!AsciiStrnCmp("all", Arg, AsciiStrLen(Arg))) {
-    GetVarAll();
-    return;
-  }
 
   for (Variable = VariableList; Variable; Variable = Variable->Next) {
     if (All) {
