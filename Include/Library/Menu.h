@@ -88,6 +88,11 @@ MenuCloneEntry (
   MENU_ENTRY* BaseEntry
 );
 
+MENU_OPTION*
+MenuClone (
+  MENU_OPTION  *Menu
+);
+
 VOID
 MenuFreeEntry (
   MENU_ENTRY* Entry

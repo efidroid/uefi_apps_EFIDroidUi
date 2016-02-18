@@ -484,6 +484,42 @@ MenuCloneEntry (
   return Entry;
 }
 
+MENU_OPTION*
+MenuClone (
+  MENU_OPTION  *Menu
+)
+{
+  LIST_ENTRY   *Link;
+  MENU_ENTRY   *Entry;
+  UINTN        Index;
+  MENU_OPTION* NewMenu;
+
+  NewMenu = MenuCreate();
+  if (NewMenu == NULL)
+    return NULL;
+
+  if(Menu->Title)
+    NewMenu->Title = AsciiStrDup(Menu->Title);
+  if(Menu->BackCallback)
+    NewMenu->BackCallback = Menu->BackCallback;
+
+  Link = Menu->Head.ForwardLink;
+  Index = 0;
+  while (Link != NULL && Link != &Menu->Head) {
+    Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
+
+    MENU_ENTRY* CloneEntry = MenuCloneEntry(Entry);
+    if (CloneEntry) {
+      MenuAddEntry(NewMenu, CloneEntry);
+    }
+
+    Link = Link->ForwardLink;
+    Index++;
+  }
+
+  return NewMenu;
+}
+
 VOID
 MenuFreeEntry (
   MENU_ENTRY* Entry
