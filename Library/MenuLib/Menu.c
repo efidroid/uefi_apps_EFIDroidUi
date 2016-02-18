@@ -474,6 +474,7 @@ MenuCloneEntry (
   if(BaseEntry->Description)
     Entry->Description = AsciiStrDup(BaseEntry->Description);
   Entry->Callback = BaseEntry->Callback;
+  Entry->LongPressCallback = BaseEntry->LongPressCallback;
   Entry->ResetGop = BaseEntry->ResetGop;
   Entry->HideBootMessage = BaseEntry->HideBootMessage;
   Entry->Icon = BaseEntry->Icon;
