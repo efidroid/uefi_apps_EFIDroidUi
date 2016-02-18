@@ -29,7 +29,7 @@ MenuBootEntryCloneCallback (
 )
 {
   MENU_ENTRY_PDATA *PDataBase = BaseEntry->Private;
-  MENU_ENTRY_PDATA *PData = Entry->Private;
+  MENU_ENTRY_PDATA *PData;
 
   if(PDataBase==NULL)
     return EFI_SUCCESS;
