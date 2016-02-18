@@ -2,6 +2,8 @@
 
 MENU_OPTION                 *mBootMenuMain = NULL;
 MENU_OPTION                 *mPowerMenu = NULL;
+EFI_DEVICE_PATH_TO_TEXT_PROTOCOL   *gEfiDevicePathToTextProtocol = NULL;
+EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL *gEfiDevicePathFromTextProtocol = NULL;
 
 EFI_STATUS
 BootOptionEfiOption (
@@ -200,6 +202,25 @@ main (
   UINTN                               Size;
   EFI_STATUS                          Status;
   MENU_ENTRY                          *Entry;
+  lkapi_t                             *LKApi;
+
+  Status = gBS->LocateProtocol (
+                  &gEfiDevicePathToTextProtocolGuid,
+                  NULL,
+                  (VOID **)&gEfiDevicePathToTextProtocol
+                  );
+  if (EFI_ERROR (Status)) {
+    return EFI_NOT_FOUND;
+  }
+
+  Status = gBS->LocateProtocol (
+                  &gEfiDevicePathFromTextProtocolGuid,
+                  NULL,
+                  (VOID **)&gEfiDevicePathFromTextProtocol
+                  );
+  if (EFI_ERROR (Status)) {
+    return EFI_NOT_FOUND;
+  }
 
   // create menus
   mBootMenuMain = MenuCreate();
@@ -321,6 +342,21 @@ main (
   if (Status == EFI_NOT_FOUND) {
     UtilSetEFIDroidVariable("fastboot-enable-boot-patch", "0");
   }
+
+  // get last boot entry
+  LAST_BOOT_ENTRY* LastBootEntry = UtilGetEFIDroidDataVariable(L"LastBootEntry");
+  if(LastBootEntry)
+   UtilSetEFIDroidDataVariable(L"LastBootEntry", NULL, 0);
+
+  // run recovery mode handler
+  LKApi = GetLKApi();
+  if (LKApi && LKApi->platform_get_uefi_bootmode()==LKAPI_UEFI_BM_RECOVERY) {
+    AndroidLocatorHandleRecoveryMode(LastBootEntry);
+  }
+
+  // free last boot entry
+  if(LastBootEntry)
+    FreePool(LastBootEntry);
 
   // show main menu
   SetActiveMenu(mBootMenuMain);

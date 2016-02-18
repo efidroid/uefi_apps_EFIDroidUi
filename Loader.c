@@ -241,7 +241,8 @@ EFI_STATUS
 AndroidBootFromBlockIo (
   IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
   IN multiboot_handle_t     *mbhandle,
-  IN BOOLEAN                DisablePatching
+  IN BOOLEAN                DisablePatching,
+  IN LAST_BOOT_ENTRY        *LastBootEntry
 )
 {
   EFI_STATUS                Status;
@@ -433,6 +434,14 @@ AndroidBootFromBlockIo (
     goto FREEBUFFER;
   }
 
+  // set LastBootEntry variable
+  Status = UtilSetEFIDroidDataVariable(L"LastBootEntry", LastBootEntry, LastBootEntry?sizeof(*LastBootEntry):0);
+  if (EFI_ERROR (Status)) {
+    AsciiSPrint(Buf, sizeof(Buf), "Can't set variable 'LastBootEntry': %r", Status);
+    MenuShowMessage("Error", Buf);
+    goto FREEBUFFER;
+  }
+
   // Shut down UEFI boot services. ExitBootServices() will notify every driver that created an event on
   // ExitBootServices event. Example the Interrupt DXE driver will disable the interrupts on this event.
   Status = ShutdownUefiBootServices ();
@@ -559,7 +568,8 @@ EFI_STATUS
 AndroidBootFromFile (
   IN EFI_FILE_PROTOCOL  *File,
   IN multiboot_handle_t *mbhandle,
-  IN BOOLEAN            DisablePatching
+  IN BOOLEAN            DisablePatching,
+  IN LAST_BOOT_ENTRY    *LastBootEntry
 )
 {
   EFI_STATUS                Status;
@@ -567,7 +577,7 @@ AndroidBootFromFile (
 
   Status = FileBlockIoCreate(File, &BlockIo);
 
-  Status = AndroidBootFromBlockIo(BlockIo, mbhandle, DisablePatching);
+  Status = AndroidBootFromBlockIo(BlockIo, mbhandle, DisablePatching, LastBootEntry);
   FileBlockIoFree(BlockIo);
 
   return Status;
@@ -578,7 +588,8 @@ AndroidBootFromBuffer (
   IN VOID               *Buffer,
   IN UINTN              Size,
   IN multiboot_handle_t *mbhandle,
-  IN BOOLEAN            DisablePatching
+  IN BOOLEAN            DisablePatching,
+  IN LAST_BOOT_ENTRY    *LastBootEntry
 )
 {
   EFI_STATUS                Status;
@@ -586,7 +597,7 @@ AndroidBootFromBuffer (
 
   Status = MemoryBlockIoCreate(Buffer, Size, &BlockIo);
 
-  Status = AndroidBootFromBlockIo(BlockIo, mbhandle, DisablePatching);
+  Status = AndroidBootFromBlockIo(BlockIo, mbhandle, DisablePatching, LastBootEntry);
   MemoryBlockIoFree(BlockIo);
 
   return Status;

@@ -8,6 +8,7 @@ STATIC CHAR16                          *mEspPartitionName = NULL;
 STATIC CHAR16                          *mEspPartitionPath = NULL;
 STATIC EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *mEspVolume = NULL;
 STATIC EFI_FILE_PROTOCOL               *mEspDir    = NULL;
+STATIC EFI_DEVICE_PATH_PROTOCOL        *mEspDevicePath = NULL;
 
 VOID
 MenuBootEntryFreeCallback (
@@ -51,7 +52,7 @@ CallbackBootAndroid (
 {
   MENU_ENTRY_PDATA *PData = This->Private;
 
-  return AndroidBootFromBlockIo(PData->BlockIo, PData->mbhandle, PData->DisablePatching);
+  return AndroidBootFromBlockIo(PData->BlockIo, PData->mbhandle, PData->DisablePatching, &PData->LastBootEntry);
 }
 
 MENU_ENTRY*
@@ -202,7 +203,8 @@ CreateRecoveryMenu (
 
 VOID
 AddMultibootSystemToRecoveryMenu (
-  multiboot_handle_t* mbhandle
+  multiboot_handle_t *mbhandle,
+  MENU_ENTRY_PDATA   *EntryPData
 )
 {
   LIST_ENTRY* Link;
@@ -220,6 +222,7 @@ AddMultibootSystemToRecoveryMenu (
 
     MENU_ENTRY_PDATA* NewEntryPData = NewEntry->Private;
     NewEntryPData->mbhandle = mbhandle;
+    NewEntryPData->LastBootEntry = EntryPData->LastBootEntry;
     if(NewEntry->Name)
       FreePool(NewEntry->Name);
     NewEntry->Name = AsciiStrDup(mbhandle->Name);
@@ -228,6 +231,81 @@ AddMultibootSystemToRecoveryMenu (
 
     MenuAddEntry(RecEntry->SubMenu, NewEntry);
   }
+}
+
+STATIC
+MENU_ENTRY*
+GetMenuEntryFromLastBootEntryInternal (
+  MENU_OPTION     *Menu,
+  LAST_BOOT_ENTRY *LastBootEntry
+)
+{
+  LIST_ENTRY   *Link;
+  MENU_ENTRY   *Entry;
+  UINTN        Index;
+
+  Link = Menu->Head.ForwardLink;
+  Index = 0;
+  while (Link != NULL && Link != &Menu->Head) {
+    Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
+    MENU_ENTRY_PDATA* EntryPData = Entry->Private;
+
+    if (EntryPData == NULL)
+      goto NEXT;
+    if (EntryPData->Signature != MENU_ANDROID_BOOT_ENTRY_SIGNATURE)
+      goto NEXT;
+
+    LAST_BOOT_ENTRY* LocalLastBootEntry = &EntryPData->LastBootEntry;
+    if (LocalLastBootEntry->Type != LastBootEntry->Type)
+      goto NEXT;
+
+    switch (LocalLastBootEntry->Type) {
+      case LAST_BOOT_TYPE_BLOCKIO:
+        if (!AsciiStrCmp(LocalLastBootEntry->TextDevicePath, LastBootEntry->TextDevicePath))
+          return Entry;
+        break;
+
+      case LAST_BOOT_TYPE_FILE:
+      case LAST_BOOT_TYPE_MULTIBOOT:
+        if (
+            !AsciiStrCmp(LocalLastBootEntry->TextDevicePath, LastBootEntry->TextDevicePath) &&
+            !AsciiStrCmp(LocalLastBootEntry->FilePathName, LastBootEntry->FilePathName))
+          return Entry;
+
+        break;
+    }
+
+NEXT:
+    Link = Link->ForwardLink;
+    Index++;
+  }
+
+  return NULL;
+}
+
+MENU_ENTRY*
+GetMenuEntryFromLastBootEntry (
+  LAST_BOOT_ENTRY *LastBootEntry
+)
+{
+  MENU_ENTRY* Entry;
+  LIST_ENTRY* Link;
+  RECOVERY_MENU* RecEntry;
+
+  Entry = GetMenuEntryFromLastBootEntryInternal(mBootMenuMain, LastBootEntry);
+  if (Entry) return Entry;
+
+  for (Link = GetFirstNode (&mRecoveries);
+       !IsNull (&mRecoveries, Link);
+       Link = GetNextNode (&mRecoveries, Link)
+      ) {
+    RecEntry = CR (Link, RECOVERY_MENU, Link, RECOVERY_MENU_SIGNATURE);
+
+    Entry = GetMenuEntryFromLastBootEntryInternal(RecEntry->SubMenu, LastBootEntry);
+    if (Entry) return Entry;
+  }
+
+  return NULL;
 }
 
 STATIC EFI_STATUS
@@ -243,6 +321,11 @@ FindESP (
   EFI_FILE_PROTOCOL                 *Root;
   EFI_FILE_PROTOCOL                 *DirEsp;
   EFI_PARTITION_NAME_PROTOCOL       *PartitionName;
+
+  mEspDevicePath = DevicePathFromHandle(Handle);
+  if (mEspDevicePath==NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
 
   //
   // Get the PartitionName protocol on that handle
@@ -373,8 +456,16 @@ FindAndroidBlockIo (
   LIBAROMA_STREAMP          Icon = NULL;
   CHAR8                     *Name = NULL;
   MENU_ENTRY                *Entry = NULL;
+  LAST_BOOT_ENTRY           LastBootEntry = {0};
+  CHAR16                    *TmpStr;
+  EFI_DEVICE_PATH_PROTOCOL  *DevicePath = NULL;
 
   Status = EFI_SUCCESS;
+
+  DevicePath = DevicePathFromHandle(Handle);
+  if (DevicePath==NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
 
   //
   // Get the BlockIO protocol on that handle
@@ -406,6 +497,12 @@ FindAndroidBlockIo (
   if(EFI_ERROR(Status)) {
     goto FREEBUFFER;
   }
+
+  // build lastbootentry info
+  LastBootEntry.Type = LAST_BOOT_TYPE_BLOCKIO;
+  TmpStr = gEfiDevicePathToTextProtocol->ConvertDevicePathToText(DevicePath, FALSE, FALSE);
+  AsciiSPrint(LastBootEntry.TextDevicePath, sizeof(LastBootEntry.TextDevicePath), "%s", TmpStr);
+  FreePool(TmpStr);
 
   //
   // Get the PartitionName protocol on that handle
@@ -453,6 +550,20 @@ FindAndroidBlockIo (
         if (EFI_ERROR(Status)) {
           goto FREEBUFFER;
         }
+
+        // build lastbootentry info
+        LastBootEntry.Type = LAST_BOOT_TYPE_FILE;
+        TmpStr = gEfiDevicePathToTextProtocol->ConvertDevicePathToText(mEspDevicePath, FALSE, FALSE);
+        AsciiSPrint(LastBootEntry.TextDevicePath, sizeof(LastBootEntry.TextDevicePath), "%s", TmpStr);
+        FreePool(TmpStr);
+
+        TmpStr = NULL;
+        Status = FileHandleGetFileName(BootFile, &TmpStr);
+        if (EFI_ERROR (Status)) {
+          goto FREEBUFFER;
+        }
+        AsciiSPrint(LastBootEntry.FilePathName, sizeof(LastBootEntry.FilePathName), "%s", TmpStr);
+        FreePool(TmpStr);
 
         // read android header
         SetMem(AndroidHdr, BufferSize, 0);
@@ -555,6 +666,7 @@ SKIP:
   }
   MENU_ENTRY_PDATA* EntryPData = Entry->Private;
   EntryPData->BlockIo = BlockIo;
+  EntryPData->LastBootEntry = LastBootEntry;
 
   if(Icon==NULL) {
     Icon = libaroma_stream_ramdisk("icons/android.png");
@@ -636,6 +748,13 @@ FindMultibootSFS (
   CHAR16                            *FilenameBuf;
   BOOLEAN                           NoFile;
   multiboot_handle_t                *mbhandle;
+  EFI_DEVICE_PATH_PROTOCOL          *DevicePath = NULL;
+  LAST_BOOT_ENTRY                   LastBootEntry = {0};
+
+  DevicePath = DevicePathFromHandle(Handle);
+  if (DevicePath==NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
 
   //
   // Get the SimpleFilesystem protocol on that handle
@@ -765,6 +884,13 @@ ENUMERATE:
       return Status;
     }
 
+    // build lastbootentry info
+    LastBootEntry.Type = LAST_BOOT_TYPE_MULTIBOOT;
+    CHAR16 *TmpStr = gEfiDevicePathToTextProtocol->ConvertDevicePathToText(DevicePath, FALSE, FALSE);
+    AsciiSPrint(LastBootEntry.TextDevicePath, sizeof(LastBootEntry.TextDevicePath), "%s", TmpStr);
+    FreePool(TmpStr);
+    AsciiSPrint(LastBootEntry.FilePathName, sizeof(LastBootEntry.FilePathName), "%s", fname);
+
     // convert filename
     PathToUnix(fname);
 
@@ -813,10 +939,11 @@ ENUMERATE:
       Entry->Name = AsciiStrDup(mbhandle->Name);
       Entry->Description = AsciiStrDup(mbhandle->Description);
       EntryPData->BlockIo = BlockIo;
+      EntryPData->LastBootEntry = LastBootEntry;
       EntryPData->mbhandle = mbhandle;
       MenuAddEntry(mBootMenuMain, Entry);
 
-      AddMultibootSystemToRecoveryMenu(mbhandle);
+      AddMultibootSystemToRecoveryMenu(mbhandle, EntryPData);
     }
 
 NEXT:
@@ -966,6 +1093,128 @@ AndroidLocatorAddItems (
     RecEntry = CR (Link, RECOVERY_MENU, Link, RECOVERY_MENU_SIGNATURE);
     MenuAddEntry(mBootMenuMain, RecEntry->RootEntry);
   }
+
+  return EFI_SUCCESS;
+}
+
+STATIC
+MENU_ENTRY*
+AndroidLocatorGetMatchingRecoveryEntry (
+  MENU_OPTION   *Menu,
+  MENU_ENTRY    *LastEntry
+)
+{
+  LIST_ENTRY   *Link;
+  MENU_ENTRY   *Entry;
+  UINTN        Index;
+
+  MENU_ENTRY_PDATA* LastEntryPData = LastEntry->Private;
+
+  Link = Menu->Head.ForwardLink;
+  Index = 0;
+  while (Link != NULL && Link != &Menu->Head) {
+    Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
+    MENU_ENTRY_PDATA* EntryPData = Entry->Private;
+
+    if (EntryPData == NULL)
+      goto NEXT;
+    if (EntryPData->Signature != MENU_ANDROID_BOOT_ENTRY_SIGNATURE)
+      goto NEXT;
+
+    if (EntryPData->mbhandle == LastEntryPData->mbhandle)
+      return Entry;
+
+NEXT:
+    Link = Link->ForwardLink;
+    Index++;
+  }
+
+  return NULL;
+}
+
+STATIC
+EFI_STATUS
+PureRecoveryBackCallback (
+  MENU_OPTION* This
+)
+{
+  SetActiveMenu(NULL);
+  return EFI_SUCCESS;
+}
+
+EFI_STATUS
+AndroidLocatorHandleRecoveryMode (
+  LAST_BOOT_ENTRY *LastBootEntry
+)
+{
+  MENU_ENTRY    *LastEntry;
+  MENU_OPTION   *Menu = NULL;
+  LIST_ENTRY    *Link;
+  RECOVERY_MENU *RecEntry;
+  CHAR8         Buf[100];
+
+  Menu = MenuCreate();
+  Menu->BackCallback = PureRecoveryBackCallback;
+
+  LastEntry = GetMenuEntryFromLastBootEntry(LastBootEntry);
+  if (LastEntry==NULL) {
+    Menu->Title = AsciiStrDup("Select Recovery Tool");
+
+    // add recovery items
+    for (Link = GetFirstNode (&mRecoveries);
+         !IsNull (&mRecoveries, Link);
+         Link = GetNextNode (&mRecoveries, Link)
+        ) {
+      RecEntry = CR (Link, RECOVERY_MENU, Link, RECOVERY_MENU_SIGNATURE);
+
+      MENU_ENTRY* CloneEntry = MenuCloneEntry(RecEntry->RootEntry);
+      if (CloneEntry == NULL)
+        continue;
+
+      MenuAddEntry(Menu, CloneEntry);
+    }
+  }
+
+  else {
+    AsciiSPrint(Buf, sizeof(Buf), "Recovery: %a", LastEntry->Name);
+    Menu->Title = AsciiStrDup(Buf);
+
+    // add recovery items
+    for (Link = GetFirstNode (&mRecoveries);
+         !IsNull (&mRecoveries, Link);
+         Link = GetNextNode (&mRecoveries, Link)
+        ) {
+      RecEntry = CR (Link, RECOVERY_MENU, Link, RECOVERY_MENU_SIGNATURE);
+      MENU_ENTRY* MatchingRecEntry = AndroidLocatorGetMatchingRecoveryEntry(RecEntry->SubMenu, LastEntry);
+      if (MatchingRecEntry == NULL)
+        continue;
+
+      MENU_ENTRY* CloneEntry = MenuCloneEntry(MatchingRecEntry);
+      if (CloneEntry == NULL)
+        continue;
+
+      CloneEntry->Icon = RecEntry->RootEntry->Icon;
+      if (CloneEntry->Name) {
+        FreePool(CloneEntry->Name);
+        CloneEntry->Name = NULL;
+      }
+      if (CloneEntry->Description) {
+        FreePool(CloneEntry->Description);
+        CloneEntry->Description = NULL;
+      }
+
+      if (RecEntry->RootEntry->Name)
+        CloneEntry->Name = AsciiStrDup(RecEntry->RootEntry->Name);
+      if (RecEntry->RootEntry->Description)
+        CloneEntry->Description = AsciiStrDup(RecEntry->RootEntry->Description);
+
+      MenuAddEntry(Menu, CloneEntry);
+    }
+  }
+
+  // show main menu
+  SetActiveMenu(Menu);
+  MenuEnter (0, TRUE);
 
   return EFI_SUCCESS;
 }

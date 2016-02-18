@@ -48,6 +48,8 @@
 extern EFI_GUID gEFIDroidVariableGuid;
 extern EFI_GUID gEFIDroidVariableDataGuid;
 extern MENU_OPTION *mBootMenuMain;
+extern EFI_DEVICE_PATH_TO_TEXT_PROTOCOL   *gEfiDevicePathToTextProtocol;
+extern EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL *gEfiDevicePathFromTextProtocol;
 
 typedef struct {
   // ini values
@@ -63,10 +65,31 @@ typedef struct {
   CHAR8* MultibootConfig;
 } multiboot_handle_t;
 
+typedef enum {
+  LAST_BOOT_TYPE_BLOCKIO = 0,
+  LAST_BOOT_TYPE_FILE,
+  LAST_BOOT_TYPE_MULTIBOOT,
+} LAST_BOOT_TYPE;
+
 typedef struct {
+  // common
+  LAST_BOOT_TYPE Type;
+  CHAR8 TextDevicePath[200];
+
+  // blockio: unused
+  // file: boot image file path
+  // multiboot: multiboot.ini file path
+  CHAR8 FilePathName[1024];
+} LAST_BOOT_ENTRY;
+
+#define MENU_ANDROID_BOOT_ENTRY_SIGNATURE   SIGNATURE_32 ('m', 'a', 'b', 'e')
+
+typedef struct {
+  UINTN                 Signature;
   EFI_BLOCK_IO_PROTOCOL *BlockIo;
   multiboot_handle_t    *mbhandle;
   BOOLEAN               DisablePatching;
+  LAST_BOOT_ENTRY       LastBootEntry;
 } MENU_ENTRY_PDATA;
 
 #define RECOVERY_MENU_SIGNATURE             SIGNATURE_32 ('r', 'e', 'c', 'm')
@@ -98,17 +121,24 @@ AndroidLocatorAddItems (
 );
 
 EFI_STATUS
+AndroidLocatorHandleRecoveryMode (
+  LAST_BOOT_ENTRY *LastBootEntry
+);
+
+EFI_STATUS
 AndroidBootFromBlockIo (
   IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
   IN multiboot_handle_t     *mbhandle,
-  IN BOOLEAN                DisablePatching
+  IN BOOLEAN                DisablePatching,
+  IN LAST_BOOT_ENTRY        *LastBootEntry
 );
 
 EFI_STATUS
 AndroidBootFromFile (
   IN EFI_FILE_PROTOCOL  *File,
   IN multiboot_handle_t *mbhandle,
-  IN BOOLEAN            DisablePatching
+  IN BOOLEAN            DisablePatching,
+  IN LAST_BOOT_ENTRY    *LastBootEntry
 );
 
 EFI_STATUS
@@ -116,7 +146,8 @@ AndroidBootFromBuffer (
   IN VOID               *Buffer,
   IN UINTN              Size,
   IN multiboot_handle_t *mbhandle,
-  IN BOOLEAN            DisablePatching
+  IN BOOLEAN            DisablePatching,
+  IN LAST_BOOT_ENTRY    *LastBootEntry
 );
 
 EFI_STATUS

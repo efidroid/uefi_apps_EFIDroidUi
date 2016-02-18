@@ -274,7 +274,7 @@ ERROR_FREE_RAMDISK:
     }
 
     // boot Android
-    AndroidBootFromBuffer(Data, Size, NULL, DisablePatching);
+    AndroidBootFromBuffer(Data, Size, NULL, DisablePatching, NULL);
   }
 }
 
