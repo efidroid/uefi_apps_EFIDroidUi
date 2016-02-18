@@ -1079,9 +1079,6 @@ RenderActiveMenu(
   VOID
 )
 {
-  if(mActiveMenu==NULL)
-    return;
-
   if(mActiveMenu->AromaList==NULL) {
     mActiveMenu->AromaList = list_create(
       dc->w,
@@ -1253,6 +1250,9 @@ MenuEnter (
   EFI_STATUS      Status;
 
   while(TRUE) {
+    if(mActiveMenu==NULL)
+      break;
+
     RenderActiveMenu();
     libaroma_sync();
 
