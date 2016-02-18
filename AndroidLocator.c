@@ -78,7 +78,60 @@ MenuCreateBootEntry (
   MenuEntry->FreeCallback = MenuBootEntryFreeCallback;
   MenuEntry->CloneCallback = MenuBootEntryCloneCallback;
 
+  PData->Signature = MENU_ANDROID_BOOT_ENTRY_SIGNATURE;
+
   return MenuEntry;
+}
+
+VOID
+RecoveryEntryFreeCallback (
+  MENU_ENTRY* Entry
+)
+{
+  RECOVERY_MENU *PData = Entry->Private;
+
+  if(PData==NULL)
+    return;
+
+  if(PData->SubMenu)
+    MenuFree(PData->SubMenu);
+  if(PData->BaseEntry)
+    MenuFreeEntry(PData->BaseEntry);
+  if(PData->NoPatchEntry)
+    MenuFreeEntry(PData->NoPatchEntry);
+
+  FreePool(PData);
+}
+
+EFI_STATUS
+RecoveryEntryCloneCallback (
+  MENU_ENTRY* BaseEntry,
+  MENU_ENTRY* Entry
+)
+{
+  RECOVERY_MENU *PDataBase = BaseEntry->Private;
+  RECOVERY_MENU *PData;
+
+  if(PDataBase==NULL)
+    return EFI_SUCCESS;
+
+  PData = AllocateZeroPool (sizeof (*PData));
+  if (PData == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+  PData->Signature = RECOVERY_MENU_SIGNATURE;
+  PData->RootEntry = Entry;
+
+  if(PDataBase->SubMenu)
+    PData->SubMenu = MenuClone(PDataBase->SubMenu);
+  if(PDataBase->BaseEntry)
+    PData->BaseEntry = MenuCloneEntry(PDataBase->BaseEntry);
+  if(PDataBase->NoPatchEntry)
+    PData->NoPatchEntry = MenuCloneEntry(PDataBase->NoPatchEntry);
+
+  Entry->Private = PData;
+
+  return EFI_SUCCESS;
 }
 
 EFI_STATUS
@@ -135,6 +188,8 @@ CreateRecoveryMenu (
 
   MENU_ENTRY* Entry = MenuCreateEntry();
   Entry->Callback = RecoveryCallback;
+  Entry->CloneCallback = RecoveryEntryCloneCallback;
+  Entry->FreeCallback = RecoveryEntryFreeCallback;
   Entry->LongPressCallback = RecoveryLongPressCallback;
   Entry->HideBootMessage = TRUE;
   Entry->Private = Menu;
