@@ -12,6 +12,7 @@ STATIC BOOLEAN Initialized = FALSE;
 STATIC UINT32 mOldMode;
 STATIC UINT32 mOurMode;
 STATIC LK_DISPLAY_FLUSH_MODE OldFlushMode;
+STATIC LIST_ENTRY mMenuStack;
 
 word colorPrimary;
 word colorPrimaryLight;
@@ -574,22 +575,6 @@ MenuGetEntryById (
   NewMenuEntry = CR (List, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
 
   return NewMenuEntry;
-}
-
-VOID
-SetActiveMenu (
-  MENU_OPTION* Menu
-)
-{
-  mActiveMenu = Menu;
-}
-
-MENU_OPTION*
-GetActiveMenu(
-  VOID
-)
-{
-  return mActiveMenu;
 }
 
 VOID
@@ -1187,6 +1172,8 @@ MenuInit (
 {
   EFI_STATUS Status;
 
+  InitializeListHead(&mMenuStack);
+
   // get graphics protocol
   Status = gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **) &mGop);
   if (EFI_ERROR (Status)) {
@@ -1298,6 +1285,8 @@ MenuEnter (
     Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
     if(!EFI_ERROR(Status)) {
       Status = MenuHandleKey(mActiveMenu, Key, TRUE);
+      if (Status == EFI_ABORTED)
+        break;
     }
   }
 }
@@ -1332,4 +1321,70 @@ MenuPostBoot (
   mGop->SetMode(mGop, mOurMode);
   if(gLKDisplay)
     gLKDisplay->SetFlushMode(gLKDisplay, LK_DISPLAY_FLUSH_MODE_MANUAL);
+}
+
+EFI_STATUS
+MenuStackPushInternal (
+  MENU_OPTION *Menu
+)
+{
+  MENU_STACK *StackItem;
+
+  // allocate stack item
+  StackItem = AllocateZeroPool (sizeof(*StackItem));
+  if(StackItem==NULL)
+    return EFI_OUT_OF_RESOURCES;
+
+  StackItem->Signature = MENU_STACK_SIGNATURE;
+  StackItem->Menu = Menu;
+
+  InsertHeadList (&mMenuStack, &StackItem->Link);
+
+  return EFI_SUCCESS;
+}
+
+MENU_OPTION*
+MenuStackPopInternal (
+  VOID
+)
+{
+  LIST_ENTRY *Entry;
+  MENU_STACK *StackItem;
+  MENU_OPTION* Menu = NULL;
+
+  Entry = GetFirstNode (&mMenuStack);
+  if (Entry != &mMenuStack) {
+    StackItem = CR (Entry, MENU_STACK, Link, MENU_STACK_SIGNATURE);
+    RemoveEntryList (Entry);
+    Menu = StackItem->Menu;
+    FreePool (StackItem);
+  }
+
+  return Menu;
+}
+
+VOID
+MenuStackPush (
+  MENU_OPTION *Menu
+)
+{
+  if(mActiveMenu) {
+    MenuStackPushInternal(mActiveMenu);
+  }
+
+  mActiveMenu = Menu;
+}
+
+MENU_OPTION*
+MenuStackPop (
+  VOID
+)
+{
+  MENU_OPTION* OldMenu;
+
+  OldMenu = mActiveMenu;
+
+  mActiveMenu = MenuStackPopInternal();
+
+  return OldMenu;
 }

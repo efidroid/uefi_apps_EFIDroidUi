@@ -28,9 +28,7 @@ FileExplorerBackCallback (
   MENU_OPTION* This
 )
 {
-  MENU_OPTION *OldMenu = This->Private;
-
-  SetActiveMenu(OldMenu);
+  MenuStackPop();
   MenuFree(This);
 
   return EFI_SUCCESS;
@@ -43,12 +41,10 @@ MenuItemCallback (
 )
 {
   MENU_ITEM_CONTEXT* ItemContext = This->Private;
-  MENU_OPTION *OldMenu = GetActiveMenu();
   EFI_STATUS Status;
 
   if(ItemContext->IsDir) {
     MENU_OPTION *Menu = MenuCreate();
-    Menu->Private = OldMenu;
     Menu->BackCallback = FileExplorerBackCallback;
 
     EFI_FILE_HANDLE File = NULL;
@@ -76,7 +72,7 @@ MenuItemCallback (
     MenuShowProgressDialog("Loading list of files", TRUE);
 
     FindFiles(Menu, File, ItemContext->FileName, ItemContext->Handle, ItemContext->ShellFilePath);
-    SetActiveMenu(Menu);
+    MenuStackPush(Menu);
   }
 
   else if (ItemContext->FileExtension) {
@@ -368,10 +364,8 @@ FileExplorerCallback (
 )
 {
   MENU_OPTION *FileSystemMenu;
-  MENU_OPTION *OldMenu = GetActiveMenu();
 
   FileSystemMenu = MenuCreate();
-  FileSystemMenu->Private = OldMenu;
   FileSystemMenu->BackCallback = FileExplorerBackCallback;
   FileSystemMenu->Title = AsciiStrDup("Select Filesystem");
 
@@ -382,6 +376,6 @@ FileExplorerCallback (
     FileSystemMenu
     );
 
-  SetActiveMenu(FileSystemMenu);
+  MenuStackPush(FileSystemMenu);
   return EFI_SUCCESS;
 }

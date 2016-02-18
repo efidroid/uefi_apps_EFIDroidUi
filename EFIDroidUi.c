@@ -359,7 +359,7 @@ main (
     FreePool(LastBootEntry);
 
   // show main menu
-  SetActiveMenu(mBootMenuMain);
+  MenuStackPush(mBootMenuMain);
   MenuEnter (0, TRUE);
   MenuDeInit();
 

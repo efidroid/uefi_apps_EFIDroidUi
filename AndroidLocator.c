@@ -142,7 +142,7 @@ RecoveryCallback (
 {
   RECOVERY_MENU *Menu = This->Private;
   Menu->SubMenu->Selection = 0;
-  SetActiveMenu(Menu->SubMenu);
+  MenuStackPush(Menu->SubMenu);
   return EFI_SUCCESS;
 }
 
@@ -166,8 +166,8 @@ RecoveryBackCallback (
   MENU_OPTION* This
 )
 {
-  SetActiveMenu(mBootMenuMain);
-  return EFI_UNSUPPORTED;
+  MenuStackPop();
+  return EFI_SUCCESS;
 }
 
 RECOVERY_MENU*
@@ -1138,7 +1138,7 @@ PureRecoveryBackCallback (
   MENU_OPTION* This
 )
 {
-  SetActiveMenu(NULL);
+  MenuStackPop();
   return EFI_SUCCESS;
 }
 
@@ -1213,7 +1213,7 @@ AndroidLocatorHandleRecoveryMode (
   }
 
   // show main menu
-  SetActiveMenu(Menu);
+  MenuStackPush(Menu);
   MenuEnter (0, TRUE);
 
   return EFI_SUCCESS;

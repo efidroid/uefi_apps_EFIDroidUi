@@ -36,6 +36,15 @@ struct _MINLIST {
   BOOLEAN enablescrollbar;
 };
 
+#define MENU_STACK_SIGNATURE             SIGNATURE_32 ('m', 's', 't', 'k')
+
+typedef struct {
+  UINTN           Signature;
+  LIST_ENTRY      Link;
+
+  MENU_OPTION     *Menu;
+} MENU_STACK;
+
 byte libaroma_fb_init(void);
 byte libaroma_fb_release(void);
 byte libaroma_font_init(void);

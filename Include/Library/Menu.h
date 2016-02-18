@@ -118,16 +118,6 @@ MenuGetEntryById (
   );
 
 VOID
-SetActiveMenu(
-  MENU_OPTION* Menu
-);
-
-MENU_OPTION*
-GetActiveMenu(
-  VOID
-);
-
-VOID
 InvalidateMenu(
   MENU_OPTION  *Menu
 );
@@ -176,6 +166,16 @@ MenuPostBoot (
 
 VOID
 RenderActiveMenu(
+  VOID
+);
+
+VOID
+MenuStackPush (
+  MENU_OPTION *Menu
+);
+
+MENU_OPTION*
+MenuStackPop (
   VOID
 );
 
