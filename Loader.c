@@ -437,9 +437,11 @@ AndroidBootFromBlockIo (
   // set LastBootEntry variable
   Status = UtilSetEFIDroidDataVariable(L"LastBootEntry", LastBootEntry, LastBootEntry?sizeof(*LastBootEntry):0);
   if (EFI_ERROR (Status)) {
-    AsciiSPrint(Buf, sizeof(Buf), "Can't set variable 'LastBootEntry': %r", Status);
-    MenuShowMessage("Error", Buf);
-    goto FREEBUFFER;
+    if (!(LastBootEntry==NULL && Status==EFI_NOT_FOUND)) {
+      AsciiSPrint(Buf, sizeof(Buf), "Can't set variable 'LastBootEntry': %r", Status);
+      MenuShowMessage("Error", Buf);
+      goto FREEBUFFER;
+    }
   }
 
   // Shut down UEFI boot services. ExitBootServices() will notify every driver that created an event on
