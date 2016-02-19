@@ -235,6 +235,7 @@ CommandBoot (
 
     // send OKAY
     FastbootOkay("");
+    FastbootStopNow();
 
     // shut down menu
     MenuPreBoot();
@@ -265,6 +266,7 @@ ERROR_FREE_RAMDISK:
   else {
     // send OKAY
     FastbootOkay("");
+    FastbootStopNow();
 
     BOOLEAN DisablePatching = TRUE;
     CHAR8* Var = UtilGetEFIDroidVariable("fastboot-enable-boot-patch");
