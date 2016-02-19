@@ -123,6 +123,11 @@ InvalidateMenu(
 );
 
 VOID
+InvalidateActiveMenu(
+  VOID
+);
+
+VOID
 RenderBootScreen(
   MENU_ENTRY *Entry
 );

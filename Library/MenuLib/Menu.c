@@ -589,6 +589,17 @@ InvalidateMenu(
 }
 
 VOID
+InvalidateActiveMenu(
+  VOID
+)
+{
+  if(mActiveMenu->AromaList) {
+    list_free(mActiveMenu->AromaList);
+    mActiveMenu->AromaList = NULL;
+  }
+}
+
+VOID
 BuildAromaMenu (
   IN MENU_OPTION* Menu,
   IN MINLIST* list,
