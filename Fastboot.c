@@ -7,6 +7,7 @@
 #define STATE_COMPLETE	2
 #define STATE_ERROR	3
 #define STATE_STOP	4
+#define STATE_STOPPED	5
 
 typedef struct _FASTBOOT_COMMAND FASTBOOT_COMMAND;
 struct _FASTBOOT_COMMAND {
@@ -331,7 +332,7 @@ FastbootCommandLoop (
     }
   }
 
-  if (mFastbootState!=STATE_STOP) {
+  if (mFastbootState!=STATE_STOP && mFastbootState!=STATE_STOPPED) {
     mFastbootState = STATE_OFFLINE;
     DEBUG((EFI_D_ERROR, "fastboot: oops!\n"));
   }
@@ -358,7 +359,7 @@ FastbootHandler (
     gBS->WaitForEvent (1, &mUsbOnlineEvent, &EventIndex);
 
     FastbootCommandLoop();
-    if (mFastbootState==STATE_STOP)
+    if (mFastbootState==STATE_STOP || mFastbootState==STATE_STOPPED)
       break;
   }
 }
@@ -410,8 +411,10 @@ FastbootInit (
 
   FastbootHandler();
 
-  Status = gBS->CloseEvent(mExitBootServicesEvent);
-  mUsbInterface->udc_stop(mUsbInterface);
+  if (mFastbootState!=STATE_STOPPED) {
+    Status = gBS->CloseEvent(mExitBootServicesEvent);
+    mUsbInterface->udc_stop(mUsbInterface);
+  }
 }
 
 VOID
@@ -420,6 +423,16 @@ FastbootRequestStop (
 )
 {
   mFastbootState = STATE_STOP;
+}
+
+VOID
+FastbootStopNow (
+  VOID
+)
+{
+  gBS->CloseEvent(mExitBootServicesEvent);
+  mUsbInterface->udc_stop(mUsbInterface);
+  mFastbootState = STATE_STOPPED;
 }
 
 VOID

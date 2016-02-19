@@ -211,6 +211,11 @@ FastbootRequestStop (
 );
 
 VOID
+FastbootStopNow (
+  VOID
+);
+
+VOID
 FastbootSendString (
   IN CONST CHAR8 *Data,
   IN UINTN Size
