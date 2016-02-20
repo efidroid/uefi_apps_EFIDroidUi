@@ -676,6 +676,28 @@ MenuRemoveEntry (
   Menu->OptionNumber--;
 }
 
+UINTN
+MenuGetSize (
+  MENU_OPTION  *Menu
+)
+{
+  UINTN Count = 0;
+  LIST_ENTRY   *Link;
+  MENU_ENTRY   *Entry;
+
+  Link = Menu->Head.ForwardLink;
+  while (Link != NULL && Link != &Menu->Head) {
+    Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
+
+    if (!Entry->Hidden)
+      Count++;
+
+    Link = Link->ForwardLink;
+  }
+
+  return Count;
+}
+
 MENU_ENTRY *
 MenuGetEntryById (
   MENU_OPTION         *MenuOption,
@@ -696,6 +718,36 @@ MenuGetEntryById (
   NewMenuEntry = CR (List, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
 
   return NewMenuEntry;
+}
+
+MENU_ENTRY *
+MenuGetEntryByUiId (
+  MENU_OPTION         *Menu,
+  UINTN               MenuNumber
+  )
+{
+  LIST_ENTRY   *Link;
+  MENU_ENTRY   *Entry;
+  UINTN        Count = 0;
+  UINTN MenuSize = MenuGetSize(Menu);
+
+  ASSERT (MenuNumber < MenuSize);
+
+  Link = Menu->Head.ForwardLink;
+  while (Link != NULL && Link != &Menu->Head) {
+    Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
+
+    if (!Entry->Hidden) {
+      if (Count==MenuNumber)
+        return Entry;
+
+      Count++;
+    }
+
+    Link = Link->ForwardLink;
+  }
+
+  return NULL;
 }
 
 VOID
@@ -736,6 +788,9 @@ BuildAromaMenu (
   while (Link != NULL && Link != &Menu->Head) {
     Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
 
+    if (Entry->Hidden)
+      goto NEXT;
+
     byte Flags = ItemFlags;
     if (Entry->ShowToggle)
       Flags |= LIST_ADD_SHOW_TOGGLE;
@@ -744,6 +799,7 @@ BuildAromaMenu (
 
     list_add(list, Entry->Icon, Entry->Name, Entry->Description, Flags, !!Entry->LongPressCallback);
 
+NEXT:
     Link = Link->ForwardLink;
     Index++;
   }
@@ -1085,6 +1141,7 @@ MenuHandleKey (
 {
   MENU_ENTRY* Entry;
   EFI_STATUS Status = EFI_SUCCESS;
+  UINTN MenuSize = MenuGetSize(Menu);
 
   if(Key.ScanCode==SCAN_NULL) {
     switch(Key.UnicodeChar) {
@@ -1106,10 +1163,10 @@ MenuHandleKey (
           }
         }
 
-        if(Menu->Selection>=Menu->OptionNumber || Menu->Selection<0)
+        if(Menu->Selection>=MenuSize || Menu->Selection<0)
           break;
 
-        Entry = MenuGetEntryById(Menu, Menu->Selection);
+        Entry = MenuGetEntryByUiId(Menu, Menu->Selection);
 
         if(!Entry->HideBootMessage)
           RenderBootScreen(Entry);
@@ -1133,10 +1190,10 @@ MenuHandleKey (
 
       // spacebar
       case 32:
-        if(Menu->Selection>=Menu->OptionNumber || Menu->Selection<0)
+        if(Menu->Selection>=MenuSize || Menu->Selection<0)
           break;
 
-        Entry = MenuGetEntryById(Menu, Menu->Selection);
+        Entry = MenuGetEntryByUiId(Menu, Menu->Selection);
 
         if(Entry->LongPressCallback) {
           Status = Entry->LongPressCallback(Entry);
@@ -1167,10 +1224,10 @@ MenuHandleKey (
       case SCAN_UP:
         if(Menu->Selection>MinSelection)
           Menu->Selection--;
-        else Menu->Selection = Menu->OptionNumber-1;
+        else Menu->Selection = MenuSize-1;
         break;
       case SCAN_DOWN:
-        if(Menu->Selection+1<Menu->OptionNumber)
+        if(Menu->Selection+1<MenuSize)
           Menu->Selection++;
         else Menu->Selection = MinSelection;
         break;
@@ -1190,8 +1247,10 @@ MenuShowSelectionDialog (
   if(Menu==NULL)
     return EFI_INVALID_PARAMETER;
 
+  UINTN MenuSize = MenuGetSize(Menu);
+
   int dialog_w = dc->w-libaroma_dp(48);
-  int dialog_h = MIN(libaroma_dp(72)*Menu->OptionNumber, dc->h-libaroma_dp(48));
+  int dialog_h = MIN(libaroma_dp(72)*MenuSize, dc->h-libaroma_dp(48));
   int dialog_x = libaroma_dp(24);
   int dialog_y = (dc->h>>1)-(dialog_h>>1);
 

@@ -26,6 +26,7 @@ struct _MENU_ENTRY {
   LIBAROMA_STREAMP Icon;
   BOOLEAN ShowToggle;
   BOOLEAN ToggleEnabled;
+  BOOLEAN Hidden;
 
   VOID (*FreeCallback)(struct _MENU_ENTRY* Entry);
   EFI_STATUS (*CloneCallback)(struct _MENU_ENTRY* BaseEntry, struct _MENU_ENTRY* Entry);
