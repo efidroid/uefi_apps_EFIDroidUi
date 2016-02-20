@@ -39,6 +39,9 @@ struct _MENU_OPTION {
   VOID            *Private;
   EFI_STATUS      (*BackCallback) (struct _MENU_OPTION* This);
 
+  LIBAROMA_STREAMP ActionIcon;
+  EFI_STATUS      (*ActionCallback) (struct _MENU_OPTION* This);
+
   // private
   MINLIST* AromaList;
 };

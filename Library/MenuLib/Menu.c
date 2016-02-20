@@ -310,13 +310,15 @@ syncit:
 #define APPBAR_FLAG_ICON_DRAWER 2 /* drawer */
 #define APPBAR_FLAG_SELECTED    4 /* selected */
 #define APPBAR_FLAG_WIDEGAP     8 /* align text with text in listbox */
+#define APPBAR_FLAG_ICON_SELECTED     16
 void appbar_draw(
   char * text,
   word bgcolor,
   word textcolor,
   int y,
   int h,
-  byte flags
+  byte flags,
+  LIBAROMA_STREAMP icon
 ){
   /* draw appbar */
   libaroma_draw_rect(
@@ -380,6 +382,36 @@ void appbar_draw(
     );
     libaroma_text_free(txt);
   }
+
+  int dpsz=libaroma_dp(24);
+  int icon_x = dc->w - dpsz - libaroma_dp(16);
+  if(icon) {
+    LIBAROMA_CANVASP ico  = libaroma_image_ex(icon, 0, 0);
+
+    if(ico) {
+      libaroma_draw_scale_smooth(
+        dc, ico,
+        icon_x,
+        y + libaroma_dp(16),
+        dpsz, dpsz,
+        0, 0, ico->w, ico->h
+      );
+    }
+  }
+
+  if (flags&APPBAR_FLAG_ICON_SELECTED){
+    int sel_w=libaroma_dp(16 + 24 + 16);
+    LIBAROMA_CANVASP carea=libaroma_canvas_area(dc,icon_x - libaroma_dp(16),y,sel_w,h);
+    if (carea){
+      int center_x=(sel_w>>1);
+      int center_y=(h>>1);
+      libaroma_draw_circle(
+        carea, textcolor, center_x + libaroma_dp(8), center_y, sel_w + libaroma_dp(16), 0x40
+      );
+      libaroma_canvas_free(carea);
+    }
+  }
+
   //libaroma_sync();
 }
 
@@ -503,6 +535,10 @@ MenuClone (
     NewMenu->Title = AsciiStrDup(Menu->Title);
   if(Menu->BackCallback)
     NewMenu->BackCallback = Menu->BackCallback;
+  if(Menu->ActionIcon)
+    NewMenu->ActionIcon = Menu->ActionIcon;
+  if(Menu->ActionCallback)
+    NewMenu->ActionCallback = Menu->ActionCallback;
 
   Link = Menu->Head.ForwardLink;
   Index = 0;
@@ -962,9 +998,21 @@ MenuHandleKey (
   if(Key.ScanCode==SCAN_NULL) {
     switch(Key.UnicodeChar) {
       case CHAR_CARRIAGE_RETURN:
-        if(Menu->Selection==-1) {
-          Status = Menu->BackCallback(Menu);
-          break;
+        if(Menu->ActionCallback) {
+          if(Menu->Selection==-1) {
+            Status = Menu->ActionCallback(Menu);
+            break;
+          }
+          else if(Menu->BackCallback && Menu->Selection==-2) {
+            Status = Menu->BackCallback(Menu);
+            break;
+          }
+        }
+        else {
+          if(Menu->BackCallback && Menu->Selection==-1) {
+            Status = Menu->BackCallback(Menu);
+            break;
+          }
         }
 
         if(Menu->Selection>=Menu->OptionNumber || Menu->Selection<0)
@@ -1018,7 +1066,12 @@ MenuHandleKey (
     }
   }
   else {
-    INT32 MinSelection = (SelectableBackItem&&Menu->BackCallback)?-1:0;
+    INT32 MinSelection = 0;
+    if(Menu->BackCallback)
+      MinSelection--;
+    if(Menu->ActionCallback)
+      MinSelection--;
+
     switch(Key.ScanCode) {
       case SCAN_UP:
         if(Menu->Selection>MinSelection)
@@ -1147,8 +1200,17 @@ RenderActiveMenu(
   int appbar_flags = 0;
   if(mActiveMenu->BackCallback)
     appbar_flags |= APPBAR_FLAG_ICON_BACK;
-  if(mActiveMenu->Selection==-1)
-    appbar_flags |= APPBAR_FLAG_SELECTED;
+
+  if(mActiveMenu->ActionCallback) {
+    if(mActiveMenu->Selection==-1)
+      appbar_flags |= APPBAR_FLAG_ICON_SELECTED;
+    else if(mActiveMenu->BackCallback &&mActiveMenu->Selection==-2)
+      appbar_flags |= APPBAR_FLAG_SELECTED;
+  }
+  else {
+    if(mActiveMenu->BackCallback && mActiveMenu->Selection==-1)
+      appbar_flags |= APPBAR_FLAG_SELECTED;
+  }
 
   /* set appbar */
   appbar_draw(
@@ -1157,7 +1219,8 @@ RenderActiveMenu(
     colorText,
     statusbar_height,
     appbar_height,
-    appbar_flags
+    appbar_flags,
+    mActiveMenu->ActionIcon
   );
 
   if(mActiveMenu->AromaList) {
