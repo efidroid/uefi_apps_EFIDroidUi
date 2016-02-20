@@ -564,11 +564,15 @@ CommandGetNvVar (
   CHAR16     *Arg16;
 
   Arg16 = NULL;
-  if(AsciiStrLen(Arg)>0)
+  if(AsciiStrLen(Arg)>0) {
     Arg16 = Ascii2Unicode(Arg);
+    ASSERT(Arg16);
+  }
 
   Status = UtilIterateVariables(IterateVariablesCallbackPrint, Arg16);
-  FreePool(Arg16);
+
+  if (Arg16)
+    FreePool(Arg16);
 
   if(EFI_ERROR(Status)) {
     AsciiSPrint(Buf, sizeof(Buf), "%r", Status);
