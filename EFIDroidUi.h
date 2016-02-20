@@ -162,8 +162,18 @@ AndroidGetDecompRamdiskFromBlockIo (
 );
 
 EFI_STATUS
+MainMenuUpdateUi (
+  VOID
+);
+
+EFI_STATUS
 FileExplorerCallback (
   IN MENU_ENTRY* This
+);
+
+EFI_STATUS
+SettingsMenuShow (
+  VOID
 );
 
 #define FASTBOOT_COMMAND_MAX_LENGTH 64

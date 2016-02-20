@@ -5,6 +5,9 @@ MENU_OPTION                 *mPowerMenu = NULL;
 EFI_DEVICE_PATH_TO_TEXT_PROTOCOL   *gEfiDevicePathToTextProtocol = NULL;
 EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL *gEfiDevicePathFromTextProtocol = NULL;
 
+STATIC MENU_ENTRY *EFIShellEntry = NULL;
+STATIC MENU_ENTRY *FileExplorerEntry = NULL;
+
 EFI_STATUS
 BootOptionEfiOption (
   IN MENU_ENTRY* This
@@ -193,13 +196,37 @@ PowerMenuBackCallback (
   return EFI_ABORTED;
 }
 
+EFI_STATUS
+MainMenuActionCallback (
+  MENU_OPTION* This
+)
+{
+  return SettingsMenuShow();
+}
+
+EFI_STATUS
+MainMenuUpdateUi (
+  VOID
+)
+{
+  if (EFIShellEntry) {
+    EFIShellEntry->Hidden = !SettingBoolGet("ui-show-efi-shell");
+  }
+  if (FileExplorerEntry) {
+    FileExplorerEntry->Hidden = !SettingBoolGet("ui-show-file-explorer");
+  }
+
+  InvalidateMenu(mBootMenuMain);
+
+  return EFI_SUCCESS;
+}
+
 INT32
 main (
   IN INT32  Argc,
   IN CHAR8  **Argv
   )
 {
-  UINTN                               Size;
   EFI_STATUS                          Status;
   MENU_ENTRY                          *Entry;
   lkapi_t                             *LKApi;
@@ -222,13 +249,26 @@ main (
     return EFI_NOT_FOUND;
   }
 
+  // set default values
+  if(!UtilVariableExists(L"multiboot-debuglevel", &gEFIDroidVariableGuid))
+    UtilSetEFIDroidVariable("multiboot-debuglevel", "4");
+  if(!UtilVariableExists(L"fastboot-enable-boot-patch", &gEFIDroidVariableGuid))
+    UtilSetEFIDroidVariable("fastboot-enable-boot-patch", "0");
+  if(!UtilVariableExists(L"ui-show-efi-shell", &gEFIDroidVariableGuid))
+    SettingBoolSet("ui-show-efi-shell", TRUE);
+  if(!UtilVariableExists(L"ui-show-file-explorer", &gEFIDroidVariableGuid))
+    SettingBoolSet("ui-show-file-explorer", TRUE);
+
   // create menus
   mBootMenuMain = MenuCreate();
 
   mPowerMenu = MenuCreate();
   mPowerMenu->BackCallback = PowerMenuBackCallback;
+  mPowerMenu->HideBackIcon = TRUE;
 
   mBootMenuMain->Title = AsciiStrDup("Please Select OS");
+  mBootMenuMain->ActionIcon = libaroma_stream_ramdisk("icons/ic_settings_black_24dp.png");
+  mBootMenuMain->ActionCallback = MainMenuActionCallback;
 
 #if defined (MDE_CPU_ARM)
   // add android options
@@ -246,7 +286,9 @@ main (
   Entry->Name = AsciiStrDup("EFI Internal Shell");
   Entry->Callback = BootShell;
   Entry->ResetGop = TRUE;
+  Entry->Hidden = !SettingBoolGet("ui-show-efi-shell");
   MenuAddEntry(mBootMenuMain, Entry);
+  EFIShellEntry = Entry;
 #endif
 
   // add file explorer option
@@ -255,7 +297,9 @@ main (
   Entry->Name = AsciiStrDup("File Explorer");
   Entry->Callback = FileExplorerCallback;
   Entry->HideBootMessage = TRUE;
+  Entry->Hidden = !SettingBoolGet("ui-show-file-explorer");
   MenuAddEntry(mBootMenuMain, Entry);
+  FileExplorerEntry = Entry;
 
 #if defined (MDE_CPU_ARM)
   FastbootCommandsAdd();
@@ -327,20 +371,6 @@ main (
 
     // free pool
     FreePool(EFIDroidErrorStr);
-  }
-
-  // set default value for multiboot-debuglevel
-  Size = 0;
-  Status = gRT->GetVariable (L"multiboot-debuglevel", &gEFIDroidVariableGuid, NULL, &Size, NULL);
-  if (Status == EFI_NOT_FOUND) {
-    UtilSetEFIDroidVariable("multiboot-debuglevel", "4");
-  }
-
-  // set default value for fastboot-enable-boot-patch
-  Size = 0;
-  Status = gRT->GetVariable (L"fastboot-enable-boot-patch", &gEFIDroidVariableGuid, NULL, &Size, NULL);
-  if (Status == EFI_NOT_FOUND) {
-    UtilSetEFIDroidVariable("fastboot-enable-boot-patch", "0");
   }
 
   // get last boot entry

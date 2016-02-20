@@ -49,6 +49,7 @@
   Loader.c
   Fastboot.c
   FastbootCommands.c
+  Settings.c
 
 [Packages.ARM]
   ArmPkg/ArmPkg.dec
