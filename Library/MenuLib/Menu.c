@@ -305,18 +305,13 @@ void list_add(MINLIST * list, LIBAROMA_STREAMP icon, const char * title, const c
       int icoy=item_y + ((list->ih>>1) - (dpsz>>1));
       int icox=list->w - ico->w - libaroma_dp(16);
 
-      libaroma_draw_scale_smooth(
-        cv, ico,
-        icox,icoy,
-        dpsz, dpsz,
-        0, 0, ico->w, ico->h
-      );
-
-      libaroma_draw_scale_smooth(
-        cva, ico,
-        icox,icoy,
-        dpsz, dpsz,
-        0, 0, ico->w, ico->h
+      DRAWBOTH(
+        libaroma_draw_scale_smooth(
+          c, ico,
+          icox,icoy,
+          dpsz, dpsz,
+          0, 0, ico->w, ico->h
+        );
       );
     }
   }
