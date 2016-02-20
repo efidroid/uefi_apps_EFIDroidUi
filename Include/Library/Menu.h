@@ -9,7 +9,11 @@
 #define MENU_SIGNATURE             SIGNATURE_32 ('m', 'e', 'n', 'u')
 #define MENU_ENTRY_SIGNATURE       SIGNATURE_32 ('e', 'n', 't', 'r')
 
-typedef struct _MINLIST MINLIST;
+#define MENU_ITEM_FLAG_MASK_ICON_COLOR        0x1 /* mask icon with text color */
+#define MENU_ITEM_FLAG_SEPARATOR              0x2 /* add separator below item */
+#define MENU_ITEM_FLAG_SEPARATOR_ALIGN_TEXT   0x4 /* align the separator line with text position */
+
+typedef struct _LIBAROMA_CANVAS * LIBAROMA_CANVASP;
 
 typedef struct _MENU_ENTRY MENU_ENTRY;
 struct _MENU_ENTRY {
@@ -30,6 +34,9 @@ struct _MENU_ENTRY {
 
   VOID (*FreeCallback)(struct _MENU_ENTRY* Entry);
   EFI_STATUS (*CloneCallback)(struct _MENU_ENTRY* BaseEntry, struct _MENU_ENTRY* Entry);
+
+  // UI
+  UINTN ItemHeight;
 };
 
 typedef struct _MENU_OPTION MENU_OPTION;
@@ -46,8 +53,20 @@ struct _MENU_OPTION {
   LIBAROMA_STREAMP ActionIcon;
   EFI_STATUS      (*ActionCallback) (struct _MENU_OPTION* This);
 
+  // UI
+  UINTN   ListWidth;
+  UINT32  BackgroundColor;
+  UINT32  SelectionColor;
+  UINT8   SelectionAlpha;
+  UINT32  TextColor;
+  UINT32  TextSelectionColor;
+  BOOLEAN EnableShadow;
+  BOOLEAN EnableScrollbar;
+  UINT32  ItemFlags;
+
   // private
-  MINLIST* AromaList;
+  LIBAROMA_CANVASP cv;
+  LIBAROMA_CANVASP cva;
 };
 
 typedef struct _SCREENSHOT SCREENSHOT;

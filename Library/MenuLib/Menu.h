@@ -20,22 +20,6 @@
 
 #define SCROLL_INDICATOR_WIDTH libaroma_dp(5)
 
-typedef struct _MINLIST MINLIST;
-struct _MINLIST {
-  LIBAROMA_CANVASP cv;
-  LIBAROMA_CANVASP cva;
-  int n;  /* item count */
-  int w;  /* list width */
-  int ih; /* item height */
-  word bgcolor;
-  word selcolor;
-  byte selalpha;
-  word textcolor;
-  word textselcolor;
-  BOOLEAN enableshadow;
-  BOOLEAN enablescrollbar;
-};
-
 #define MENU_STACK_SIGNATURE             SIGNATURE_32 ('m', 's', 't', 'k')
 
 typedef struct {
