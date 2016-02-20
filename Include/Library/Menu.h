@@ -40,6 +40,7 @@ struct _MENU_OPTION {
   INT32           Selection;
   CHAR8           *Title;
   VOID            *Private;
+  BOOLEAN         HideBackIcon;
   EFI_STATUS      (*BackCallback) (struct _MENU_OPTION* This);
 
   LIBAROMA_STREAMP ActionIcon;

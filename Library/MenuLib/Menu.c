@@ -616,6 +616,7 @@ MenuClone (
   if (NewMenu == NULL)
     return NULL;
 
+  NewMenu->HideBackIcon = Menu->HideBackIcon;
   if(Menu->Title)
     NewMenu->Title = AsciiStrDup(Menu->Title);
   if(Menu->BackCallback)
@@ -1151,14 +1152,16 @@ MenuHandleKey (
             Status = Menu->ActionCallback(Menu);
             break;
           }
-          else if(Menu->BackCallback && Menu->Selection==-2) {
-            Status = Menu->BackCallback(Menu);
+          else if(Menu->BackCallback && !Menu->HideBackIcon && Menu->Selection==-2) {
+            if (Menu->BackCallback)
+              Status = Menu->BackCallback(Menu);
             break;
           }
         }
         else {
-          if(Menu->BackCallback && Menu->Selection==-1) {
-            Status = Menu->BackCallback(Menu);
+          if(Menu->BackCallback && !Menu->HideBackIcon && Menu->Selection==-1) {
+            if (Menu->BackCallback)
+              Status = Menu->BackCallback(Menu);
             break;
           }
         }
@@ -1215,7 +1218,7 @@ MenuHandleKey (
   }
   else {
     INT32 MinSelection = 0;
-    if(Menu->BackCallback)
+    if(Menu->BackCallback && !Menu->HideBackIcon)
       MinSelection--;
     if(Menu->ActionCallback)
       MinSelection--;
@@ -1348,17 +1351,17 @@ RenderActiveMenu(
   );
 
   int appbar_flags = 0;
-  if(mActiveMenu->BackCallback)
+  if(mActiveMenu->BackCallback && !mActiveMenu->HideBackIcon)
     appbar_flags |= APPBAR_FLAG_ICON_BACK;
 
   if(mActiveMenu->ActionCallback) {
     if(mActiveMenu->Selection==-1)
       appbar_flags |= APPBAR_FLAG_ICON_SELECTED;
-    else if(mActiveMenu->BackCallback &&mActiveMenu->Selection==-2)
+    else if(mActiveMenu->BackCallback && !mActiveMenu->HideBackIcon && mActiveMenu->Selection==-2)
       appbar_flags |= APPBAR_FLAG_SELECTED;
   }
   else {
-    if(mActiveMenu->BackCallback && mActiveMenu->Selection==-1)
+    if(mActiveMenu->BackCallback && !mActiveMenu->HideBackIcon && mActiveMenu->Selection==-1)
       appbar_flags |= APPBAR_FLAG_SELECTED;
   }
 
