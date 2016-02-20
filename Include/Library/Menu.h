@@ -20,40 +20,38 @@ struct _MENU_ENTRY {
   UINTN           Signature;
   LIST_ENTRY      Link;
 
+  // UI
   CHAR8* Name;
   CHAR8* Description;
-  EFI_STATUS (*Callback) (struct _MENU_ENTRY* This);
-  EFI_STATUS (*LongPressCallback) (struct _MENU_ENTRY* This);
-  VOID *Private;
-  BOOLEAN ResetGop;
-  BOOLEAN HideBootMessage;
   LIBAROMA_STREAMP Icon;
   BOOLEAN ShowToggle;
   BOOLEAN ToggleEnabled;
+  UINTN ItemHeight;
+
+  // selection
   BOOLEAN Hidden;
 
+  // callback
+  EFI_STATUS (*Callback) (struct _MENU_ENTRY* This);
+  EFI_STATUS (*LongPressCallback) (struct _MENU_ENTRY* This);
+  BOOLEAN ResetGop;
+  BOOLEAN HideBootMessage;
+
+  // Private
+  VOID *Private;
   VOID (*FreeCallback)(struct _MENU_ENTRY* Entry);
   EFI_STATUS (*CloneCallback)(struct _MENU_ENTRY* BaseEntry, struct _MENU_ENTRY* Entry);
-
-  // UI
-  UINTN ItemHeight;
 };
 
 typedef struct _MENU_OPTION MENU_OPTION;
 struct _MENU_OPTION {
   UINTN           Signature;
-  LIST_ENTRY      Head;
-  UINTN           OptionNumber;
-  INT32           Selection;
-  CHAR8           *Title;
-  VOID            *Private;
-  BOOLEAN         HideBackIcon;
-  EFI_STATUS      (*BackCallback) (struct _MENU_OPTION* This);
 
-  LIBAROMA_STREAMP ActionIcon;
-  EFI_STATUS      (*ActionCallback) (struct _MENU_OPTION* This);
+  // entries
+  LIST_ENTRY      Head;
 
   // UI
+  CHAR8   *Title;
   UINTN   ListWidth;
   UINT32  BackgroundColor;
   UINT32  SelectionColor;
@@ -63,8 +61,21 @@ struct _MENU_OPTION {
   BOOLEAN EnableShadow;
   BOOLEAN EnableScrollbar;
   UINT32  ItemFlags;
+  LIBAROMA_STREAMP ActionIcon;
+
+  // callback
+  EFI_STATUS      (*BackCallback) (struct _MENU_OPTION* This);
+  EFI_STATUS      (*ActionCallback) (struct _MENU_OPTION* This);
+
+  // selection
+  UINTN           OptionNumber;
+  INT32           Selection;
+  BOOLEAN         HideBackIcon;
 
   // private
+  VOID            *Private;
+
+  // internal
   LIBAROMA_CANVASP cv;
   LIBAROMA_CANVASP cva;
 };

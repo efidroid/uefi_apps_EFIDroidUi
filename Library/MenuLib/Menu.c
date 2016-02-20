@@ -293,10 +293,14 @@ MenuCreate (
   if(Menu==NULL)
     return NULL;
   
-  // initialize entry list
+  // signature
+  Menu->Signature          = MENU_SIGNATURE;
+
+  // entries
   InitializeListHead (&Menu->Head);
 
-  Menu->Signature          = MENU_SIGNATURE;
+  // UI
+  Menu->Title              = NULL;
   Menu->ListWidth          = 0;
   Menu->BackgroundColor    = 0x212121;
   Menu->SelectionColor     = 0xFFFFFF;
@@ -306,9 +310,23 @@ MenuCreate (
   Menu->EnableShadow       = TRUE;
   Menu->EnableScrollbar    = TRUE;
   Menu->ItemFlags          = MENU_ITEM_FLAG_SEPARATOR;
+  Menu->ActionIcon         = NULL;
 
-  Menu->cv  = NULL;
-  Menu->cva = NULL;
+  // callback
+  Menu->BackCallback       = NULL;
+  Menu->ActionCallback     = NULL;
+
+  // selection
+  Menu->OptionNumber       = 0;
+  Menu->Selection          = 0;
+  Menu->HideBackIcon       = FALSE;
+
+  // private
+  Menu->Private            = NULL;
+
+  // internal
+  Menu->cv                 = NULL;
+  Menu->cva                = NULL;
 
   return Menu;
 }
@@ -318,6 +336,7 @@ MenuFree (
   MENU_OPTION  *Menu
 )
 {
+  // entries
   MENU_ENTRY *MenuEntry;
   while (!IsListEmpty (&Menu->Head)) {
     MenuEntry = CR (
@@ -329,12 +348,12 @@ MenuFree (
     RemoveEntryList (&MenuEntry->Link);
     MenuFreeEntry (MenuEntry);
   }
-  Menu->OptionNumber = 0;
-  Menu->Selection = 0;
 
+  // UI
   if(Menu->Title)
     FreePool(Menu->Title);
 
+  // internal
   InvalidateMenu(Menu);
 
   FreePool(Menu);
@@ -352,8 +371,30 @@ MenuCreateEntry (
   if(Entry==NULL)
     return NULL;
 
+  // signature
   Entry->Signature  = MENU_ENTRY_SIGNATURE;
-  Entry->ItemHeight = 72;
+
+  // UI
+  Entry->Name              = NULL;
+  Entry->Description       = NULL;
+  Entry->Icon              = NULL;
+  Entry->ShowToggle        = FALSE;
+  Entry->ToggleEnabled     = FALSE;
+  Entry->ItemHeight        = 72;
+
+  // selection
+  Entry->Hidden            = FALSE;
+
+  // callback
+  Entry->Callback          = NULL;
+  Entry->LongPressCallback = NULL;
+  Entry->ResetGop          = FALSE;
+  Entry->HideBootMessage   = FALSE;
+
+  // private
+  Entry->Private           = NULL;
+  Entry->FreeCallback      = NULL;
+  Entry->CloneCallback     = NULL;
 
   return Entry;
 }
@@ -370,6 +411,26 @@ MenuCloneEntry (
   if(Entry==NULL)
     return NULL;
 
+  // UI
+  if(BaseEntry->Name)
+    Entry->Name            = AsciiStrDup(BaseEntry->Name);
+  if(BaseEntry->Description)
+    Entry->Description     = AsciiStrDup(BaseEntry->Description);
+  Entry->Icon              = BaseEntry->Icon;
+  Entry->ShowToggle        = BaseEntry->ShowToggle;
+  Entry->ToggleEnabled     = BaseEntry->ToggleEnabled;
+  Entry->ItemHeight        = BaseEntry->ItemHeight;
+
+  // selection
+  Entry->Hidden            = BaseEntry->Hidden;
+
+  // callback
+  Entry->Callback          = BaseEntry->Callback;
+  Entry->LongPressCallback = BaseEntry->LongPressCallback;
+  Entry->ResetGop          = BaseEntry->ResetGop;
+  Entry->HideBootMessage   = BaseEntry->HideBootMessage;
+
+  // private
   if(BaseEntry->CloneCallback) {
     Status = BaseEntry->CloneCallback(BaseEntry, Entry);
     if(EFI_ERROR(Status)) {
@@ -380,22 +441,8 @@ MenuCloneEntry (
   else {
     Entry->Private = BaseEntry->Private;
   }
-
-  if(BaseEntry->Name)
-    Entry->Name = AsciiStrDup(BaseEntry->Name);
-  if(BaseEntry->Description)
-    Entry->Description = AsciiStrDup(BaseEntry->Description);
-  Entry->Callback = BaseEntry->Callback;
-  Entry->LongPressCallback = BaseEntry->LongPressCallback;
-  Entry->ResetGop = BaseEntry->ResetGop;
-  Entry->HideBootMessage = BaseEntry->HideBootMessage;
-  Entry->Icon = BaseEntry->Icon;
-  Entry->FreeCallback = BaseEntry->FreeCallback;
+  Entry->FreeCallback  = BaseEntry->FreeCallback;
   Entry->CloneCallback = BaseEntry->CloneCallback;
-  Entry->ShowToggle = BaseEntry->ShowToggle;
-  Entry->ToggleEnabled = BaseEntry->ToggleEnabled;
-
-  Entry->ItemHeight = BaseEntry->ItemHeight;
 
   return Entry;
 }
@@ -414,28 +461,7 @@ MenuClone (
   if (NewMenu == NULL)
     return NULL;
 
-  if(Menu->Title)
-    NewMenu->Title = AsciiStrDup(Menu->Title);
-  if(Menu->BackCallback)
-    NewMenu->BackCallback = Menu->BackCallback;
-  if(Menu->ActionIcon)
-    NewMenu->ActionIcon = Menu->ActionIcon;
-  if(Menu->ActionCallback)
-    NewMenu->ActionCallback = Menu->ActionCallback;
-
-  NewMenu->HideBackIcon = Menu->HideBackIcon;
-  NewMenu->Private = Menu->Private;
-  NewMenu->ActionIcon = Menu->ActionIcon;
-  NewMenu->ListWidth = Menu->ListWidth;
-  NewMenu->BackgroundColor = Menu->BackgroundColor;
-  NewMenu->SelectionColor = Menu->SelectionColor;
-  NewMenu->SelectionAlpha = Menu->SelectionAlpha;
-  NewMenu->TextColor = Menu->TextColor;
-  NewMenu->TextSelectionColor = Menu->TextSelectionColor;
-  NewMenu->EnableShadow = Menu->EnableShadow;
-  NewMenu->EnableScrollbar = Menu->EnableScrollbar;
-  NewMenu->ItemFlags = Menu->ItemFlags;
-
+  // entries
   Link = Menu->Head.ForwardLink;
   Index = 0;
   while (Link != NULL && Link != &Menu->Head) {
@@ -450,6 +476,30 @@ MenuClone (
     Index++;
   }
 
+  // UI
+  if(Menu->Title)
+    NewMenu->Title            = AsciiStrDup(Menu->Title);
+  NewMenu->ListWidth          = Menu->ListWidth;
+  NewMenu->BackgroundColor    = Menu->BackgroundColor;
+  NewMenu->SelectionColor     = Menu->SelectionColor;
+  NewMenu->SelectionAlpha     = Menu->SelectionAlpha;
+  NewMenu->TextColor          = Menu->TextColor;
+  NewMenu->TextSelectionColor = Menu->TextSelectionColor;
+  NewMenu->EnableShadow       = Menu->EnableShadow;
+  NewMenu->EnableScrollbar    = Menu->EnableScrollbar;
+  NewMenu->ItemFlags          = Menu->ItemFlags;
+  NewMenu->ActionIcon         = Menu->ActionIcon;
+
+  // callback
+  NewMenu->BackCallback       = Menu->BackCallback;
+  NewMenu->ActionCallback     = Menu->ActionCallback;
+
+  // selection
+  NewMenu->HideBackIcon       = Menu->HideBackIcon;
+
+  // private
+  NewMenu->Private = Menu->Private;
+
   return NewMenu;
 }
 
@@ -458,12 +508,16 @@ MenuFreeEntry (
   MENU_ENTRY* Entry
 )
 {
+  // private
   if(Entry->FreeCallback)
     Entry->FreeCallback(Entry);
+
+  // UI
   if(Entry->Name)
     FreePool(Entry->Name);
   if(Entry->Description)
     FreePool(Entry->Description);
+
   FreePool(Entry);
 }
 
