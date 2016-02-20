@@ -111,11 +111,20 @@ void list_free(MINLIST * list){
 #define LIST_ADD_MASK_ICON_COLOR        0x1 /* mask icon with text color */
 #define LIST_ADD_WITH_SEPARATOR         0x2 /* add separator below item */
 #define LIST_ADD_SEPARATOR_ALIGN_TEXT   0x4 /* align the separator line with text position */
+#define LIST_ADD_SHOW_TOGGLE            8
+#define LIST_ADD_TOGGLE_ENABLED         16
 void list_add(MINLIST * list, LIBAROMA_STREAMP icon, const char * title, const char * subtitle, byte flags, BOOLEAN hasmore){
   int new_n  = list->n + 1;
   int item_y = list->n * list->ih;
   LIBAROMA_CANVASP cv = libaroma_canvas(list->w, list->ih*new_n);
   LIBAROMA_CANVASP cva= libaroma_canvas(list->w, list->ih*new_n);
+
+  #define DRAWBOTH(x) {\
+    LIBAROMA_CANVASP c = cv; \
+    x \
+    c = cva; \
+    x \
+  }
  
   /* draw previous */
   if (list->n>0){
@@ -146,8 +155,14 @@ void list_add(MINLIST * list, LIBAROMA_STREAMP icon, const char * title, const c
   }
  
   /* draw text */
-  int left_pad=libaroma_dp(72);
+  int left_pad=libaroma_dp(16);
   int right_pad=libaroma_dp(16);
+
+  if(icon)
+    left_pad = libaroma_dp(72);
+  if(flags&LIST_ADD_SHOW_TOGGLE)
+    right_pad = libaroma_dp(72);
+
   LIBAROMA_TEXT txt = libaroma_text(
     text,
     list->textcolor, list->w-(left_pad+right_pad),
@@ -193,6 +208,77 @@ void list_add(MINLIST * list, LIBAROMA_STREAMP icon, const char * title, const c
       );
       libaroma_canvas_free(ico);
     }
+  }
+
+  if(flags&LIST_ADD_SHOW_TOGGLE) {
+    int selected = (flags&LIST_ADD_TOGGLE_ENABLED);
+    float relstate=1;
+    int xpos = list->w - libaroma_dp(16 + 20);
+    int ypos = item_y + (list->ih>>1);
+
+    word h_color_rest   = RGB(ECECEC);
+    word h_color_active = colorPrimary;
+    word b_color_rest   = RGB(B2B2B2);
+    word b_color_active = colorPrimaryLight;
+    
+    word bc0=selected?b_color_rest:b_color_active;
+    word bc1=selected?b_color_active:b_color_rest;
+    word hc0=selected?h_color_rest:h_color_active;
+    word hc1=selected?h_color_active:h_color_rest;
+      
+    word bc = libaroma_alpha(bc0,bc1,relstate*0xff);
+    word hc = libaroma_alpha(hc0,hc1,relstate*0xff);
+    
+    /* draw background */
+    int b_width   = libaroma_dp(34);
+    int b_height  = libaroma_dp(14);
+    
+    float selrelstate = selected?relstate:1-relstate;
+    int base_x = xpos-(b_width>>1);
+    int h_sz = libaroma_dp(20);
+    int base_w = b_width - h_sz;
+    int h_draw_x = base_x + round(base_w*selrelstate);
+    int h_draw_y = ypos-(h_sz>>1);
+    
+    DRAWBOTH(
+      libaroma_gradient_ex1(c,
+        xpos-(b_width>>1),
+        ypos-(b_height>>1),
+        b_width,
+        b_height,
+        bc,bc,
+        (b_height>>1),0x1111,
+        0xff,0xff,
+        0
+      );
+    );
+
+    int rsz = libaroma_dp(1);
+    
+    LIBAROMA_CANVASP bmask = libaroma_canvas_ex(h_sz,h_sz,1);
+    libaroma_canvas_setcolor(bmask,0,0);
+    libaroma_gradient(bmask,0,0,h_sz,h_sz,0,0,h_sz>>1,0x1111);
+    LIBAROMA_CANVASP scv = libaroma_blur_ex(bmask,rsz,1,0);
+    libaroma_canvas_free(bmask);
+    
+    DRAWBOTH(
+      libaroma_draw_opacity(c,scv,h_draw_x-rsz,h_draw_y,3,0x30);
+    );
+    libaroma_canvas_free(scv);
+
+    /* handle */
+    DRAWBOTH(
+      libaroma_gradient_ex1(c,
+        h_draw_x,
+        h_draw_y,
+        h_sz,
+        h_sz,
+        hc,hc,
+        (h_sz>>1),0x1111,
+        0xff,0xff,
+        0
+      );
+    );
   }
  
   if (LIST_ADD_WITH_SEPARATOR&flags){
@@ -243,6 +329,8 @@ void list_add(MINLIST * list, LIBAROMA_STREAMP icon, const char * title, const c
   list->cv  = cv;
   list->cva = cva;
   list->n   = new_n;
+
+  #undef DRAWBOTH
 }
 void list_show(MINLIST * list, int selectedid, int x, int y, int h){
   /* cleanup */
@@ -513,6 +601,8 @@ MenuCloneEntry (
   Entry->Icon = BaseEntry->Icon;
   Entry->FreeCallback = BaseEntry->FreeCallback;
   Entry->CloneCallback = BaseEntry->CloneCallback;
+  Entry->ShowToggle = BaseEntry->ShowToggle;
+  Entry->ToggleEnabled = BaseEntry->ToggleEnabled;
 
   return Entry;
 }
@@ -651,7 +741,13 @@ BuildAromaMenu (
   while (Link != NULL && Link != &Menu->Head) {
     Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
 
-    list_add(list, Entry->Icon, Entry->Name, Entry->Description, ItemFlags, !!Entry->LongPressCallback);
+    byte Flags = ItemFlags;
+    if (Entry->ShowToggle)
+      Flags |= LIST_ADD_SHOW_TOGGLE;
+    if (Entry->ToggleEnabled)
+      Flags |= LIST_ADD_TOGGLE_ENABLED;
+
+    list_add(list, Entry->Icon, Entry->Name, Entry->Description, Flags, !!Entry->LongPressCallback);
 
     Link = Link->ForwardLink;
     Index++;

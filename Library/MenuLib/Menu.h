@@ -52,4 +52,6 @@ byte libaroma_font_release(void);
 byte libaroma_lang_init(void);
 byte libaroma_lang_release(void);
 
+double round(double x);
+
 #endif // _EFIDROID_MENU_PRIVATE_H_
