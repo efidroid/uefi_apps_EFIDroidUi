@@ -384,6 +384,7 @@ MenuCreateEntry (
 
   // selection
   Entry->Hidden            = FALSE;
+  Entry->Selectable        = TRUE;
 
   // callback
   Entry->Callback          = NULL;
@@ -423,6 +424,7 @@ MenuCloneEntry (
 
   // selection
   Entry->Hidden            = BaseEntry->Hidden;
+  Entry->Selectable        = BaseEntry->Selectable;
 
   // callback
   Entry->Callback          = BaseEntry->Callback;
@@ -554,7 +556,7 @@ MenuGetSize (
   while (Link != NULL && Link != &Menu->Head) {
     Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
 
-    if (!Entry->Hidden)
+    if (!Entry->Hidden && Entry->Selectable)
       Count++;
 
     Link = Link->ForwardLink;
@@ -604,7 +606,7 @@ MenuGetEntryByUiId (
   while (Link != NULL && Link != &Menu->Head) {
     Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
 
-    if (!Entry->Hidden) {
+    if (!Entry->Hidden && Entry->Selectable) {
       if (Count==MenuNumber)
         return Entry;
 
@@ -679,11 +681,14 @@ MenuGetItemPosY (
     Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
 
     if (!Entry->Hidden) {
-      if (Index==Id)
-        return Y;
+      if (Entry->Selectable) {
+        if (Index==Id)
+          return Y;
+
+        Index++;
+      }
 
       Y += Entry->ItemHeight;
-      Index++;
     }
 
     Link = Link->ForwardLink;
