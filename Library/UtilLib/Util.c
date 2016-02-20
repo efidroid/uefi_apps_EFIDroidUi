@@ -642,3 +642,44 @@ UtilGetEFIDroidDataVariable (
 
   return ReturnValue;
 }
+
+BOOLEAN
+UtilVariableExists (
+  IN CONST CHAR16    *Name,
+  IN CONST EFI_GUID  *Guid
+)
+{
+  UINTN                               Size;
+  EFI_STATUS                          Status;
+
+  Size = 0;
+  Status = gRT->GetVariable ((CHAR16*)Name, (EFI_GUID*)Guid, NULL, &Size, NULL);
+  if (Status == EFI_NOT_FOUND) {
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+BOOLEAN
+SettingBoolGet (
+  CONST CHAR8* Name
+)
+{
+  CHAR8* Value = UtilGetEFIDroidVariable(Name);
+  if (!Value)
+    return FALSE;
+
+  BOOLEAN Ret = (!AsciiStrCmp(Value, "1"));
+  FreePool(Value);
+  return Ret;
+}
+
+VOID
+SettingBoolSet (
+  CONST CHAR8* Name,
+  BOOLEAN Value
+)
+{
+  UtilSetEFIDroidVariable(Name, Value?"1":"0");
+}

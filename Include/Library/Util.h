@@ -189,4 +189,21 @@ UtilGetEFIDroidDataVariable (
   IN CONST CHAR16* Name
 );
 
+BOOLEAN
+UtilVariableExists (
+  IN CONST CHAR16    *Name,
+  IN CONST EFI_GUID  *Guid
+);
+
+BOOLEAN
+SettingBoolGet (
+  CONST CHAR8* Name
+);
+
+VOID
+SettingBoolSet (
+  CONST CHAR8* Name,
+  BOOLEAN Value
+);
+
 #endif /* ! UTIL_H */
