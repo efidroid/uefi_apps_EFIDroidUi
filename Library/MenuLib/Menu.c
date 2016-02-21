@@ -309,7 +309,7 @@ MenuCreate (
   Menu->TextSelectionColor = 0xFFFFFF;
   Menu->EnableShadow       = TRUE;
   Menu->EnableScrollbar    = TRUE;
-  Menu->ItemFlags          = MENU_ITEM_FLAG_SEPARATOR;
+  Menu->ItemFlags          = MENU_ITEM_FLAG_SEPARATOR|MENU_ITEM_FLAG_SEPARATOR_ALIGN_TEXT;
   Menu->ActionIcon         = NULL;
 
   // callback
@@ -381,6 +381,7 @@ MenuCreateEntry (
   Entry->ShowToggle        = FALSE;
   Entry->ToggleEnabled     = FALSE;
   Entry->ItemHeight        = 72;
+  Entry->IsGroupItem       = FALSE;
 
   // selection
   Entry->Hidden            = FALSE;
@@ -396,6 +397,25 @@ MenuCreateEntry (
   Entry->Private           = NULL;
   Entry->FreeCallback      = NULL;
   Entry->CloneCallback     = NULL;
+
+  return Entry;
+}
+
+MENU_ENTRY*
+MenuCreateGroupEntry (
+  VOID
+)
+{
+  MENU_ENTRY *Entry;
+
+  // allocate menu
+  Entry = MenuCreateEntry();
+  if(Entry==NULL)
+    return NULL;
+
+  Entry->ItemHeight        = 48;
+  Entry->IsGroupItem       = TRUE;
+  Entry->Selectable        = FALSE;
 
   return Entry;
 }
@@ -421,6 +441,7 @@ MenuCloneEntry (
   Entry->ShowToggle        = BaseEntry->ShowToggle;
   Entry->ToggleEnabled     = BaseEntry->ToggleEnabled;
   Entry->ItemHeight        = BaseEntry->ItemHeight;
+  Entry->IsGroupItem       = BaseEntry->IsGroupItem;
 
   // selection
   Entry->Hidden            = BaseEntry->Hidden;
@@ -697,6 +718,261 @@ MenuGetItemPosY (
   return Y;
 }
 
+#define DRAWBOTH(x) {\
+  LIBAROMA_CANVASP c = cv; \
+  x \
+  c = cva; \
+  x \
+}
+
+VOID
+DrawListItem (
+  IN MENU_OPTION   *Menu,
+  IN MENU_ENTRY    *Entry,
+  IN UINTN         item_y,
+  IN UINTN         MenuHeight
+)
+{
+  LIBAROMA_CANVASP cv  = Menu->cv;
+  LIBAROMA_CANVASP cva = Menu->cva;
+  UINTN MenuWidth  = Menu->ListWidth?libaroma_dp(Menu->ListWidth):dc->w;
+  UINTN ItemHeight = libaroma_dp(Entry->ItemHeight);
+ 
+  char text[256];
+  if (Entry->Description!=NULL){
+    word scolor = colorTextSecondary;
+    snprintf(text,256,"<b>%s</b>\n<#%02X%02X%02X><size=3>%s</size></#>",Entry->Name?:"",
+      libaroma_color_r(scolor),
+      libaroma_color_g(scolor),
+      libaroma_color_b(scolor),
+      Entry->Description);
+  }
+  else{
+    snprintf(text,256,"<b>%s</b>",Entry->Name?:"");
+  }
+ 
+  /* draw text */
+  int left_pad=libaroma_dp(16);
+  int right_pad=libaroma_dp(16);
+
+  if(Entry->Icon)
+    left_pad = libaroma_dp(72);
+  if(Entry->ShowToggle)
+    right_pad = libaroma_dp(72);
+
+  LIBAROMA_TEXT txt = libaroma_text(
+    text,
+    libaroma_rgb_to16(Menu->TextColor), MenuWidth-(left_pad+right_pad),
+    LIBAROMA_FONT(0,4),
+    100
+  );
+
+  if (txt){
+    int txty=item_y + ((ItemHeight>>1)-((libaroma_text_height(txt)>>1))-libaroma_dp(2));
+
+    libaroma_text_draw(
+      cv, txt, left_pad, txty
+    );
+    libaroma_text_draw_color(
+      cva, txt, left_pad, txty, libaroma_rgb_to16(Menu->TextSelectionColor)
+    );
+    libaroma_text_free(txt);
+  }
+ 
+  if (Entry->Icon!=NULL){
+    LIBAROMA_CANVASP ico =libaroma_image_ex(Entry->Icon, 0, 0);
+    if (ico){
+      int dpsz=libaroma_dp(40);
+      int icoy=item_y + ((ItemHeight>>1) - (dpsz>>1));
+      int icox=libaroma_dp(16);
+      byte ismask=(Menu->ItemFlags&MENU_ITEM_FLAG_MASK_ICON_COLOR)?1:0;
+       
+      if (ismask){
+        libaroma_canvas_fillcolor(ico,libaroma_alpha(libaroma_rgb_to16(Menu->BackgroundColor),libaroma_rgb_to16(Menu->TextColor),0xcc));
+      }
+      libaroma_draw_scale_smooth(
+        cv, ico,
+        icox,icoy,
+        dpsz, dpsz,
+        0, 0, ico->w, ico->h
+      );
+      if (ismask){
+        libaroma_canvas_fillcolor(ico,libaroma_alpha(libaroma_rgb_to16(Menu->SelectionColor),libaroma_rgb_to16(Menu->TextSelectionColor),0xcc));
+      }
+      libaroma_draw_scale_smooth(
+        cva, ico,
+        icox,icoy,
+        dpsz, dpsz,
+        0, 0, ico->w, ico->h
+      );
+      libaroma_canvas_free(ico);
+    }
+  }
+
+  if(Entry->ShowToggle) {
+    int selected = (Entry->ToggleEnabled);
+    float relstate=1;
+    int xpos = MenuWidth - libaroma_dp(16 + 20);
+    int ypos = item_y + (ItemHeight>>1);
+
+    word h_color_rest   = RGB(ECECEC);
+    word h_color_active = colorPrimary;
+    word b_color_rest   = RGB(B2B2B2);
+    word b_color_active = colorPrimaryLight;
+    
+    word bc0=selected?b_color_rest:b_color_active;
+    word bc1=selected?b_color_active:b_color_rest;
+    word hc0=selected?h_color_rest:h_color_active;
+    word hc1=selected?h_color_active:h_color_rest;
+      
+    word bc = libaroma_alpha(bc0,bc1,relstate*0xff);
+    word hc = libaroma_alpha(hc0,hc1,relstate*0xff);
+    
+    /* draw background */
+    int b_width   = libaroma_dp(34);
+    int b_height  = libaroma_dp(14);
+    
+    float selrelstate = selected?relstate:1-relstate;
+    int base_x = xpos-(b_width>>1);
+    int h_sz = libaroma_dp(20);
+    int base_w = b_width - h_sz;
+    int h_draw_x = base_x + round(base_w*selrelstate);
+    int h_draw_y = ypos-(h_sz>>1);
+    
+    DRAWBOTH(
+      libaroma_gradient_ex1(c,
+        xpos-(b_width>>1),
+        ypos-(b_height>>1),
+        b_width,
+        b_height,
+        bc,bc,
+        (b_height>>1),0x1111,
+        0xff,0xff,
+        0
+      );
+    );
+
+    int rsz = libaroma_dp(1);
+    
+    LIBAROMA_CANVASP bmask = libaroma_canvas_ex(h_sz,h_sz,1);
+    libaroma_canvas_setcolor(bmask,0,0);
+    libaroma_gradient(bmask,0,0,h_sz,h_sz,0,0,h_sz>>1,0x1111);
+    LIBAROMA_CANVASP scv = libaroma_blur_ex(bmask,rsz,1,0);
+    libaroma_canvas_free(bmask);
+    
+    DRAWBOTH(
+      libaroma_draw_opacity(c,scv,h_draw_x-rsz,h_draw_y,3,0x30);
+    );
+    libaroma_canvas_free(scv);
+
+    /* handle */
+    DRAWBOTH(
+      libaroma_gradient_ex1(c,
+        h_draw_x,
+        h_draw_y,
+        h_sz,
+        h_sz,
+        hc,hc,
+        (h_sz>>1),0x1111,
+        0xff,0xff,
+        0
+      );
+    );
+  }
+ 
+  if ((Menu->ItemFlags & MENU_ITEM_FLAG_SEPARATOR) && item_y!=MenuHeight-ItemHeight){
+    int sepxp=0;
+    if (Menu->ItemFlags & MENU_ITEM_FLAG_SEPARATOR_ALIGN_TEXT){
+      sepxp=libaroma_dp(72);
+    }
+    DRAWBOTH(
+      libaroma_draw_rect(
+        c,
+        sepxp,
+        item_y + ItemHeight - libaroma_dp(1),
+        cv->w-sepxp,
+        libaroma_dp(1),
+        colorSeparator,
+        alphaSeparator
+      );
+    );
+  }
+
+  if(Entry->LongPressCallback) {
+    LIBAROMA_STREAMP icon = libaroma_stream_ramdisk("icons/ic_more_vert_white_24dp.png");
+    LIBAROMA_CANVASP ico  = libaroma_image_ex(icon, 0, 0);
+    if(ico) {
+      int dpsz=libaroma_dp(30);
+      int icoy=item_y + ((ItemHeight>>1) - (dpsz>>1));
+      int icox=MenuWidth - ico->w - libaroma_dp(16);
+
+      DRAWBOTH(
+        libaroma_draw_scale_smooth(
+          c, ico,
+          icox,icoy,
+          dpsz, dpsz,
+          0, 0, ico->w, ico->h
+        );
+      );
+    }
+  }
+}
+
+VOID
+DrawGroupItem (
+  IN MENU_OPTION   *Menu,
+  IN MENU_ENTRY    *Entry,
+  IN UINTN         item_y,
+  IN UINTN         MenuHeight
+)
+{
+  LIBAROMA_CANVASP cv  = Menu->cv;
+  UINTN MenuWidth  = Menu->ListWidth?libaroma_dp(Menu->ListWidth):dc->w;
+  UINTN ItemHeight = libaroma_dp(Entry->ItemHeight);
+
+  char text[256];
+  snprintf(text,256,"<b>%s</b>",Entry->Name?:"");
+ 
+  /* draw text */
+  int left_pad=libaroma_dp(16);
+  int right_pad=libaroma_dp(16);
+
+  if (Menu->ItemFlags & MENU_ITEM_FLAG_SEPARATOR_ALIGN_TEXT)
+    left_pad=libaroma_dp(72);
+
+  LIBAROMA_TEXT txt = libaroma_text(
+    text,
+    colorTextSecondary, MenuWidth-(left_pad+right_pad),
+    LIBAROMA_FONT(0,2),
+    100
+  );
+
+  if (txt){
+    int txty=item_y + ((ItemHeight>>1)-((libaroma_text_height(txt)>>1))-libaroma_dp(2));
+
+    libaroma_text_draw(
+      cv, txt, left_pad, txty
+    );
+    libaroma_text_free(txt);
+  }
+
+  if (!(Menu->ItemFlags & MENU_ITEM_FLAG_SEPARATOR)){
+    int sepxp=0;
+    if (Menu->ItemFlags & MENU_ITEM_FLAG_SEPARATOR_ALIGN_TEXT){
+      sepxp=libaroma_dp(72);
+    }
+    libaroma_draw_rect(
+      cv,
+      sepxp,
+      item_y - libaroma_dp(1),
+      cv->w-sepxp,
+      libaroma_dp(1),
+      colorSeparator,
+      alphaSeparator
+    );
+  }
+}
+
 VOID
 BuildAromaMenu (
   IN MENU_OPTION* Menu
@@ -725,207 +1001,28 @@ BuildAromaMenu (
     if (Entry->Hidden)
       goto NEXT;
 
-    #define DRAWBOTH(x) {\
-      LIBAROMA_CANVASP c = cv; \
-      x \
-      c = cva; \
-      x \
-    }
-
-    /* draw bg */
-    libaroma_draw_rect(cv, 0, item_y, MenuWidth, ItemHeight, libaroma_rgb_to16(Menu->BackgroundColor), 0xff);
+    DRAWBOTH(
+      /* draw bg */
+      libaroma_draw_rect(c, 0, item_y, MenuWidth, ItemHeight, libaroma_rgb_to16(Menu->BackgroundColor), 0xff);
+    );
    
     /* selected bg */
-    libaroma_draw_rect(cva, 0, item_y, MenuWidth, ItemHeight, libaroma_rgb_to16(Menu->BackgroundColor), 0xff);
-    libaroma_draw_rect(cva, 0, item_y+libaroma_dp(1), MenuWidth, ItemHeight-libaroma_dp(1), libaroma_rgb_to16(Menu->SelectionColor), Menu->SelectionAlpha);
-   
-    char text[256];
-    if (Entry->Description!=NULL){
-      word scolor = colorTextSecondary;
-      snprintf(text,256,"<b>%s</b>\n<#%02X%02X%02X><size=3>%s</size></#>",Entry->Name?:"",
-        libaroma_color_r(scolor),
-        libaroma_color_g(scolor),
-        libaroma_color_b(scolor),
-        Entry->Description);
-    }
-    else{
-      snprintf(text,256,"<b>%s</b>",Entry->Name?:"");
-    }
-   
-    /* draw text */
-    int left_pad=libaroma_dp(16);
-    int right_pad=libaroma_dp(16);
+    libaroma_draw_rect(cva, 0, item_y, MenuWidth, ItemHeight-libaroma_dp(1), libaroma_rgb_to16(Menu->SelectionColor), Menu->SelectionAlpha);
 
-    if(Entry->Icon)
-      left_pad = libaroma_dp(72);
-    if(Entry->ShowToggle)
-      right_pad = libaroma_dp(72);
-
-    LIBAROMA_TEXT txt = libaroma_text(
-      text,
-      libaroma_rgb_to16(Menu->TextColor), MenuWidth-(left_pad+right_pad),
-      LIBAROMA_FONT(0,4),
-      100
-    );
-
-    if (txt){
-      int txty=item_y + ((ItemHeight>>1)-((libaroma_text_height(txt)>>1))-libaroma_dp(2));
-
-      libaroma_text_draw(
-        cv, txt, left_pad, txty
-      );
-      libaroma_text_draw_color(
-        cva, txt, left_pad, txty, libaroma_rgb_to16(Menu->TextSelectionColor)
-      );
-      libaroma_text_free(txt);
-    }
-   
-    if (Entry->Icon!=NULL){
-      LIBAROMA_CANVASP ico =libaroma_image_ex(Entry->Icon, 0, 0);
-      if (ico){
-        int dpsz=libaroma_dp(40);
-        int icoy=item_y + ((ItemHeight>>1) - (dpsz>>1));
-        int icox=libaroma_dp(16);
-        byte ismask=(Menu->ItemFlags&MENU_ITEM_FLAG_MASK_ICON_COLOR)?1:0;
-         
-        if (ismask){
-          libaroma_canvas_fillcolor(ico,libaroma_alpha(libaroma_rgb_to16(Menu->BackgroundColor),libaroma_rgb_to16(Menu->TextColor),0xcc));
-        }
-        libaroma_draw_scale_smooth(
-          cv, ico,
-          icox,icoy,
-          dpsz, dpsz,
-          0, 0, ico->w, ico->h
-        );
-        if (ismask){
-          libaroma_canvas_fillcolor(ico,libaroma_alpha(libaroma_rgb_to16(Menu->SelectionColor),libaroma_rgb_to16(Menu->TextSelectionColor),0xcc));
-        }
-        libaroma_draw_scale_smooth(
-          cva, ico,
-          icox,icoy,
-          dpsz, dpsz,
-          0, 0, ico->w, ico->h
-        );
-        libaroma_canvas_free(ico);
-      }
-    }
-
-    if(Entry->ShowToggle) {
-      int selected = (Entry->ToggleEnabled);
-      float relstate=1;
-      int xpos = MenuWidth - libaroma_dp(16 + 20);
-      int ypos = item_y + (ItemHeight>>1);
-
-      word h_color_rest   = RGB(ECECEC);
-      word h_color_active = colorPrimary;
-      word b_color_rest   = RGB(B2B2B2);
-      word b_color_active = colorPrimaryLight;
-      
-      word bc0=selected?b_color_rest:b_color_active;
-      word bc1=selected?b_color_active:b_color_rest;
-      word hc0=selected?h_color_rest:h_color_active;
-      word hc1=selected?h_color_active:h_color_rest;
-        
-      word bc = libaroma_alpha(bc0,bc1,relstate*0xff);
-      word hc = libaroma_alpha(hc0,hc1,relstate*0xff);
-      
-      /* draw background */
-      int b_width   = libaroma_dp(34);
-      int b_height  = libaroma_dp(14);
-      
-      float selrelstate = selected?relstate:1-relstate;
-      int base_x = xpos-(b_width>>1);
-      int h_sz = libaroma_dp(20);
-      int base_w = b_width - h_sz;
-      int h_draw_x = base_x + round(base_w*selrelstate);
-      int h_draw_y = ypos-(h_sz>>1);
-      
-      DRAWBOTH(
-        libaroma_gradient_ex1(c,
-          xpos-(b_width>>1),
-          ypos-(b_height>>1),
-          b_width,
-          b_height,
-          bc,bc,
-          (b_height>>1),0x1111,
-          0xff,0xff,
-          0
-        );
-      );
-
-      int rsz = libaroma_dp(1);
-      
-      LIBAROMA_CANVASP bmask = libaroma_canvas_ex(h_sz,h_sz,1);
-      libaroma_canvas_setcolor(bmask,0,0);
-      libaroma_gradient(bmask,0,0,h_sz,h_sz,0,0,h_sz>>1,0x1111);
-      LIBAROMA_CANVASP scv = libaroma_blur_ex(bmask,rsz,1,0);
-      libaroma_canvas_free(bmask);
-      
-      DRAWBOTH(
-        libaroma_draw_opacity(c,scv,h_draw_x-rsz,h_draw_y,3,0x30);
-      );
-      libaroma_canvas_free(scv);
-
-      /* handle */
-      DRAWBOTH(
-        libaroma_gradient_ex1(c,
-          h_draw_x,
-          h_draw_y,
-          h_sz,
-          h_sz,
-          hc,hc,
-          (h_sz>>1),0x1111,
-          0xff,0xff,
-          0
-        );
-      );
-    }
-   
-    if (Menu->ItemFlags & MENU_ITEM_FLAG_SEPARATOR){
-      int sepxp=0;
-      if (Menu->ItemFlags & MENU_ITEM_FLAG_SEPARATOR_ALIGN_TEXT){
-        sepxp=libaroma_dp(72);
-      }
-      libaroma_draw_rect(
-        cv,
-        sepxp,
-        item_y-libaroma_dp(1),
-        cv->w-sepxp,
-        libaroma_dp(1),
-        colorSeparator,
-        alphaSeparator
-      );
-    }
-
-    if(Entry->LongPressCallback) {
-      LIBAROMA_STREAMP icon = libaroma_stream_ramdisk("icons/ic_more_vert_white_24dp.png");
-
-      LIBAROMA_CANVASP ico  = libaroma_image_ex(icon, 0, 0);
-      if(ico) {
-        int dpsz=libaroma_dp(30);
-        int icoy=item_y + ((ItemHeight>>1) - (dpsz>>1));
-        int icox=MenuWidth - ico->w - libaroma_dp(16);
-
-        DRAWBOTH(
-          libaroma_draw_scale_smooth(
-            c, ico,
-            icox,icoy,
-            dpsz, dpsz,
-            0, 0, ico->w, ico->h
-          );
-        );
-      }
-    }
+    if (Entry->IsGroupItem)
+      DrawGroupItem(Menu, Entry, item_y, MenuHeight);
+    else
+      DrawListItem(Menu, Entry, item_y, MenuHeight);
 
     item_y += ItemHeight;
-
-    #undef DRAWBOTH
 
 NEXT:
     Link = Link->ForwardLink;
     Index++;
   }
 }
+
+#undef DRAWBOTH
 
 VOID
 ButtonDraw (

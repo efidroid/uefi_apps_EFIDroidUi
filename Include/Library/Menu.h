@@ -27,6 +27,7 @@ struct _MENU_ENTRY {
   BOOLEAN ShowToggle;
   BOOLEAN ToggleEnabled;
   UINTN ItemHeight;
+  BOOLEAN IsGroupItem;
 
   // selection
   BOOLEAN Hidden;
@@ -118,6 +119,11 @@ MenuFree (
 
 MENU_ENTRY*
 MenuCreateEntry (
+  VOID
+);
+
+MENU_ENTRY*
+MenuCreateGroupEntry (
   VOID
 );
 
