@@ -1069,6 +1069,13 @@ AndroidLocatorAddItems (
   VOID
 )
 {
+  MENU_ENTRY                          *Entry;
+
+  // GROUP: Android
+  Entry = MenuCreateGroupEntry();
+  Entry->Name = AsciiStrDup("Android");
+  MenuAddEntry(mBootMenuMain, Entry);
+
   // add Android options
   VisitAllInstancesOfProtocol (
     &gEfiBlockIoProtocolGuid,
@@ -1082,6 +1089,11 @@ AndroidLocatorAddItems (
     FindMultibootSFS,
     NULL
     );
+
+  // GROUP: Recovery
+  Entry = MenuCreateGroupEntry();
+  Entry->Name = AsciiStrDup("Recovery");
+  MenuAddEntry(mBootMenuMain, Entry);
 
   // add recovery items
   LIST_ENTRY* Link;

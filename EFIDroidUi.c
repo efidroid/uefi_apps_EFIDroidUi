@@ -51,6 +51,8 @@ AddEfiBootOptions (
   LIST_ENTRY        BootLists;
   LIST_ENTRY        *Link;
   BDS_COMMON_OPTION *Option;
+  BOOLEAN           First = TRUE;
+  MENU_ENTRY        *Entry;
 
   InitializeListHead (&BootLists);
 
@@ -103,7 +105,15 @@ AddEfiBootOptions (
     if(!StrCmp(Option->Description, L"EFI Internal Shell"))
       continue;
 
-    MENU_ENTRY *Entry = MenuCreateEntry();
+    if (First) {
+      // GROUP: UEFI
+      Entry = MenuCreateGroupEntry();
+      Entry->Name = AsciiStrDup("UEFI");
+      MenuAddEntry(mBootMenuMain, Entry);
+      First = FALSE;
+    }
+
+    Entry = MenuCreateEntry();
     if(Entry == NULL) {
       break;
     }
@@ -269,6 +279,7 @@ main (
   mBootMenuMain->Title = AsciiStrDup("Please Select OS");
   mBootMenuMain->ActionIcon = libaroma_stream_ramdisk("icons/ic_settings_black_24dp.png");
   mBootMenuMain->ActionCallback = MainMenuActionCallback;
+  mBootMenuMain->ItemFlags = MENU_ITEM_FLAG_SEPARATOR_ALIGN_TEXT;
 
 #if defined (MDE_CPU_ARM)
   // add android options
@@ -278,6 +289,11 @@ main (
 
   // add default EFI options
   AddEfiBootOptions();
+
+  // GROUP: Tools
+  Entry = MenuCreateGroupEntry();
+  Entry->Name = AsciiStrDup("Tools");
+  MenuAddEntry(mBootMenuMain, Entry);
 
 #if defined (MDE_CPU_ARM)
   // add shell
