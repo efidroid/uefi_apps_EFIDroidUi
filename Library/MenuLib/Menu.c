@@ -882,7 +882,7 @@ DrawListItem (
  
   if ((Menu->ItemFlags & MENU_ITEM_FLAG_SEPARATOR) && item_y!=MenuHeight-ItemHeight){
     int sepxp=0;
-    if (Menu->ItemFlags & MENU_ITEM_FLAG_SEPARATOR_ALIGN_TEXT){
+    if ((Menu->ItemFlags & MENU_ITEM_FLAG_SEPARATOR_ALIGN_TEXT) && Entry->Icon){
       sepxp=libaroma_dp(72);
     }
     DRAWBOTH(
