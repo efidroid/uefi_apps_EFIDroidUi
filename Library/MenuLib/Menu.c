@@ -1297,8 +1297,28 @@ VOID MenuShowProgressDialog (
   int dialog_x = libaroma_dp(24);
   int dialog_y = (dc->h>>1)-(dialog_h>>1);
 
-  libaroma_draw_rect(
-    dc, dialog_x, dialog_y, dialog_w, dialog_h, colorBackground, 0xff
+  /* draw fake shadow */
+  int z;
+  int shadow_sz=libaroma_dp(2);
+  byte shadow_opa = (byte) (0x60 / shadow_sz);
+  for (z=1;z<shadow_sz;z++){
+    int wp=z*2;
+    libaroma_gradient_ex(dc,
+      dialog_x-z, dialog_y+(z>>1),
+      dialog_w+wp, dialog_h+wp,
+      0,0,
+      libaroma_dp(4),
+      0x1111,
+      shadow_opa, shadow_opa
+    );
+  }
+
+  libaroma_gradient(dc,
+    dialog_x,dialog_y,
+    dialog_w, dialog_h,
+    colorBackground,colorBackground,
+    libaroma_dp(2), /* rounded 2dp */
+    0x1111 /* all corners */
   );
 
   LIBAROMA_TEXT txt = libaroma_text(
