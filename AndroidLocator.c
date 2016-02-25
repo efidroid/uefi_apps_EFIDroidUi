@@ -971,6 +971,7 @@ InitializeEspData (
 )
 {
   EFI_STATUS Status;
+  UINT32     Retry = 0;
 
   // get ESP
   FSTAB_REC* EspRec = FstabGetESP(mFstab);
@@ -1011,8 +1012,9 @@ AGAIN:
     NULL
     );
 
-  if (!mEspDir && IsDataMedia) {
+  if (Retry==0 && !mEspDir && IsDataMedia) {
     UnicodeSPrint(mEspPartitionPath, BufSize, L"/media/0/UEFIESP");
+    Retry = 1;
     goto AGAIN;
   }
 
