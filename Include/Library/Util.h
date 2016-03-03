@@ -239,4 +239,18 @@ IniParseEfiFile (
   VOID              *User
 );
 
+EFI_STATUS
+UtilReadFileToMemory (
+  EFI_FILE_PROTOCOL *File,
+  VOID              **OutBuffer,
+  UINTN             *OutSize
+);
+
+#ifndef LIBUTIL_NOAROMA
+LIBAROMA_STREAMP
+libaroma_stream_efifile(
+  EFI_FILE_PROTOCOL *File
+);
+#endif
+
 #endif /* ! UTIL_H */

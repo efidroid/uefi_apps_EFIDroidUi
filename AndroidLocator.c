@@ -203,12 +203,14 @@ CreateRecoveryMenu (
 
 VOID
 AddMultibootSystemToRecoveryMenu (
-  multiboot_handle_t *mbhandle,
-  MENU_ENTRY_PDATA   *EntryPData
+  MENU_ENTRY         *Entry
 )
 {
   LIST_ENTRY* Link;
   RECOVERY_MENU* RecEntry;
+
+  MENU_ENTRY_PDATA   *EntryPData = Entry->Private;
+  multiboot_handle_t *mbhandle   = EntryPData->mbhandle;
 
   for (Link = GetFirstNode (&mRecoveries);
        !IsNull (&mRecoveries, Link);
@@ -228,6 +230,8 @@ AddMultibootSystemToRecoveryMenu (
     NewEntry->Name = AsciiStrDup(mbhandle->Name);
     if(mbhandle->Description)
       NewEntry->Description = AsciiStrDup(mbhandle->Description);
+    if(Entry->Icon)
+      NewEntry->Icon = Entry->Icon;
 
     MenuAddEntry(RecEntry->SubMenu, NewEntry);
   }
@@ -910,7 +914,9 @@ ENUMERATE:
     // add menu entry
     if(mbhandle->Name && mbhandle->PartitionBoot) {
       EFI_FILE_PROTOCOL     *BootFile;
+      EFI_FILE_PROTOCOL     *IconFile;
       EFI_BLOCK_IO_PROTOCOL *BlockIo;
+      LIBAROMA_STREAMP      IconStream = NULL;
 
       // open boot file
       Status = mbhandle->ROMDirectory->Open (
@@ -936,8 +942,23 @@ ENUMERATE:
         Status = EFI_OUT_OF_RESOURCES;
         goto NEXT;
       }
+
+      // open icon file
+      Status = mbhandle->ROMDirectory->Open (
+                       mbhandle->ROMDirectory,
+                       &IconFile,
+                       L"icon.png",
+                       EFI_FILE_MODE_READ,
+                       0
+                       );
+      if (!EFI_ERROR (Status)) {
+        IconStream = libaroma_stream_efifile(IconFile);
+      }
+      if (IconStream==NULL)
+        IconStream = libaroma_stream_ramdisk("icons/android.png");
+
       MENU_ENTRY_PDATA* EntryPData = Entry->Private;
-      Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
+      Entry->Icon = IconStream;
       Entry->Name = AsciiStrDup(mbhandle->Name);
       Entry->Description = mbhandle->Description?AsciiStrDup(mbhandle->Description):NULL;
       EntryPData->BlockIo = BlockIo;
@@ -945,7 +966,7 @@ ENUMERATE:
       EntryPData->mbhandle = mbhandle;
       MenuAddEntry(mBootMenuMain, Entry);
 
-      AddMultibootSystemToRecoveryMenu(mbhandle, EntryPData);
+      AddMultibootSystemToRecoveryMenu(Entry);
     }
 
 NEXT:

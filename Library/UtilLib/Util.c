@@ -750,3 +750,62 @@ IniParseEfiFile (
 {
   return ini_parse_stream(IniReaderEfiFile, File, Handler, User);
 }
+
+
+EFI_STATUS
+UtilReadFileToMemory (
+  EFI_FILE_PROTOCOL *File,
+  VOID              **OutBuffer,
+  UINTN             *OutSize
+)
+{
+  EFI_STATUS Status;
+  UINT64     FileSize = 0;
+  VOID       *Buffer = NULL;
+  UINTN      ReadSize;
+
+  if(!File)
+    return EFI_INVALID_PARAMETER;
+
+  // get size
+  Status = FileHandleGetSize(File, &FileSize);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  // allocate buffer
+  Buffer = AllocatePool(FileSize);
+  if (Buffer==NULL)
+    return EFI_OUT_OF_RESOURCES;
+
+  // read data
+  ReadSize = (UINTN) FileSize;
+  Status = FileHandleRead(File, &ReadSize, Buffer);
+  if (EFI_ERROR (Status)) {
+    FreePool (Buffer);
+    return Status;
+  }
+
+  *OutBuffer = Buffer;
+  *OutSize   = ReadSize;
+
+  return EFI_SUCCESS;
+}
+
+LIBAROMA_STREAMP
+libaroma_stream_efifile(
+  EFI_FILE_PROTOCOL *File
+)
+{
+  bytep Data;
+  UINTN Size;
+  EFI_STATUS Status;
+
+  // get font data
+  Status = UtilReadFileToMemory (File, (VOID **) &Data, &Size);
+  if (EFI_ERROR (Status)) {
+    return NULL;
+  }
+
+  return libaroma_stream_mem(Data, Size);
+}
