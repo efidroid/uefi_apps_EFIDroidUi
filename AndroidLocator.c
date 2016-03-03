@@ -829,7 +829,7 @@ ENUMERATE:
       ; Status = FileHandleFindNextFile(DirMultiboot, NodeInfo, &NoFile)
      ){
 
-    // ignore files
+    // ignore directories
     if(!NodeIsDir(NodeInfo))
       continue;
 
