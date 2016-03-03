@@ -939,7 +939,7 @@ ENUMERATE:
       MENU_ENTRY_PDATA* EntryPData = Entry->Private;
       Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
       Entry->Name = AsciiStrDup(mbhandle->Name);
-      Entry->Description = AsciiStrDup(mbhandle->Description);
+      Entry->Description = mbhandle->Description?AsciiStrDup(mbhandle->Description):NULL;
       EntryPData->BlockIo = BlockIo;
       EntryPData->LastBootEntry = LastBootEntry;
       EntryPData->mbhandle = mbhandle;
