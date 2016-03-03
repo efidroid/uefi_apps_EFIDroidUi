@@ -881,7 +881,7 @@ ENUMERATE:
     CHAR16* fname;
     Status = FileHandleGetFileName(FileMultibootIni, &fname);
     if (EFI_ERROR (Status)) {
-      return Status;
+      goto NEXT;
     }
 
     // build lastbootentry info
@@ -897,7 +897,8 @@ ENUMERATE:
     // store as ascii string
     mbhandle->MultibootConfig = Unicode2Ascii(fname);
     if (mbhandle->MultibootConfig == NULL) {
-      return EFI_OUT_OF_RESOURCES;
+      Status = EFI_OUT_OF_RESOURCES;
+      goto NEXT;
     }
 
     // cleanup
@@ -920,19 +921,20 @@ ENUMERATE:
                        0
                        );
       if (EFI_ERROR (Status)) {
-        return Status;
+        goto NEXT;
       }
 
       // create block IO
       Status = FileBlockIoCreate(BootFile, &BlockIo);
       if (EFI_ERROR(Status)) {
-        return Status;
+        goto NEXT;
       }
 
       // create new menu entry
       MENU_ENTRY *Entry = MenuCreateBootEntry();
       if(Entry == NULL) {
-        return EFI_OUT_OF_RESOURCES;
+        Status = EFI_OUT_OF_RESOURCES;
+        goto NEXT;
       }
       MENU_ENTRY_PDATA* EntryPData = Entry->Private;
       Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
