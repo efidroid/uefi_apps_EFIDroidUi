@@ -31,19 +31,20 @@
 #
 
 [Sources]
-  Ini.c
+  ../../../EFIDroidModules/inih/ini.c
 
 [Packages]
+  StdLib/StdLib.dec
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   EFIDroidUEFIApps/EFIDroidUi/EFIDroidUi.dec
 
 [LibraryClasses]
-  BaseLib
-  UefiBootServicesTableLib
-  UefiLib
-  PrintLib
-  FileHandleLib
+  LibC
+  LibStdio
 
 [Depex]
   TRUE
+
+[BuildOptions]
+  GCC:*_*_*_CC_FLAGS     = -DNO_CTYPE_MACROS=1 -DINI_USE_STACK=0

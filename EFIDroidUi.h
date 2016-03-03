@@ -23,7 +23,6 @@
 #include <Library/DevicePathLib.h>
 #include <Library/Cpio.h>
 #include <Library/Decompress.h>
-#include <Library/Ini.h>
 #include <Library/PcdLib.h>
 #include <Library/DxeServicesLib.h>
 #include <Library/FileHandleLib.h>

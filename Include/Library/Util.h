@@ -54,6 +54,32 @@ RETURN_STATUS
   IN  VOID                         *Data
   );
 
+// so we don't need std headers
+typedef
+CHAR8*
+(*ini_reader)(
+  CHAR8 *String,
+  INT32 Size,
+  VOID *Stream
+);
+
+typedef
+INT32
+(*ini_handler)(
+  VOID        *User,
+  CONST CHAR8 *Section,
+  CONST CHAR8 *Name,
+  CONST CHAR8 *Value
+);
+
+INT32
+ini_parse_stream (
+  ini_reader  Reader,
+  VOID        *Stream,
+  ini_handler Handler,
+  VOID        *User
+);
+
 CHAR8*
 Unicode2Ascii (
   CONST CHAR16* UnicodeStr
@@ -204,6 +230,13 @@ VOID
 SettingBoolSet (
   CONST CHAR8* Name,
   BOOLEAN Value
+);
+
+INT32
+IniParseEfiFile (
+  EFI_FILE_PROTOCOL *Filename,
+  ini_handler       Handler,
+  VOID              *User
 );
 
 #endif /* ! UTIL_H */

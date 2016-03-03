@@ -9,7 +9,7 @@
   CpioLib|EFIDroidUEFIApps/EFIDroidUi/Library/CpioLib/CpioLib.inf
   DecompressLib|EFIDroidUEFIApps/EFIDroidUi/Library/DecompressLib/DecompressLib.inf
   FstabLib|EFIDroidUEFIApps/EFIDroidUi/Library/FstabLib/FstabLib.inf
-  IniLib|EFIDroidUEFIApps/EFIDroidUi/Library/IniLib/IniLib.inf
+  IniLib|EFIDroidUEFIApps/EFIDroidUi/Library/IniLib.inf
   EFIDroidMenuLib|EFIDroidUEFIApps/EFIDroidUi/Library/MenuLib/MenuLib.inf
   UEFIRamdiskLib|EFIDroidUEFIApps/EFIDroidUi/Library/UEFIRamdiskLib/UEFIRamdiskLib.inf
   UtilLib|EFIDroidUEFIApps/EFIDroidUi/Library/UtilLib/UtilLib.inf

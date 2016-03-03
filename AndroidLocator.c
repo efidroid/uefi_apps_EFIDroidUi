@@ -875,7 +875,7 @@ ENUMERATE:
     }
 
     // parse ini
-    ini_parse_file(FileMultibootIni, IniHandler, mbhandle);
+    IniParseEfiFile(FileMultibootIni, IniHandler, mbhandle);
 
     // get filename
     CHAR16* fname;

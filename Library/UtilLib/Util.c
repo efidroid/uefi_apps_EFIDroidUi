@@ -683,3 +683,70 @@ SettingBoolSet (
 {
   UtilSetEFIDroidVariable(Name, Value?"1":"0");
 }
+
+STATIC
+CHAR8*
+IniReaderEfiFile (
+  CHAR8 *String,
+  INT32 Size,
+  VOID *Stream
+)
+{
+    EFI_FILE_PROTOCOL  *File = (EFI_FILE_PROTOCOL*) Stream;
+    EFI_STATUS         Status;
+    UINTN              BufferSize;
+    UINT64             Position;
+    UINTN              Index;
+
+    // stop here if we reached EOF already
+    if (FileHandleEof(File)) {
+        return NULL;
+    }
+
+    // get current position
+    Status = FileHandleGetPosition(File, &Position);
+    if (EFI_ERROR(Status))
+      return NULL;
+
+    // read data
+    BufferSize = Size-1;
+    Status = FileHandleRead(File, &BufferSize, String);
+    if (EFI_ERROR(Status)) {
+      return NULL;
+    }
+
+    // EOF or error
+    if (BufferSize==0) {
+      return NULL;
+    }
+
+    // terminate buffer
+    String[BufferSize] = '\0';
+
+    // search for newline
+    for(Index=0; Index<BufferSize; Index++) {
+      CHAR8 c = String[Index];
+      if(c=='\n' || c=='\r') {
+        String[Index+1] = '\0';
+
+        // seek back file position
+        Status = FileHandleSetPosition(File, Position+Index+1);
+        if (EFI_ERROR(Status))
+          return NULL;
+
+        break;
+      }
+    }
+
+    return String;
+}
+
+INT32
+IniParseEfiFile (
+  EFI_FILE_PROTOCOL *File,
+  ini_handler       Handler,
+  VOID              *User
+)
+{
+  return ini_parse_stream(IniReaderEfiFile, File, Handler, User);
+}
