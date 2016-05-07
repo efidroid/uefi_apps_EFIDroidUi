@@ -122,6 +122,8 @@ CommandBoot (
   EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   *Volume;
   EFI_FILE_PROTOCOL                 *Root;
   EFI_FILE_PROTOCOL                 *EfiFile;
+  UINTN                     WaitIndex;
+  EFI_INPUT_KEY             Key;
 
   AndroidHdr = Data;
   DataAddr = (UINT64)(UINTN)Data;
@@ -245,6 +247,12 @@ CommandBoot (
     // start efi application
     EFI_STATUS CommandStatus;
     Status = ShellExecute (&gImageHandle, SIDELOAD_FULLPATH, FALSE, NULL, &CommandStatus);
+
+    // wait for user input
+    Status = gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &WaitIndex);
+    if(!EFI_ERROR(Status)) {
+        gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
+    }
 
     // restart menu
     MenuPostBoot();
