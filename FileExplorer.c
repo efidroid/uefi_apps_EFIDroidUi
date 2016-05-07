@@ -125,7 +125,7 @@ MenuItemCallback (
 
       // start efi application
       EFI_STATUS CommandStatus;
-      Status = ShellExecute (gImageHandle, Path, FALSE, NULL, &CommandStatus);
+      Status = ShellExecute (&gImageHandle, Path, FALSE, NULL, &CommandStatus);
 
       // restart menu
       MenuPostBoot();
