@@ -242,7 +242,7 @@ CommandBoot (
 
     // start efi application
     EFI_STATUS CommandStatus;
-    Status = ShellExecute (gImageHandle, SIDELOAD_FULLPATH, FALSE, NULL, &CommandStatus);
+    Status = ShellExecute (&gImageHandle, SIDELOAD_FULLPATH, FALSE, NULL, &CommandStatus);
 
     // restart menu
     MenuPostBoot();
@@ -340,7 +340,7 @@ CommandShell (
   gST->StdErr->OutputString = OutputStringHook;
 
   // run shell command
-  Status = ShellExecute (gImageHandle, UnicodeCommand, FALSE, NULL, &CommandStatus);
+  Status = ShellExecute (&gImageHandle, UnicodeCommand, FALSE, NULL, &CommandStatus);
 
   // flush output buffer
   if(mOutputBufferPos>0)
