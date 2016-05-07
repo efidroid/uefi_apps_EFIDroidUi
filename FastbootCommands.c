@@ -235,6 +235,8 @@ CommandBoot (
 
     // send OKAY
     FastbootOkay("");
+
+    // stop fastboot
     FastbootStopNow();
 
     // shut down menu
@@ -246,6 +248,9 @@ CommandBoot (
 
     // restart menu
     MenuPostBoot();
+
+    // start fastboot
+    FastbootInit();
 
     // remove shell mapping
     gEfiShellProtocol->SetMap(NULL, SIDELOAD_MAPPING);
