@@ -5,11 +5,8 @@
 #include <Protocol/LKDisplay.h>
 #include <IndustryStandard/PeImage.h>
 #include <Library/DevicePathLib.h>
-#include <Library/ShellLib.h>
 
-#define SIDELOAD_MAPPING  L"srd0:"
 #define SIDELOAD_FILENAME L"Sideload.efi"
-#define SIDELOAD_FULLPATH SIDELOAD_MAPPING L"\\" SIDELOAD_FILENAME
 
 STATIC VOID
 CommandRebootInternal (
@@ -228,12 +225,19 @@ CommandBoot (
       goto ERROR_UNREGISTER_RAMDISK;
     }
 
-    // add shell mapping
-    Status = gEfiShellProtocol->SetMap(DevicePath, SIDELOAD_MAPPING);
-    if (EFI_ERROR (Status)) {
-      FastbootFail("Can't add shell mapping");
+    // build device path
+    EFI_DEVICE_PATH_PROTOCOL *LoaderDevicePath;
+    LoaderDevicePath = FileDevicePath(FSHandle, L"Sideload.efi");
+    if (LoaderDevicePath==NULL) {
+      FastbootFail("Can't build file device path");
       goto ERROR_UNREGISTER_RAMDISK;
     }
+
+    // build arguments
+    CONST CHAR16* Args = L"";
+    UINTN LoadOptionsSize = (UINT32)StrSize (Args);
+    VOID *LoadOptions     = AllocatePool (LoadOptionsSize);
+    StrCpy (LoadOptions, Args);
 
     // send OKAY
     FastbootOkay("");
@@ -245,8 +249,7 @@ CommandBoot (
     MenuPreBoot();
 
     // start efi application
-    EFI_STATUS CommandStatus;
-    Status = ShellExecute (&gImageHandle, SIDELOAD_FULLPATH, FALSE, NULL, &CommandStatus);
+    Status = BdsStartEfiApplication (gImageHandle, LoaderDevicePath, LoadOptionsSize, LoadOptions);
 
     // wait for user input
     Status = gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &WaitIndex);
@@ -259,9 +262,6 @@ CommandBoot (
 
     // start fastboot
     FastbootInit();
-
-    // remove shell mapping
-    gEfiShellProtocol->SetMap(NULL, SIDELOAD_MAPPING);
 
 ERROR_UNREGISTER_RAMDISK:
     // unregister ramdisk
@@ -293,6 +293,7 @@ ERROR_FREE_RAMDISK:
   }
 }
 
+#if 0
 STATIC EFI_TEXT_STRING mOutputStringOrig = NULL;
 STATIC EFI_TEXT_STRING mErrOutputStringOrig = NULL;
 STATIC CHAR8 mOutputBuffer[FASTBOOT_COMMAND_MAX_LENGTH];
@@ -372,6 +373,7 @@ CommandShell (
     FastbootOkay("");
   }
 }
+#endif
 
 STATIC VOID
 CommandDisplayInfo (
@@ -644,7 +646,7 @@ FastbootCommandsAdd (
   FastbootRegister("oem poweroff", CommandPowerOff);
   FastbootRegister("boot", CommandBoot);
 
-  FastbootRegister("oem shell", CommandShell);
+  //FastbootRegister("oem shell", CommandShell);
   FastbootRegister("oem displayinfo", CommandDisplayInfo);
   FastbootRegister("oem exit", CommandExit);
   FastbootRegister("oem screenshot", CommandScreenShot);

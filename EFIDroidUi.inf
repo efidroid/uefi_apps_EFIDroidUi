@@ -14,7 +14,6 @@
   StdLib/StdLib.dec
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
-  ShellPkg/ShellPkg.dec
   LittleKernelPkg/LittleKernelPkg.dec
   IntelFrameworkModulePkg/IntelFrameworkModulePkg.dec
   EFIDroidUEFIApps/EFIDroidUi/EFIDroidUi.dec
@@ -27,7 +26,6 @@
   DxeServicesTableLib
   HiiLib
   HobLib
-  ShellLib
   UefiLib
   LKApiLib
   UEFIRamdiskLib
@@ -62,7 +60,6 @@
 [Protocols]
   gEfiLoadedImageProtocolGuid
   gEfiDevicePathToTextProtocolGuid
-  gEfiShellParametersProtocolGuid
   gEfiPartitionNameProtocolGuid
   gEfiBlockIoProtocolGuid
   gEfiRamDiskProtocolGuid

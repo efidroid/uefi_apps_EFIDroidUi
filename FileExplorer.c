@@ -1,11 +1,9 @@
 #include "EFIDroidUi.h"
 #include <Guid/FileSystemVolumeLabelInfo.h>
-#include <Library/ShellCommandLib.h>
 
 typedef struct {
   MENU_OPTION     *ParentMenu;
   EFI_HANDLE      Handle;
-  CHAR16          *ShellFilePath;
   EFI_FILE_HANDLE Root;
   UINT16          *FileName;
   BOOLEAN         IsDir;
@@ -18,8 +16,7 @@ FindFiles (
   IN MENU_OPTION               *Menu,
   IN EFI_FILE_HANDLE           FileHandle,
   IN UINT16                    *FileName,
-  IN EFI_HANDLE                DeviceHandle,
-  IN CHAR16                    *ShellFilePath
+  IN EFI_HANDLE                DeviceHandle
   );
 
 STATIC
@@ -71,7 +68,7 @@ MenuItemCallback (
 
     MenuShowProgressDialog("Loading list of files", TRUE);
 
-    FindFiles(Menu, File, ItemContext->FileName, ItemContext->Handle, ItemContext->ShellFilePath);
+    FindFiles(Menu, File, ItemContext->FileName, ItemContext->Handle);
     MenuStackPush(Menu);
   }
 
@@ -109,41 +106,34 @@ MenuItemCallback (
         UnicodeSPrint(FileName, Size, L"\\%s", ItemContext->FileName);
       }
 
-      // build absolute execution path
-      UINTN PathLen = (StrLen(ItemContext->ShellFilePath)+StrLen(FileName)+1)*sizeof(CHAR16);
-      CHAR16* Path = AllocateZeroPool(PathLen);
-      if(Path==NULL) {
+      // build device path
+      EFI_DEVICE_PATH_PROTOCOL *LoaderDevicePath;
+      LoaderDevicePath = FileDevicePath(ItemContext->Handle, FileName);
+      if (LoaderDevicePath==NULL) {
         MenuShowMessage("Error", "Out of memory");
         FreePool(FileName);
         return EFI_OUT_OF_RESOURCES;
       }
-      UnicodeSPrint(Path, PathLen, L"%s%s", ItemContext->ShellFilePath, FileName);
-      FreePool(FileName);
+
+      // build arguments
+      CONST CHAR16* Args = L"";
+      UINTN LoadOptionsSize = (UINT32)StrSize (Args);
+      VOID *LoadOptions     = AllocatePool (LoadOptionsSize);
+      StrCpy (LoadOptions, Args);
 
       // shut down menu
       MenuPreBoot();
 
       // start efi application
-      EFI_STATUS CommandStatus;
-      Status = ShellExecute (&gImageHandle, Path, FALSE, NULL, &CommandStatus);
+      Status = BdsStartEfiApplication (gImageHandle, LoaderDevicePath, LoadOptionsSize, LoadOptions);
 
       // restart menu
       MenuPostBoot();
-
-      // free path memory
-      FreePool(Path);
 
       // show loader error
       if (EFI_ERROR(Status)) {
         CHAR8 Buf[100];
         AsciiSPrint(Buf, 100, "Error loading: %r", Status);
-        MenuShowMessage("Error", Buf);
-      }
-
-      // show application error
-      else if (EFI_ERROR(CommandStatus)) {
-        CHAR8 Buf[100];
-        AsciiSPrint(Buf, 100, "Application returned: %r", CommandStatus);
         MenuShowMessage("Error", Buf);
       }
     }
@@ -176,8 +166,7 @@ FindFiles (
   IN MENU_OPTION               *Menu,
   IN EFI_FILE_HANDLE           FileHandle,
   IN UINT16                    *FileName,
-  IN EFI_HANDLE                DeviceHandle,
-  IN CHAR16                    *ShellFilePath
+  IN EFI_HANDLE                DeviceHandle
   )
 {
   EFI_FILE_INFO   *DirInfo;
@@ -230,7 +219,6 @@ FindFiles (
       ItemContext->Handle = DeviceHandle;
       ItemContext->Root = FileHandle;
       ItemContext->IsDir = (BOOLEAN) ((DirInfo->Attribute & EFI_FILE_DIRECTORY) == EFI_FILE_DIRECTORY);
-      ItemContext->ShellFilePath = ShellFilePath;
 
       ItemContext->FileName = UnicodeStrDup(DirInfo->FileName);
       if (ItemContext->FileName == NULL) {
@@ -283,18 +271,11 @@ AddSFS (
   EFI_PARTITION_NAME_PROTOCOL  *PartitionName;
   EFI_FILE_SYSTEM_VOLUME_LABEL *Info;
   EFI_DEVICE_PATH_PROTOCOL     *DevicePath;
-  CHAR16                       *ShellFilePath;
 
   Status = EFI_SUCCESS;
 
   DevicePath = DevicePathFromHandle(Handle);
   if (DevicePath==NULL) {
-    Status = EFI_OUT_OF_RESOURCES;
-    goto DONE;
-  }
-
-  ShellFilePath = gEfiShellProtocol->GetFilePathFromDevicePath(DevicePath);
-  if (ShellFilePath == NULL) {
     Status = EFI_OUT_OF_RESOURCES;
     goto DONE;
   }
@@ -314,7 +295,6 @@ AddSFS (
   ItemContext->Root = Root;
   ItemContext->FileName = UnicodeStrDup(L"\\");
   ItemContext->IsDir = TRUE;
-  ItemContext->ShellFilePath = ShellFilePath;
 
   Entry = MenuCreateEntry();
   Entry->Callback = MenuItemCallback;
