@@ -101,6 +101,29 @@ byte UEFIFBDR_post_bgra8888(
 }
 
 /*
+ * Function    : UEFIFBDR_post_bltonly
+ * Return Value: byte
+ * Descriptions: post data
+ */
+byte UEFIFBDR_post_bltonly(
+  LIBAROMA_FBP me, wordp __restrict src,
+  int dx, int dy, int dw, int dh,
+  int sx, int sy, int sw, int sh
+  ){
+  if (me == NULL) {
+    return 0;
+  }
+
+  UEFIFBDR_INTERNALP mi = (UEFIFBDR_INTERNALP) me->internal;
+
+  if(UEFIFBDR_post_bgra8888(me, src, dx, dy, dw, dh, sx, sy, sw, sh)==0)
+    return 0;
+
+  mi->gop->Blt(mi->gop, mi->buffer, EfiBltBufferToVideo, 0, 0, 0, 0, me->w, me->h, 0);
+  return 1;
+}
+
+/*
  * Function    : UEFIFBDR_post_bgr888
  * Return Value: byte
  * Descriptions: post data
@@ -211,6 +234,13 @@ byte UEFIFBDR_init(LIBAROMA_FBP me) {
       mi->depth     = 24;
       break;
 
+    case PixelBltOnly:
+      me->post        = &UEFIFBDR_post_bltonly;
+      mi->depth     = 32;
+      UEFIFBDR_setrgbpos(me,0,8,16);
+      mi->buffer = malloc((me->w * me->h * (mi->depth >> 3)));
+      break;
+
     default:
       ASSERT(FALSE);
       goto error;
@@ -253,6 +283,9 @@ void UEFIFBDR_release(LIBAROMA_FBP me) {
   if (mi==NULL){
     return;
   }
+
+  if(me->post == UEFIFBDR_post_bltonly)
+    free(mi->buffer);
   
   /* free internal data */
   ALOGV("UEFIFBDR free internal data");
