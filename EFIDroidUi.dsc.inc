@@ -26,3 +26,5 @@
 
 [LibraryClasses.ARM]
   TimerLib|LittleKernelPkg/Library/LKTimerLib/LKTimerLib.inf
+
+!include StdLib/StdLibNoShell.inc

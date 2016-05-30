@@ -4,7 +4,7 @@
   FILE_GUID       = 1db8bf12-1b3d-4d8d-99e8-23309e10d5ee
   MODULE_TYPE     = UEFI_APPLICATION
   VERSION_STRING  = 0.1
-  ENTRY_POINT     = ShellCEntryLib
+  ENTRY_POINT     = StdCEntryLib
 
 [Sources]
   EFIDroidUi.c
@@ -40,6 +40,8 @@
   MemoryBlockIoLib
   MakeDosFsLib
   SquirrelLib
+  StdCEntryLib
+  UefiApplicationEntryPoint
 
 # ARM support
 [Sources.ARM]
