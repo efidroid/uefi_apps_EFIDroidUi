@@ -15,13 +15,12 @@
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   LittleKernelPkg/LittleKernelPkg.dec
-  IntelFrameworkModulePkg/IntelFrameworkModulePkg.dec
   EFIDroidUEFIApps/EFIDroidUi/EFIDroidUi.dec
   EFIDroidUEFIApps/EFIDroidUi/Library/AromaLib/AromaLib.dec
 
 [LibraryClasses]
   LibC
-  GenericBdsLib
+  UefiBootManagerLib
   DebugLib
   DxeServicesTableLib
   HiiLib
@@ -55,8 +54,6 @@
   ArmPkg/ArmPkg.dec
 
 [LibraryClasses.ARM]
-  ArmLib
-  BdsLib
   CacheMaintenanceLib
 
 [Protocols]
@@ -65,8 +62,8 @@
   gEfiPartitionNameProtocolGuid
   gEfiBlockIoProtocolGuid
   gEfiRamDiskProtocolGuid
+  gEfiDevicePathFromTextProtocolGuid
 
 [Guids]
   gEFIDroidVariableGuid
-  gLKVNORGuid
   gEfiFileSystemVolumeLabelInfoIdGuid

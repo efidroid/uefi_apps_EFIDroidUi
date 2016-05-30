@@ -5,6 +5,7 @@
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/DebugLib.h>
+#include <Library/UefiBootManagerLib.h>
 
 extern EFI_GUID gEFIDroidVariableGuid;
 extern EFI_GUID gEFIDroidVariableDataGuid;
@@ -808,4 +809,90 @@ libaroma_stream_efifile(
   }
 
   return libaroma_stream_mem(Data, Size);
+}
+
+EFI_STATUS
+UtilStartEfiApplication (
+  IN EFI_DEVICE_PATH_PROTOCOL    *DevicePath,
+  IN UINTN                       LoadOptionsSize,
+  IN VOID*                       LoadOptions
+  )
+{
+  EFI_STATUS                        Status;
+  EFI_BOOT_MANAGER_LOAD_OPTION      NewOption;
+
+  Status = EfiBootManagerInitializeLoadOption (
+             &NewOption,
+             LoadOptionNumberUnassigned,
+             LoadOptionTypeSysPrep,
+             LOAD_OPTION_ACTIVE,
+             L"",
+             DevicePath,
+             LoadOptions,
+             LoadOptionsSize
+             );
+  ASSERT_EFI_ERROR (Status);
+
+  EfiBootManagerProcessLoadOption(&NewOption);
+  Status = NewOption.Status;
+
+  EfiBootManagerFreeLoadOption(&NewOption);
+
+  return Status;
+}
+
+EFI_STATUS
+UtilShutdownUefiBootServices (
+  VOID
+  )
+{
+  EFI_STATUS              Status;
+  UINTN                   MemoryMapSize;
+  EFI_MEMORY_DESCRIPTOR   *MemoryMap;
+  UINTN                   MapKey;
+  UINTN                   DescriptorSize;
+  UINT32                  DescriptorVersion;
+  UINTN                   Pages;
+
+  MemoryMap = NULL;
+  MemoryMapSize = 0;
+  Pages = 0;
+
+  do {
+    Status = gBS->GetMemoryMap (
+                    &MemoryMapSize,
+                    MemoryMap,
+                    &MapKey,
+                    &DescriptorSize,
+                    &DescriptorVersion
+                    );
+    if (Status == EFI_BUFFER_TOO_SMALL) {
+
+      Pages = EFI_SIZE_TO_PAGES (MemoryMapSize) + 1;
+      MemoryMap = AllocatePages (Pages);
+
+      //
+      // Get System MemoryMap
+      //
+      Status = gBS->GetMemoryMap (
+                      &MemoryMapSize,
+                      MemoryMap,
+                      &MapKey,
+                      &DescriptorSize,
+                      &DescriptorVersion
+                      );
+    }
+
+    // Don't do anything between the GetMemoryMap() and ExitBootServices()
+    if (!EFI_ERROR(Status)) {
+      Status = gBS->ExitBootServices (gImageHandle, MapKey);
+      if (EFI_ERROR(Status)) {
+        FreePages (MemoryMap, Pages);
+        MemoryMap = NULL;
+        MemoryMapSize = 0;
+      }
+    }
+  } while (EFI_ERROR(Status));
+
+  return Status;
 }

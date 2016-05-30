@@ -7,40 +7,23 @@ EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL *gEfiDevicePathFromTextProtocol = NULL;
 
 STATIC MENU_ENTRY *EFIShellEntry = NULL;
 STATIC MENU_ENTRY *FileExplorerEntry = NULL;
+STATIC EFI_GUID mUefiShellFileGuid = {0x7C04A583, 0x9E3E, 0x4f1c, {0xAD, 0x65, 0xE0, 0x52, 0x68, 0xD0, 0xB4, 0xD1 }};
 
 EFI_STATUS
 BootOptionEfiOption (
   IN MENU_ENTRY* This
 )
 {
-  BDS_COMMON_OPTION *BootOption = (BDS_COMMON_OPTION*)This->Private;
-  UINTN             ExitDataSize;
-  CHAR16            *ExitData;
-  EFI_STATUS        Status;
+  EFI_BOOT_MANAGER_LOAD_OPTION  *BootOption = This->Private;
 
-  //
-  // Make sure the boot option device path connected,
-  // but ignore the BBS device path
-  //
-  if (DevicePathType (BootOption->DevicePath) != BBS_DEVICE_PATH) {
-    //
-    // Notes: the internal shell can not been connected with device path
-    // so we do not check the status here
-    //
-    BdsLibConnectDevicePath (BootOption->DevicePath);
-  }
-
-  //
-  // All the driver options should have been processed since
-  // now boot will be performed.
-  //
-  Status = BdsLibBootViaBootOption (BootOption, BootOption->DevicePath, &ExitDataSize, &ExitData);
-  if(EFI_ERROR(Status)) {
+  EfiBootManagerBoot(BootOption);
+  if(EFI_ERROR(BootOption->Status)) {
     CHAR8 Buf[100];
-    AsciiSPrint(Buf, 100, "%r", Status);
+    AsciiSPrint(Buf, 100, "%r", BootOption->Status);
     MenuShowMessage("Error", Buf);
   }
-  return Status;
+
+  return BootOption->Status;
 }
 
 STATIC VOID
@@ -48,62 +31,22 @@ AddEfiBootOptions (
   VOID
 )
 {
-  LIST_ENTRY        BootLists;
-  LIST_ENTRY        *Link;
-  BDS_COMMON_OPTION *Option;
-  BOOLEAN           First = TRUE;
-  MENU_ENTRY        *Entry;
+  UINTN                         Index;
+  EFI_BOOT_MANAGER_LOAD_OPTION  *BootOption;
+  UINTN                         BootOptionCount;
+  BOOLEAN                       First = TRUE;
+  MENU_ENTRY                    *Entry;
+  EFI_DEVICE_PATH*              DevicePathNode;
 
-  InitializeListHead (&BootLists);
+  BootOption = EfiBootManagerGetLoadOptions (&BootOptionCount, LoadOptionTypeBoot);
 
-  //
-  // Parse the boot order to get boot option
-  //
-  BdsLibBuildOptionFromVar (&BootLists, L"BootOrder");
-
-  //
-  // When we didn't have chance to build boot option variables in the first 
-  // full configuration boot (e.g.: Reset in the first page or in Device Manager),
-  // we have no boot options in the following mini configuration boot.
-  // Give the last chance to enumerate the boot options.
-  //
-  if (IsListEmpty (&BootLists)) {
-    BdsLibEnumerateAllBootOption (&BootLists);
-  }
-
-  Link = BootLists.ForwardLink;
-
-  //
-  // Parameter check, make sure the loop will be valid
-  //
-  if (Link == NULL) {
-    return;
-  }
-  //
-  // Here we make the boot in a loop, every boot success will
-  // return to the front page
-  //
-  for (Link = GetFirstNode (&BootLists); !IsNull (&BootLists, Link); Link = GetNextNode (&BootLists, Link)) {
-    Option = CR (Link, BDS_COMMON_OPTION, Link, BDS_LOAD_OPTION_SIGNATURE);
-
+  for (Index = 0; Index < BootOptionCount; Index++) {
     //
     // Don't display the hidden/inactive boot option
     //
-    if (((Option->Attribute & LOAD_OPTION_HIDDEN) != 0) || ((Option->Attribute & LOAD_OPTION_ACTIVE) == 0)) {
+    if (((BootOption[Index].Attributes & LOAD_OPTION_HIDDEN) != 0) || ((BootOption[Index].Attributes & LOAD_OPTION_ACTIVE) == 0)) {
       continue;
     }
-
-    // Don't display the VNOR device
-    if (DevicePathType(Option->DevicePath) == HARDWARE_DEVICE_PATH || DevicePathSubType(Option->DevicePath) == HW_VENDOR_DP) {
-      VENDOR_DEVICE_PATH *Vendor = (VENDOR_DEVICE_PATH *) Option->DevicePath;
-      if (CompareGuid (&Vendor->Guid, &gLKVNORGuid)) {
-        continue;
-      }
-    }
-
-    // skip shell
-    if(!StrCmp(Option->Description, L"EFI Internal Shell"))
-      continue;
 
     if (First) {
       // GROUP: UEFI
@@ -118,45 +61,34 @@ AddEfiBootOptions (
       break;
     }
 
-    Entry->Icon = libaroma_stream_ramdisk("icons/uefi.png");
-    Entry->Name = Unicode2Ascii(Option->Description);
+    CONST CHAR8* IconPath = "icons/uefi.png";
+
+    DevicePathNode = BootOption[Index].FilePath;
+    while ((DevicePathNode != NULL) && !IsDevicePathEnd (DevicePathNode)) {
+
+      // detect shell
+      if (IS_DEVICE_PATH_NODE (DevicePathNode, MEDIA_DEVICE_PATH, MEDIA_PIWG_FW_FILE_DP)) {
+        CONST MEDIA_FW_VOL_FILEPATH_DEVICE_PATH* FvDevicePathNode =  ((CONST MEDIA_FW_VOL_FILEPATH_DEVICE_PATH *)DevicePathNode);
+        if (FvDevicePathNode != NULL && CompareGuid (&FvDevicePathNode->FvFileName, &mUefiShellFileGuid)) {
+          IconPath = "icons/efi_shell.png";
+          break;
+        }
+      }
+
+      // next
+      DevicePathNode     = NextDevicePathNode (DevicePathNode);
+    }
+
+    Entry->Icon = libaroma_stream_ramdisk(IconPath);
+    Entry->Name = Unicode2Ascii(BootOption[Index].Description);
     Entry->Callback = BootOptionEfiOption;
-    Entry->Private = Option;
+    Entry->Private = &BootOption[Index];
     Entry->ResetGop = TRUE;
     MenuAddEntry(mBootMenuMain, Entry);
   }
 }
 
 #if defined (MDE_CPU_ARM)
-EFI_STATUS
-BootShell (
-  IN MENU_ENTRY* This
-  )
-{
-  EFI_STATUS       Status;
-  EFI_DEVICE_PATH* EfiShellDevicePath;
-
-  // Find the EFI Shell
-  Status = LocateEfiApplicationInFvByName (L"Shell", &EfiShellDevicePath);
-  if (Status == EFI_NOT_FOUND) {
-    Print (L"Error: EFI Application not found.\n");
-    return Status;
-  } else if (EFI_ERROR (Status)) {
-    Print (L"Error: Status Code: 0x%X\n", (UINT32)Status);
-    return Status;
-  } else {
-    // Need to connect every drivers to ensure no dependencies are missing for the application
-    BdsLibConnectAll ();
-
-    CONST CHAR16* Args = L"";
-    UINTN LoadOptionsSize = (UINT32)StrSize (Args);
-    VOID *LoadOptions     = AllocatePool (LoadOptionsSize);
-    StrCpy (LoadOptions, Args);
-
-    return BdsStartEfiApplication (gImageHandle, EfiShellDevicePath, LoadOptionsSize, LoadOptions);
-  }
-}
-
 EFI_STATUS
 FastbootCallback (
   IN MENU_ENTRY* This
@@ -294,18 +226,6 @@ main (
   Entry = MenuCreateGroupEntry();
   Entry->Name = AsciiStrDup("Tools");
   MenuAddEntry(mBootMenuMain, Entry);
-
-#if defined (MDE_CPU_ARM)
-  // add shell
-  Entry = MenuCreateEntry();
-  Entry->Icon = libaroma_stream_ramdisk("icons/efi_shell.png");
-  Entry->Name = AsciiStrDup("EFI Internal Shell");
-  Entry->Callback = BootShell;
-  Entry->ResetGop = TRUE;
-  Entry->Hidden = !SettingBoolGet("ui-show-efi-shell");
-  MenuAddEntry(mBootMenuMain, Entry);
-  EFIShellEntry = Entry;
-#endif
 
   // add file explorer option
   Entry = MenuCreateEntry();

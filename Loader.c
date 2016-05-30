@@ -446,7 +446,7 @@ AndroidBootFromBlockIo (
 
   // Shut down UEFI boot services. ExitBootServices() will notify every driver that created an event on
   // ExitBootServices event. Example the Interrupt DXE driver will disable the interrupts on this event.
-  Status = ShutdownUefiBootServices ();
+  Status = UtilShutdownUefiBootServices ();
   if (EFI_ERROR (Status)) {
     MenuShowMessage("Error", "Can't shut down UEFI boot services.");
     DEBUG ((EFI_D_ERROR, "ERROR: Can not shutdown UEFI boot services. Status=0x%X\n", Status));

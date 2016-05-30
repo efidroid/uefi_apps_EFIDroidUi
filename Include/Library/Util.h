@@ -13,6 +13,7 @@
 
 #define ROUNDUP(a, b)   (((a) + ((b)-1)) & ~((b)-1))
 #define ROUNDDOWN(a, b) ((a) & ~((b)-1))
+#define IS_DEVICE_PATH_NODE(node,type,subtype) (((node)->Type == (type)) && ((node)->SubType == (subtype)))
 
 #if defined (MDE_CPU_IA32)
 #define CACHE_LINE 32
@@ -252,5 +253,17 @@ libaroma_stream_efifile(
   EFI_FILE_PROTOCOL *File
 );
 #endif
+
+EFI_STATUS
+UtilStartEfiApplication (
+  IN EFI_DEVICE_PATH_PROTOCOL    *DevicePath,
+  IN UINTN                       LoadOptionsSize,
+  IN VOID*                       LoadOptions
+  );
+
+EFI_STATUS
+UtilShutdownUefiBootServices (
+  VOID
+  );
 
 #endif /* ! UTIL_H */

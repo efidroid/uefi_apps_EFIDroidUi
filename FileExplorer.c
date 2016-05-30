@@ -125,7 +125,7 @@ MenuItemCallback (
       MenuPreBoot();
 
       // start efi application
-      Status = BdsStartEfiApplication (gImageHandle, LoaderDevicePath, LoadOptionsSize, LoadOptions);
+      Status = UtilStartEfiApplication (LoaderDevicePath, LoadOptionsSize, LoadOptions);
 
       // restart menu
       MenuPostBoot();

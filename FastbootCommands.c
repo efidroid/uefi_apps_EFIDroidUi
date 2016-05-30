@@ -249,7 +249,7 @@ CommandBoot (
     MenuPreBoot();
 
     // start efi application
-    Status = BdsStartEfiApplication (gImageHandle, LoaderDevicePath, LoadOptionsSize, LoadOptions);
+    Status = UtilStartEfiApplication (LoaderDevicePath, LoadOptionsSize, LoadOptions);
 
     // wait for user input
     Status = gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &WaitIndex);

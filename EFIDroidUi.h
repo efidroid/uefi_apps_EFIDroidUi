@@ -17,7 +17,7 @@
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/UefiLib.h>
-#include <Library/GenericBdsLib.h>
+#include <Library/UefiBootManagerLib.h>
 #include <Library/DevicePathLib.h>
 #include <Library/Cpio.h>
 #include <Library/Decompress.h>
@@ -35,7 +35,6 @@
 
 #if defined (MDE_CPU_ARM)
 #include <Library/ArmLib.h>
-#include <Library/BdsLib.h>
 #endif
 
 #include <LittleKernel.h>
