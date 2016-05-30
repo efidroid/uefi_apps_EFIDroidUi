@@ -9,6 +9,7 @@
 [Sources]
   EFIDroidUi.c
   FileExplorer.c
+  Settings.c
 
 [Packages]
   StdLib/StdLib.dec
@@ -48,7 +49,6 @@
   Loader.c
   Fastboot.c
   FastbootCommands.c
-  Settings.c
 
 [Packages.ARM]
   ArmPkg/ArmPkg.dec
