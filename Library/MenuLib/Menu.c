@@ -937,9 +937,6 @@ DrawGroupItem (
   int left_pad=libaroma_dp(16);
   int right_pad=libaroma_dp(16);
 
-  if (Menu->ItemFlags & MENU_ITEM_FLAG_SEPARATOR_ALIGN_TEXT)
-    left_pad=libaroma_dp(72);
-
   LIBAROMA_TEXT txt = libaroma_text(
     text,
     colorTextSecondary, MenuWidth-(left_pad+right_pad),
@@ -957,15 +954,11 @@ DrawGroupItem (
   }
 
   if (!(Menu->ItemFlags & MENU_ITEM_FLAG_SEPARATOR)){
-    int sepxp=0;
-    if (Menu->ItemFlags & MENU_ITEM_FLAG_SEPARATOR_ALIGN_TEXT){
-      sepxp=libaroma_dp(72);
-    }
     libaroma_draw_rect(
       cv,
-      sepxp,
+      0,
       item_y - libaroma_dp(1),
-      cv->w-sepxp,
+      cv->w,
       libaroma_dp(1),
       colorSeparator,
       alphaSeparator
