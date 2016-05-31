@@ -13,19 +13,6 @@ SettingsMenuBackCallback (
 
 STATIC
 EFI_STATUS
-ShowEFIShellCallback (
-  MENU_ENTRY* This
-)
-{
-  SettingBoolSet("ui-show-efi-shell", !This->ToggleEnabled);
-  This->ToggleEnabled = SettingBoolGet("ui-show-efi-shell");
-  InvalidateActiveMenu();
-  MainMenuUpdateUi();
-  return EFI_SUCCESS;
-}
-
-STATIC
-EFI_STATUS
 ShowFileExplorerCallback (
   MENU_ENTRY* This
 )
@@ -49,15 +36,6 @@ SettingsMenuShow (
   Menu = MenuCreate();
   Menu->Title = AsciiStrDup("Settings");
   Menu->BackCallback = SettingsMenuBackCallback;
-
-  // efi shell
-  Entry = MenuCreateEntry();
-  Entry->Name = AsciiStrDup("Show EFI Shell");
-  Entry->ShowToggle = TRUE;
-  Entry->ToggleEnabled = SettingBoolGet("ui-show-efi-shell");
-  Entry->HideBootMessage = TRUE;
-  Entry->Callback = ShowEFIShellCallback;
-  MenuAddEntry(Menu, Entry);
 
   // file explorer
   Entry = MenuCreateEntry();

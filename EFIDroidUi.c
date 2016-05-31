@@ -5,7 +5,6 @@ MENU_OPTION                 *mPowerMenu = NULL;
 EFI_DEVICE_PATH_TO_TEXT_PROTOCOL   *gEfiDevicePathToTextProtocol = NULL;
 EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL *gEfiDevicePathFromTextProtocol = NULL;
 
-STATIC MENU_ENTRY *EFIShellEntry = NULL;
 STATIC MENU_ENTRY *FileExplorerEntry = NULL;
 STATIC EFI_GUID mUefiShellFileGuid = {0x7C04A583, 0x9E3E, 0x4f1c, {0xAD, 0x65, 0xE0, 0x52, 0x68, 0xD0, 0xB4, 0xD1 }};
 
@@ -151,9 +150,6 @@ MainMenuUpdateUi (
   VOID
 )
 {
-  if (EFIShellEntry) {
-    EFIShellEntry->Hidden = !SettingBoolGet("ui-show-efi-shell");
-  }
   if (FileExplorerEntry) {
     FileExplorerEntry->Hidden = !SettingBoolGet("ui-show-file-explorer");
   }
@@ -196,8 +192,6 @@ main (
     UtilSetEFIDroidVariable("multiboot-debuglevel", "4");
   if(!UtilVariableExists(L"fastboot-enable-boot-patch", &gEFIDroidVariableGuid))
     UtilSetEFIDroidVariable("fastboot-enable-boot-patch", "0");
-  if(!UtilVariableExists(L"ui-show-efi-shell", &gEFIDroidVariableGuid))
-    SettingBoolSet("ui-show-efi-shell", TRUE);
   if(!UtilVariableExists(L"ui-show-file-explorer", &gEFIDroidVariableGuid))
     SettingBoolSet("ui-show-file-explorer", TRUE);
 
