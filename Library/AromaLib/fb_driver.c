@@ -237,7 +237,7 @@ byte UEFIFBDR_init(LIBAROMA_FBP me) {
     case PixelBltOnly:
       me->post        = &UEFIFBDR_post_bltonly;
       mi->depth     = 32;
-      UEFIFBDR_setrgbpos(me,0,8,16);
+      UEFIFBDR_setrgbpos(me,16,8,0);
       mi->buffer = malloc((me->w * me->h * (mi->depth >> 3)));
       break;
 
