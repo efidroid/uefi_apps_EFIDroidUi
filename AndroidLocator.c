@@ -10,6 +10,45 @@ STATIC EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *mEspVolume = NULL;
 STATIC EFI_FILE_PROTOCOL               *mEspDir    = NULL;
 STATIC EFI_DEVICE_PATH_PROTOCOL        *mEspDevicePath = NULL;
 
+STATIC BOOLEAN mFirstAndroidEntry = TRUE;
+STATIC BOOLEAN mFirstRecoveryEntry = TRUE;
+
+STATIC
+VOID
+MenuAddAndroidGroupOnce (
+  VOID
+)
+{
+  MENU_ENTRY                          *Entry;
+
+  if(mFirstAndroidEntry) {
+    // GROUP: Android
+    Entry = MenuCreateGroupEntry();
+    Entry->Name = AsciiStrDup("Android");
+    MenuAddEntry(mBootMenuMain, Entry);
+
+    mFirstAndroidEntry = FALSE;
+  }
+}
+
+STATIC
+VOID
+MenuAddRecoveryGroupOnce (
+  VOID
+)
+{
+  MENU_ENTRY                          *Entry;
+
+  if(mFirstRecoveryEntry) {
+    // GROUP: Recovery
+    Entry = MenuCreateGroupEntry();
+    Entry->Name = AsciiStrDup("Recovery");
+    MenuAddEntry(mBootMenuMain, Entry);
+
+    mFirstRecoveryEntry = FALSE;
+  }
+}
+
 VOID
 MenuBootEntryFreeCallback (
   MENU_ENTRY* Entry
@@ -695,6 +734,8 @@ SKIP:
     MenuAddEntry(RecMenu->SubMenu, Entry);
   }
   else {
+    MenuAddAndroidGroupOnce();
+
     Entry->Icon = Icon;
     Entry->Name = Name;
     MenuAddEntry(mBootMenuMain, Entry);
@@ -957,6 +998,8 @@ ENUMERATE:
       if (IconStream==NULL)
         IconStream = libaroma_stream_ramdisk("icons/android.png");
 
+      MenuAddAndroidGroupOnce();
+
       MENU_ENTRY_PDATA* EntryPData = Entry->Private;
       Entry->Icon = IconStream;
       Entry->Name = AsciiStrDup(mbhandle->Name);
@@ -1094,13 +1137,6 @@ AndroidLocatorAddItems (
   VOID
 )
 {
-  MENU_ENTRY                          *Entry;
-
-  // GROUP: Android
-  Entry = MenuCreateGroupEntry();
-  Entry->Name = AsciiStrDup("Android");
-  MenuAddEntry(mBootMenuMain, Entry);
-
   // add Android options
   VisitAllInstancesOfProtocol (
     &gEfiBlockIoProtocolGuid,
@@ -1115,11 +1151,6 @@ AndroidLocatorAddItems (
     NULL
     );
 
-  // GROUP: Recovery
-  Entry = MenuCreateGroupEntry();
-  Entry->Name = AsciiStrDup("Recovery");
-  MenuAddEntry(mBootMenuMain, Entry);
-
   // add recovery items
   LIST_ENTRY* Link;
   RECOVERY_MENU* RecEntry;
@@ -1127,6 +1158,8 @@ AndroidLocatorAddItems (
        !IsNull (&mRecoveries, Link);
        Link = GetNextNode (&mRecoveries, Link)
       ) {
+    MenuAddRecoveryGroupOnce();
+
     RecEntry = CR (Link, RECOVERY_MENU, Link, RECOVERY_MENU_SIGNATURE);
     MenuAddEntry(mBootMenuMain, RecEntry->RootEntry);
   }
