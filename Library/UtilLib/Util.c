@@ -103,7 +103,7 @@ libaroma_stream_ramdisk(
     return NULL;
   }
 
-  return libaroma_stream_mem(Data, Size);
+  return libaroma_stream_mem((UINTN)Data, Size);
 }
 
 UINT32
@@ -808,7 +808,7 @@ libaroma_stream_efifile(
     return NULL;
   }
 
-  return libaroma_stream_mem(Data, Size);
+  return libaroma_stream_mem((UINTN)Data, Size);
 }
 
 EFI_STATUS

@@ -175,7 +175,7 @@ main (
                   (VOID **)&gEfiDevicePathToTextProtocol
                   );
   if (EFI_ERROR (Status)) {
-    return EFI_NOT_FOUND;
+    return -1;
   }
 
   Status = gBS->LocateProtocol (
@@ -184,7 +184,7 @@ main (
                   (VOID **)&gEfiDevicePathFromTextProtocol
                   );
   if (EFI_ERROR (Status)) {
-    return EFI_NOT_FOUND;
+    return -1;
   }
 
   // set default values
@@ -323,5 +323,5 @@ main (
   MenuEnter (0, TRUE);
   MenuDeInit();
 
-  return EFI_SUCCESS;
+  return 0;
 }
