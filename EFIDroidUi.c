@@ -318,6 +318,9 @@ main (
   if(LastBootEntry)
     FreePool(LastBootEntry);
 
+  // clear the watchdog timer
+  gBS->SetWatchdogTimer (0, 0, 0, NULL);
+
   // show main menu
   MenuStackPush(mBootMenuMain);
   MenuEnter (0, TRUE);
