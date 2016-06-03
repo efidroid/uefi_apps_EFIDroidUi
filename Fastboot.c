@@ -382,7 +382,6 @@ FastbootInit (
 {
   EFI_STATUS Status;
   INT32 r;
-  lkapi_t *LKApi = GetLKApi();
 
   MenuShowProgressDialog("Starting Fastboot", TRUE);
 
@@ -390,7 +389,7 @@ FastbootInit (
   Status = gBS->CreateEvent (0, TPL_CALLBACK, NULL, NULL, &mUsbOnlineEvent);
   ASSERT_EFI_ERROR (Status);
 
-  mUsbInterface = LKApi->usbgadget_get_interface();
+  mUsbInterface = mLKApi->usbgadget_get_interface();
   ASSERT(mUsbInterface);
 
   FastbootRegister("oem help", CommandHelp);

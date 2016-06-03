@@ -1,0 +1,63 @@
+## @file
+#  NULL instance of Timer Library as a template.
+#
+#  A non-functional instance of the Timer Library that can be used as a template
+#  for the implementation of a functional timer library instance. This library instance can
+#  also be used to test build DXE, Runtime, DXE SAL, and DXE SMM modules that require timer
+#  services as well as EBC modules that require timer services.
+#
+#  Copyright (c) 2007 - 2014, Intel Corporation. All rights reserved.<BR>
+#
+#  This program and the accompanying materials
+#  are licensed and made available under the terms and conditions of the BSD License
+#  which accompanies this distribution. The full text of the license may be found at
+#  http://opensource.org/licenses/bsd-license.php.
+#  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+#
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = BootLib
+  FILE_GUID                      = a3eeaff4-2e29-4d82-9000-127e9601d229
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0 
+  LIBRARY_CLASS                  = BootLib
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
+#
+
+[Sources]
+  platform.c
+  ../../../../EFIDroidModules/libboot/boot.c
+  ../../../../EFIDroidModules/libboot/cmdline.c
+  ../../../../EFIDroidModules/libboot/qcdt.c
+
+  ../../../../EFIDroidModules/libboot/cksum/crc32.c
+
+  ../../../../EFIDroidModules/libboot/loaders/android.c
+  ../../../../EFIDroidModules/libboot/loaders/efi.c
+  ../../../../EFIDroidModules/libboot/loaders/elf.c
+  ../../../../EFIDroidModules/libboot/loaders/gzip.c
+  ../../../../EFIDroidModules/libboot/loaders/qcmbn.c
+  ../../../../EFIDroidModules/libboot/loaders/zimage.c
+
+  ../../../../EFIDroidModules/libboot/tagloaders/atags.c
+  ../../../../EFIDroidModules/libboot/tagloaders/fdt.c
+  ../../../../EFIDroidModules/libboot/tagloaders/qcdt.c
+
+[Packages]
+  StdLib/StdLib.dec
+  EmbeddedPkg/EmbeddedPkg.dec
+  MdePkg/MdePkg.dec
+  LittleKernelPkg/LittleKernelPkg.dec
+  EFIDroidUEFIApps/EFIDroidUi/EFIDroidUi.dec
+  EFIDroidUEFIApps/EFIDroidUi/Library/BootLib/BootLib.dec
+  EFIDroidUEFIApps/EFIDroidUi/Library/BootLib/BootLibPriv.dec
+  EFIDroidUEFIApps/EFIDroidUi/Library/AromaLib/AromaLib.dec
+
+[Depex]
+  TRUE

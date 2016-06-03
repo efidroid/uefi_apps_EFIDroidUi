@@ -1,0 +1,8 @@
+[Defines]
+  DEC_SPECIFICATION              = 0x00010005
+  PACKAGE_NAME                   = AromaLib
+  PACKAGE_GUID                   = a3eeaff4-2e29-4d82-9000-127e9601d229
+  PACKAGE_VERSION                = 0.1
+
+[Includes]
+  ../../../../EFIDroidModules/libboot/include_private

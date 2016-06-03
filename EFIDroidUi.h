@@ -40,12 +40,14 @@
 #include <LittleKernel.h>
 
 #include "bootimg.h"
+#include <lib/boot.h>
 
 extern EFI_GUID gEFIDroidVariableGuid;
 extern EFI_GUID gEFIDroidVariableDataGuid;
 extern MENU_OPTION *mBootMenuMain;
 extern EFI_DEVICE_PATH_TO_TEXT_PROTOCOL   *gEfiDevicePathToTextProtocol;
 extern EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL *gEfiDevicePathFromTextProtocol;
+extern lkapi_t *mLKApi;
 
 typedef struct {
   // ini values

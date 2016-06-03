@@ -1,5 +1,7 @@
 #include "EFIDroidUi.h"
 
+lkapi_t *mLKApi = NULL;
+
 MENU_OPTION                 *mBootMenuMain = NULL;
 MENU_OPTION                 *mPowerMenu = NULL;
 EFI_DEVICE_PATH_TO_TEXT_PROTOCOL   *gEfiDevicePathToTextProtocol = NULL;
@@ -167,7 +169,9 @@ main (
 {
   EFI_STATUS                          Status;
   MENU_ENTRY                          *Entry;
-  lkapi_t                             *LKApi;
+
+  // init libboot
+  libboot_init();
 
   Status = gBS->LocateProtocol (
                   &gEfiDevicePathToTextProtocolGuid,
@@ -309,8 +313,8 @@ main (
    UtilSetEFIDroidDataVariable(L"LastBootEntry", NULL, 0);
 
   // run recovery mode handler
-  LKApi = GetLKApi();
-  if (LKApi && LKApi->platform_get_uefi_bootmode()==LKAPI_UEFI_BM_RECOVERY) {
+  mLKApi = GetLKApi();
+  if (mLKApi && mLKApi->platform_get_uefi_bootmode()==LKAPI_UEFI_BM_RECOVERY) {
     AndroidLocatorHandleRecoveryMode(LastBootEntry);
   }
 

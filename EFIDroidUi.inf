@@ -18,6 +18,7 @@
   LittleKernelPkg/LittleKernelPkg.dec
   EFIDroidUEFIApps/EFIDroidUi/EFIDroidUi.dec
   EFIDroidUEFIApps/EFIDroidUi/Library/AromaLib/AromaLib.dec
+  EFIDroidUEFIApps/EFIDroidUi/Library/BootLib/BootLib.dec
 
 [LibraryClasses]
   LibC
@@ -42,6 +43,8 @@
   SquirrelLib
   StdCEntryLib
   UefiApplicationEntryPoint
+  BootLib
+  FdtLib
 
 # ARM support
 [Sources.ARM]

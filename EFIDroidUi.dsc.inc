@@ -5,6 +5,8 @@
   JpegLib|EFIDroidUEFIApps/EFIDroidUi/Library/JpegLib.inf
   AromaLib|EFIDroidUEFIApps/EFIDroidUi/Library/AromaLib/AromaLib.inf
   SquirrelLib|EFIDroidUEFIApps/EFIDroidUi/Library/SquirrelLib.inf
+  BootLib|EFIDroidUEFIApps/EFIDroidUi/Library/BootLib/BootLib.inf
+  FdtLib|EmbeddedPkg/Library/FdtLib/FdtLib.inf
 
   CpioLib|EFIDroidUEFIApps/EFIDroidUi/Library/CpioLib/CpioLib.inf
   DecompressLib|EFIDroidUEFIApps/EFIDroidUi/Library/DecompressLib/DecompressLib.inf

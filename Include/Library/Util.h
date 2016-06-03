@@ -73,6 +73,12 @@ INT32
   CONST CHAR8 *Value
 );
 
+typedef struct _SYSTEM_MEMORY_RESOURCE {
+  LIST_ENTRY                  Link; // This attribute must be the first entry of this structure (to avoid pointer computation)
+  EFI_PHYSICAL_ADDRESS        PhysicalStart;
+  UINT64                      ResourceLength;
+} SYSTEM_MEMORY_RESOURCE;
+
 INT32
 ini_parse_stream (
   ini_reader  Reader,
@@ -264,6 +270,11 @@ UtilStartEfiApplication (
 EFI_STATUS
 UtilShutdownUefiBootServices (
   VOID
+  );
+
+EFI_STATUS
+UtilGetSystemMemoryResources (
+  IN  LIST_ENTRY *ResourceList
   );
 
 #endif /* ! UTIL_H */

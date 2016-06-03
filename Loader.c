@@ -1,49 +1,5 @@
 #include "EFIDroidUi.h"
 
-#define ATAG_MAX_SIZE   0x3000
-#define DTB_PAD_SIZE    0x1000
-
-CONST CHAR8* CMDLINE_MULTIBOOTPATH = " multibootpath=";
-CONST CHAR8* CMDLINE_MULTIBOOTDEBUG= " multiboot.debug=";
-CONST CHAR8* CMDLINE_RDINIT        = " rdinit=/init.multiboot";
-CONST CHAR8* CMDLINE_PERMISSIVE    = " androidboot.selinux=permissive";
-
-typedef VOID (*LINUX_KERNEL)(UINT32 Zero, UINT32 Arch, UINTN ParametersBase);
-
-typedef struct {
-  boot_img_hdr_t  *Hdr;
-  UINT32          MachType;
-
-  VOID   *Kernel;
-  VOID   *Ramdisk;
-  VOID   *Second;
-  VOID   *Tags;
-  CHAR8  *Cmdline;
-
-  VOID   *kernel_loaded;
-  VOID   *ramdisk_loaded;
-  VOID   *second_loaded;
-  VOID   *tags_loaded;
-} android_parsed_bootimg_t;
-
-#define MAXVAL_FUNCTION(name, type) \
-int name(type n, ...) { \
-  type i, val, largest; \
-  VA_LIST vl; \
- \
-  VA_START(vl, n); \
-  largest = VA_ARG(vl, type); \
-  for(i=1; i<n; i++) { \
-    val = VA_ARG(vl,type); \
-    largest = (largest>val) ? largest : val; \
-  } \
-  VA_END(vl); \
- \
-  return largest; \
-}
-
-MAXVAL_FUNCTION(MAXUINT, UINT32);
-
 EFI_STATUS
 AndroidVerify (
   IN VOID* Buffer
@@ -59,14 +15,13 @@ AndroidVerify (
 }
 
 STATIC EFI_STATUS
-AndroidLoadCmdline (
-  android_parsed_bootimg_t  *Parsed,
+AndroidPatchCmdline (
+  bootimg_context_t         *Context,
   IN multiboot_handle_t     *mbhandle,
   IN BOOLEAN                RecoveryMode,
   IN BOOLEAN                DisablePatching
 )
 {
-  boot_img_hdr_t* Hdr = Parsed->Hdr;
   EFI_DEVICE_PATH_PROTOCOL  *DevPath;
   CHAR8 *DevPathString = NULL;
   UINTN Len;
@@ -111,101 +66,23 @@ AndroidLoadCmdline (
     default:
       return EFI_INVALID_PARAMETER;
     }
+
+    // add to cmdline
+    libboot_cmdline_add(&Context->cmdline, "multibootpath", DevPathString, 1);  
+    FreePool(DevPathString);  
   }
 
-  // terminate cmdlines
-  Hdr->cmdline[BOOT_ARGS_SIZE-1] = 0;
-  Hdr->extra_cmdline[BOOT_EXTRA_ARGS_SIZE-1] = 0;
+  if(!DisablePatching) {
+    libboot_cmdline_add(&Context->cmdline, "rdinit", "/init.multiboot", 1);
 
-  // create cmdline
-  UINTN len_cmdline = AsciiStrLen(Hdr->cmdline);
-  UINTN len_cmdline_extra = AsciiStrLen(Hdr->extra_cmdline);
-  UINTN len_cmdline_rdinit = AsciiStrLen(CMDLINE_RDINIT);
-  UINTN len_cmdline_permissive = AsciiStrLen(CMDLINE_PERMISSIVE);
-  UINTN len_cmdline_mbpath = 0;
-  if(mbhandle) {
-    len_cmdline_mbpath += AsciiStrLen(CMDLINE_MULTIBOOTPATH);
-    len_cmdline_mbpath += AsciiStrLen(DevPathString);
-    len_cmdline_mbpath += AsciiStrLen(mbhandle->MultibootConfig);
+    // in recovery mode we ptrace the whole system. that doesn't work well with selinux
+    if(RecoveryMode)
+      libboot_cmdline_add(&Context->cmdline, "androidboot.selinux", "permissive", 1);
   }
-
-  UINTN len_cmdline_multibootdebug = 0;
-  UINTN len_cmdline_multibootdebug_val = 0;
 
   CHAR8* DebugValue = UtilGetEFIDroidVariable("multiboot-debuglevel");
-  if (DebugValue) {
-    len_cmdline_multibootdebug = AsciiStrLen(CMDLINE_MULTIBOOTDEBUG);
-    len_cmdline_multibootdebug_val = AsciiStrLen(DebugValue);
-  }
-
-  UINTN CmdlineLenMax = len_cmdline + len_cmdline_extra + len_cmdline_rdinit + 
-                        len_cmdline_permissive + len_cmdline_mbpath +
-                        len_cmdline_multibootdebug + len_cmdline_multibootdebug_val + 1;
-  Parsed->Cmdline = AllocateZeroPool(CmdlineLenMax);
-  if (Parsed->Cmdline == NULL)
-    return EFI_OUT_OF_RESOURCES;
-
-  AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, Hdr->cmdline);
-  AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, Hdr->extra_cmdline);
-  if(!DisablePatching)
-    AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, CMDLINE_RDINIT);
-
-  // in recovery mode we ptrace the whole system. that doesn't work well with selinux
-  if (RecoveryMode)
-    AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, CMDLINE_PERMISSIVE);
-
-  if(mbhandle) {
-    AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, CMDLINE_MULTIBOOTPATH);
-    AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, DevPathString);
-    AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, mbhandle->MultibootConfig);
-  }
-
-  if (DebugValue) {
-    AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, CMDLINE_MULTIBOOTDEBUG);
-    AsciiStrCatS(Parsed->Cmdline, CmdlineLenMax, DebugValue);
-  }
-
-  return EFI_SUCCESS;
-}
-
-STATIC EFI_STATUS
-AndroidLoadImage (
-  EFI_BLOCK_IO_PROTOCOL *BlockIo,
-  UINTN                 Offset,
-  UINTN                 Size,
-  VOID                  **Buffer,
-  UINT32                Address
-)
-{
-  EFI_STATUS Status;
-  UINTN      AlignedSize = Size;
-  UINTN      AddrOffset = 0;
-  EFI_PHYSICAL_ADDRESS AllocationAddress = AlignMemoryRange(Address, &AlignedSize, &AddrOffset, BlockIo->Media->BlockSize);
-
-  if ((Offset % BlockIo->Media->BlockSize) != 0)
-    return EFI_INVALID_PARAMETER;
-
-  if (AlignedSize == 0) {
-    AlignedSize = BlockIo->Media->BlockSize;
-  }
-
-  if((*Buffer) == NULL) {
-    Status = gBS->AllocatePages (Address?AllocateAddress:AllocateAnyPages, EfiBootServicesData, EFI_SIZE_TO_PAGES(AlignedSize), &AllocationAddress);
-    if (EFI_ERROR(Status)) {
-      return Status;
-    }
-    *Buffer = (VOID*)((UINTN)AllocationAddress)+AddrOffset;
-  }
-
-  if (Offset!=0 && Size!=0) {
-    // read data
-    Status = BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, Offset/BlockIo->Media->BlockSize, AlignedSize, *Buffer);
-    if (EFI_ERROR(Status)) {
-      gBS->FreePages(AllocationAddress, EFI_SIZE_TO_PAGES(Size));
-      *Buffer = NULL;
-      return Status;
-    }
-  }
+  if (DebugValue)
+    libboot_cmdline_add(&Context->cmdline, "multiboot.debug", DebugValue, 1);
 
   return EFI_SUCCESS;
 }
@@ -232,9 +109,66 @@ PreparePlatformHardware (
   ArmDisableMmu ();
 }
 
-VOID DecompError(CHAR8* Str)
+STATIC
+VOID
+BootContext (
+  bootimg_context_t* context
+)
 {
+  EFI_STATUS Status;
+
+  // Shut down UEFI boot services. ExitBootServices() will notify every driver that created an event on
+  // ExitBootServices event. Example the Interrupt DXE driver will disable the interrupts on this event.
+  Status = UtilShutdownUefiBootServices ();
+  if (EFI_ERROR (Status)) {
+    DEBUG ((EFI_D_ERROR, "ERROR: Can not shutdown UEFI boot services. Status=0x%X\n", Status));
+    return;
+  }
+
+  //
+  // Switch off interrupts, caches, mmu, etc
+  //
+  PreparePlatformHardware ();
+
+  mLKApi->boot_exec((VOID*)(UINTN)context->kernel_addr, context->kernel_arguments[0], context->kernel_arguments[1], context->kernel_arguments[2]);
+
+  // Kernel should never exit
+  // After Life services are not provided
+  ASSERT (FALSE);
+  // We cannot recover the execution at this stage
+  while (1);
+}
+
+STATIC VOID DecompError(CHAR8* Str) {
   MenuShowMessage("Decompression Error", Str);
+}
+
+static boot_intn_t internal_io_fn_blockio_read(boot_io_t* io, void* buf, boot_uintn_t blkoff, boot_uintn_t count) {
+    EFI_BLOCK_IO_PROTOCOL* BlockIo = io->pdata;
+    EFI_STATUS Status;
+
+    Status = BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, blkoff, count*BlockIo->Media->BlockSize, buf);
+    if(EFI_ERROR(Status))
+        return -1;
+
+    return count;
+}
+
+static int libboot_identify_blockio(EFI_BLOCK_IO_PROTOCOL* BlockIo, bootimg_context_t* context) {
+    boot_io_t* io = libboot_platform_alloc(sizeof(boot_io_t));
+    if(!io) return -1;
+    io->read = internal_io_fn_blockio_read;
+    io->blksz = BlockIo->Media->BlockSize;
+    io->numblocks = BlockIo->Media->LastBlock+1;
+    io->pdata = BlockIo;
+    io->pdata_is_allocated = 0;
+
+    int rc = libboot_identify(io, context);
+    if(rc) {
+        libboot_platform_free(io);
+    }
+
+    return rc;
 }
 
 EFI_STATUS
@@ -246,137 +180,48 @@ AndroidBootFromBlockIo (
 )
 {
   EFI_STATUS                Status;
-  UINTN                     BufferSize;
-  boot_img_hdr_t            *AndroidHdr;
-  android_parsed_bootimg_t  Parsed = {0};
-  LINUX_KERNEL              LinuxKernel;
-  UINTN                     TagsSize = 0;
-  lkapi_t                   *LKApi = GetLKApi();
-  VOID                      *OriginalRamdisk = NULL;
+  VOID                      *NewRamdisk = NULL;
   UINT32                    RamdiskUncompressedLen = 0;
   BOOLEAN                   RecoveryMode = FALSE;
   CHAR8                     Buf[100];
+  UINT32                    i;
+  CHAR8                     **error_stack;
 
-  // initialize parsed data
-  SetMem(&Parsed, sizeof(Parsed), 0);
+  // setup context
+  bootimg_context_t context;
+  libboot_init_context(&context);
 
-  // allocate a buffer for the android header aligned on the block size
-  BufferSize = ALIGN_VALUE(sizeof(boot_img_hdr_t), BlockIo->Media->BlockSize);
-  AndroidHdr = AllocatePool(BufferSize);
-  if (AndroidHdr == NULL) {
-    MenuShowMessage("Error", "Can't allocate boot image header.");
-    return EFI_OUT_OF_RESOURCES;
-  }
+  // identify
+  int rc = libboot_identify_blockio(BlockIo, &context);
+  if(rc) goto CLEANUP;
 
-  // read and verify the android header
-  Status = BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, 0, BufferSize, AndroidHdr);
-  if (EFI_ERROR(Status)) {
-    AsciiSPrint(Buf, sizeof(Buf), "Can't read boot image header: %r", Status);
-    MenuShowMessage("Error", Buf);
-    goto FREEBUFFER;
-  }
-
-  Status = AndroidVerify(AndroidHdr);
-  if (EFI_ERROR(Status)) {
-    MenuShowMessage("Error", "Not a boot image.");
-    goto FREEBUFFER;
-  }
-  Parsed.Hdr = AndroidHdr;
-
-  // this is not supported
-  // actually I've never seen a device using this so it's not even clear how this would work
-  if (AndroidHdr->second_size > 0) {
-    MenuShowMessage("Error", "Secondary loaders are not supported.");
-    Status = EFI_UNSUPPORTED;
-    goto FREEBUFFER;
-  }
+  // load image
+  rc = libboot_load(&context);
+  if(rc) goto CLEANUP;
 
   // update addresses if necessary
-  LKApi->boot_update_addrs(&AndroidHdr->kernel_addr, &AndroidHdr->ramdisk_addr, &AndroidHdr->tags_addr);
+  mLKApi->boot_update_addrs(&context.kernel_addr, &context.ramdisk_addr, &context.tags_addr);
 
-  // calculate offsets
-  UINTN off_kernel  = AndroidHdr->page_size;
-  UINTN off_ramdisk = off_kernel  + ALIGN_VALUE(AndroidHdr->kernel_size,  AndroidHdr->page_size);
-  UINTN off_second  = off_ramdisk + ALIGN_VALUE(AndroidHdr->ramdisk_size, AndroidHdr->page_size);
-  UINTN off_tags    = off_second  + ALIGN_VALUE(AndroidHdr->second_size,  AndroidHdr->page_size);
-
-  // load kernel
-  Status = AndroidLoadImage(BlockIo, off_kernel, AndroidHdr->kernel_size, &Parsed.Kernel, AndroidHdr->kernel_addr);
-  if (EFI_ERROR(Status)) {
-    AsciiSPrint(Buf, sizeof(Buf), "Can't load kernel: %r", Status);
-    MenuShowMessage("Error", Buf);
-    goto FREEBUFFER;
-  }
-
-  // compute tag size
-  TagsSize = AndroidHdr->dt_size;
-  if (AndroidHdr->dt_size==0) {
-    TagsSize = ATAG_MAX_SIZE;
-  }
-  else {
-    // the DTB may get expanded
-    TagsSize += DTB_PAD_SIZE;
-  }
-
-
-  // allocate tag memory
-  Status = AndroidLoadImage(BlockIo, 0, TagsSize, &Parsed.Tags, AndroidHdr->tags_addr);
-  if (EFI_ERROR(Status)) {
-    AsciiSPrint(Buf, sizeof(Buf), "Can't allocate tags: %r", Status);
-    MenuShowMessage("Error", Buf);
-    goto FREEBUFFER;
-  }
-
-  // load DT
-  if (AndroidHdr->dt_size) {
-    Status = AndroidLoadImage(BlockIo, off_tags, AndroidHdr->dt_size, &Parsed.Tags, AndroidHdr->tags_addr);
-    if (EFI_ERROR(Status)) {
-      AsciiSPrint(Buf, sizeof(Buf), "Can't load tags: %r", Status);
-      MenuShowMessage("Error", Buf);
-      goto FREEBUFFER;
-    }
-  }
-
-  if(DisablePatching) {
-    // load ramdisk
-    Status = AndroidLoadImage(BlockIo, off_ramdisk, AndroidHdr->ramdisk_size, &Parsed.Ramdisk, AndroidHdr->ramdisk_addr);
-    if (EFI_ERROR(Status)) {
-      AsciiSPrint(Buf, sizeof(Buf), "Can't load ramdisk: %r", Status);
-      MenuShowMessage("Error", Buf);
-      goto FREEBUFFER;
-    }
-  }
-
-  else {
-    // load ramdisk into UEFI memory
-    Status = AndroidLoadImage(BlockIo, off_ramdisk, AndroidHdr->ramdisk_size, &OriginalRamdisk, 0);
-    if (EFI_ERROR(Status)) {
-      AsciiSPrint(Buf, sizeof(Buf), "Can't load ramdisk: %r", Status);
-      MenuShowMessage("Error", Buf);
-      goto FREEBUFFER;
-    }
-
+  if(!DisablePatching) {
     // get decompressor
     CONST CHAR8 *DecompName;
-    decompress_fn Decompressor = decompress_method(OriginalRamdisk, AndroidHdr->ramdisk_size, &DecompName);
+    decompress_fn Decompressor = decompress_method(context.ramdisk_data, context.ramdisk_size, &DecompName);
     if(Decompressor==NULL) {
       MenuShowMessage("Error", "Can't find decompressor.");
-      goto FREEBUFFER;
-    }
-    else {
-      DEBUG((EFI_D_INFO, "decompressor: %a\n", DecompName));
+      goto CLEANUP;
     }
 
     // get uncompressed size
     // since the Linux decompressor doesn't support predicting the length we hardcode this to 10MB
     RamdiskUncompressedLen = 10*1024*1024;
 
+    // get init.multiboot from UEFIRamdisk
     UINT8 *MultibootBin;
     UINTN MultibootSize;
     Status = UEFIRamdiskGetFile ("init.multiboot", (VOID **) &MultibootBin, &MultibootSize);
     if (EFI_ERROR (Status)) {
       MenuShowMessage("Error", "Multiboot binary not found.");
-      goto FREEBUFFER;
+      goto CLEANUP;
     }
 
     // add multiboot binary size to uncompressed ramdisk size
@@ -384,55 +229,51 @@ AndroidBootFromBlockIo (
     UINTN objsize = CpioPredictObjSize(AsciiStrLen(cpio_name_mbinit), MultibootSize);
     RamdiskUncompressedLen += objsize;
 
-    if (   RangeLenOverlaps(AndroidHdr->ramdisk_addr, RamdiskUncompressedLen, (UINT32)Parsed.Kernel, AndroidHdr->kernel_size)
-        || RangeLenOverlaps(AndroidHdr->ramdisk_addr, RamdiskUncompressedLen, (UINT32)Parsed.Tags, TagsSize)
-       )
-    {
-      AndroidHdr->ramdisk_addr = MAXUINT((UINT32)Parsed.Kernel + AndroidHdr->kernel_size, Parsed.Tags + TagsSize);
-      DEBUG((EFI_D_INFO, "Ramdisk overlaps - move it to 0x%08x.\n", AndroidHdr->ramdisk_addr));
-    }
-
-    // allocate uncompressed ramdisk memory in boot memory
-    Status = AndroidLoadImage(BlockIo, 0, RamdiskUncompressedLen, &Parsed.Ramdisk, AndroidHdr->ramdisk_addr);
-    if (EFI_ERROR(Status)) {
+    // allocate uncompressed ramdisk memory
+    NewRamdisk = libboot_platform_bigalloc(RamdiskUncompressedLen);
+    if (!NewRamdisk) {
       AsciiSPrint(Buf, sizeof(Buf), "Can't allocate memory for decompressing ramdisk: %r", Status);
       MenuShowMessage("Error", Buf);
-      goto FREEBUFFER;
+      goto CLEANUP;
     }
 
     // decompress ramdisk
-    if(Decompressor(OriginalRamdisk, AndroidHdr->ramdisk_size, NULL, NULL, Parsed.Ramdisk, NULL, DecompError)) {
-      goto FREEBUFFER;
+    if(Decompressor(context.ramdisk_data, context.ramdisk_size, NULL, NULL, NewRamdisk, NULL, DecompError)) {
+      goto CLEANUP;
     }
 
     // add multiboot binary
-    CPIO_NEWC_HEADER *cpiohd = (CPIO_NEWC_HEADER *) Parsed.Ramdisk;
+    CPIO_NEWC_HEADER *cpiohd = (CPIO_NEWC_HEADER *) NewRamdisk;
     cpiohd = CpioGetLast (cpiohd);
     cpiohd = CpioCreateObj (cpiohd, cpio_name_mbinit, MultibootBin, MultibootSize);
     cpiohd = CpioCreateObj (cpiohd, CPIO_TRAILER, NULL, 0);
-    ASSERT((UINT32)cpiohd <= (UINT32)Parsed.Ramdisk+RamdiskUncompressedLen);
+    ASSERT((UINT32)cpiohd <= ((UINT32)NewRamdisk)+RamdiskUncompressedLen);
 
     // check if this is a recovery ramdisk
-    if (CpioGetByName((CPIO_NEWC_HEADER *)Parsed.Ramdisk, "sbin/recovery")) {
+    if (CpioGetByName((CPIO_NEWC_HEADER *)NewRamdisk, "sbin/recovery")) {
       RecoveryMode = TRUE;
     }
 
-    AndroidHdr->ramdisk_size = ((UINT32)cpiohd)-((UINT32)Parsed.Ramdisk);
+    // free old data
+    libboot_platform_bigfree(context.ramdisk_data);
+
+    // set new data
+    context.ramdisk_data = NewRamdisk;
+    context.ramdisk_size = ((UINT32)cpiohd)-((UINT32)NewRamdisk);
+    NewRamdisk = NULL;
   }
 
-  // load cmdline
-  Status = AndroidLoadCmdline(&Parsed, mbhandle, RecoveryMode, DisablePatching);
+  // patch cmdline
+  Status = AndroidPatchCmdline(&context, mbhandle, RecoveryMode, DisablePatching);
   if (EFI_ERROR(Status)) {
     AsciiSPrint(Buf, sizeof(Buf), "Can't load cmdline: %r", Status);
     MenuShowMessage("Error", Buf);
-    goto FREEBUFFER;
+    goto CLEANUP;
   }
 
-  // generate Atags
-  if(LKApi->boot_create_tags(Parsed.Cmdline, (UINT32)Parsed.Ramdisk, AndroidHdr->ramdisk_size, AndroidHdr->tags_addr, TagsSize-DTB_PAD_SIZE)) {
-    MenuShowMessage("Error", "Can't generate tags.");
-    goto FREEBUFFER;
-  }
+  // prepare for boot
+  rc = libboot_prepare(&context);
+  if(rc) goto CLEANUP;
 
   // set LastBootEntry variable
   Status = UtilSetEFIDroidDataVariable(L"LastBootEntry", LastBootEntry, LastBootEntry?sizeof(*LastBootEntry):0);
@@ -440,50 +281,25 @@ AndroidBootFromBlockIo (
     if (!(LastBootEntry==NULL && Status==EFI_NOT_FOUND)) {
       AsciiSPrint(Buf, sizeof(Buf), "Can't set variable 'LastBootEntry': %r", Status);
       MenuShowMessage("Error", Buf);
-      goto FREEBUFFER;
+      goto CLEANUP;
     }
   }
 
-  // Shut down UEFI boot services. ExitBootServices() will notify every driver that created an event on
-  // ExitBootServices event. Example the Interrupt DXE driver will disable the interrupts on this event.
-  Status = UtilShutdownUefiBootServices ();
-  if (EFI_ERROR (Status)) {
-    MenuShowMessage("Error", "Can't shut down UEFI boot services.");
-    DEBUG ((EFI_D_ERROR, "ERROR: Can not shutdown UEFI boot services. Status=0x%X\n", Status));
-    goto FREEBUFFER;
-  }
+  // BOOT
+  BootContext(&context);
 
-  //
-  // Switch off interrupts, caches, mmu, etc
-  //
-  PreparePlatformHardware ();
+  // WE SHOULD NEVER GET HERE
 
-  // Outside BootServices, so can't use Print();
-  DEBUG ((EFI_D_ERROR, "\nStarting the kernel:\n\n"));
+CLEANUP:
+  // print errors
+  error_stack = libboot_error_stack_get();
+  for(i=0; i<libboot_error_stack_count(); i++)
+      MenuShowMessage("Error", error_stack[i]);
+  libboot_error_stack_reset();
 
-  LinuxKernel = (LINUX_KERNEL)(UINTN)Parsed.Kernel;
-  // Jump to kernel with register set
-  LKApi->boot_exec(LinuxKernel, (UINTN)0, LKApi->boot_machine_type(), (UINTN)AndroidHdr->tags_addr);
-
-  // Kernel should never exit
-  // After Life services are not provided
-  ASSERT (FALSE);
-  // We cannot recover the execution at this stage
-  while (1);
-
-FREEBUFFER:
-  if(Parsed.Cmdline)
-    FreePool(Parsed.Cmdline);
-  if(Parsed.Kernel)
-    FreeAlignedMemoryRange((UINT32)Parsed.Kernel, AndroidHdr->kernel_size, BlockIo->Media->BlockSize);
-  if(Parsed.Ramdisk)
-    FreeAlignedMemoryRange((UINT32)Parsed.Ramdisk, RamdiskUncompressedLen, BlockIo->Media->BlockSize);
-  if(Parsed.Tags)
-    FreeAlignedMemoryRange((UINT32)Parsed.Tags, TagsSize, BlockIo->Media->BlockSize);
-  if(OriginalRamdisk)
-    FreeAlignedMemoryRange((UINT32)OriginalRamdisk, AndroidHdr->ramdisk_size, BlockIo->Media->BlockSize);
-
-  FreePool(AndroidHdr);
+  // cleanup
+  libboot_platform_bigfree(NewRamdisk);
+  libboot_free_context(&context);
 
   return EFI_SUCCESS;
 }
@@ -494,75 +310,55 @@ AndroidGetDecompRamdiskFromBlockIo (
   OUT CPIO_NEWC_HEADER      **DecompressedRamdiskOut
 )
 {
-  VOID                      *OriginalRamdisk = NULL;
+  EFI_STATUS                Status;
+  CONST CHAR8               *DecompName;
   UINT32                    RamdiskUncompressedLen = 0;
   CPIO_NEWC_HEADER          *DecompressedRamdisk = NULL;
-  UINTN                     BufferSize;
-  EFI_STATUS                Status;
-  IN boot_img_hdr_t         *AndroidHdr;
 
-  // allocate a buffer for the android header aligned on the block size
-  BufferSize = ALIGN_VALUE(sizeof(boot_img_hdr_t), BlockIo->Media->BlockSize);
-  AndroidHdr = AllocatePool(BufferSize);
-  if(AndroidHdr == NULL)
-    return EFI_OUT_OF_RESOURCES;
+  Status = EFI_LOAD_ERROR;
 
-  // read android header
-  Status = BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, 0, BufferSize, AndroidHdr);
-  if(EFI_ERROR(Status)) {
-    goto FREEBUFFER;
-  }
+  // setup context
+  bootimg_context_t context;
+  libboot_init_context(&context);
 
-  // verify android header
-  Status = AndroidVerify(AndroidHdr);
-  if(EFI_ERROR(Status)) {
-    goto FREEBUFFER;
-  }
+  // identify
+  int rc = libboot_identify_blockio(BlockIo, &context);
+  if(rc) goto ERROR;
 
-  // calculate offsets
-  UINTN off_kernel  = AndroidHdr->page_size;
-  UINTN off_ramdisk = off_kernel  + ALIGN_VALUE(AndroidHdr->kernel_size,  AndroidHdr->page_size);
+  // load image
+  rc = libboot_load(&context);
+  if(rc) goto ERROR;
 
-  // load ramdisk into UEFI memory
-  Status = AndroidLoadImage(BlockIo, off_ramdisk, AndroidHdr->ramdisk_size, &OriginalRamdisk, 0);
-  if (!EFI_ERROR(Status) && OriginalRamdisk) {
-    CONST CHAR8 *DecompName;
+  // check if we have a ramdisk
+  if(!context.ramdisk_data) goto ERROR;
 
-    // get decompressor
-    decompress_fn Decompressor = decompress_method(OriginalRamdisk, AndroidHdr->ramdisk_size, &DecompName);
-    if(Decompressor==NULL) {
-      goto FreeOriginalRd;
-    }
+  // get decompressor
+  decompress_fn Decompressor = decompress_method(context.ramdisk_data, context.ramdisk_size, &DecompName);
+  if(Decompressor==NULL) goto ERROR;
 
-    // get uncompressed size
-    // since the Linux decompressor doesn't support predicting the length we hardcode this to 10MB
-    RamdiskUncompressedLen = 10*1024*1024;
-    DecompressedRamdisk = AllocatePool(RamdiskUncompressedLen);
-    if(DecompressedRamdisk==NULL) {
-      goto FreeOriginalRd;
-    }
+  // get uncompressed size
+  // since the Linux decompressor doesn't support predicting the length we hardcode this to 10MB
+  RamdiskUncompressedLen = 10*1024*1024;
+  DecompressedRamdisk = AllocatePool(RamdiskUncompressedLen);
+  if(DecompressedRamdisk==NULL) goto ERROR;
 
-    // decompress ramdisk
-    if(Decompressor(OriginalRamdisk, AndroidHdr->ramdisk_size, NULL, NULL, (VOID*)DecompressedRamdisk, NULL, DecompError)) {
-      goto FreeDecompRd;
-    }
+  // decompress ramdisk
+  if(Decompressor(context.ramdisk_data, context.ramdisk_size, NULL, NULL, (VOID*)DecompressedRamdisk, NULL, DecompError))
+    goto ERROR;
 
-    goto FreeOriginalRd;
-
-  FreeDecompRd:
-    if(DecompressedRamdisk) {
-      FreePool(DecompressedRamdisk);
-      DecompressedRamdisk = NULL;
-    }
-
-  FreeOriginalRd:
-    FreeAlignedMemoryRange((UINT32)OriginalRamdisk, AndroidHdr->ramdisk_size, BlockIo->Media->BlockSize);
-  }
-
-FREEBUFFER:
-  FreePool(AndroidHdr);
-
+  // return data
   *DecompressedRamdiskOut = DecompressedRamdisk;
+  Status = EFI_SUCCESS;
+
+  goto CLEANUP;
+
+ERROR:
+  FreePool(DecompressedRamdisk);
+
+CLEANUP:
+  // cleanup
+  libboot_free_context(&context);
+
   return Status;
 }
 
