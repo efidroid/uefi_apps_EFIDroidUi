@@ -50,7 +50,6 @@
 [Packages]
   StdLib/StdLib.dec
   MdePkg/MdePkg.dec
-  ShellPkg/ShellPkg.dec
   EFIDroidUEFIApps/EFIDroidUi/Library/AromaLib/AromaLib.dec
 
 [LibraryClasses]

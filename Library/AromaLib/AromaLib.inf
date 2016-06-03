@@ -72,7 +72,6 @@
 [Packages]
   StdLib/StdLib.dec
   MdePkg/MdePkg.dec
-  ShellPkg/ShellPkg.dec
   LittleKernelPkg/LittleKernelPkg.dec
   EFIDroidUEFIApps/EFIDroidUi/Library/AromaLib/AromaLib.dec
   EFIDroidUEFIApps/EFIDroidUi/Library/AromaLib/AromaLibPriv.dec
