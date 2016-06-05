@@ -128,10 +128,6 @@ BootContext (
 {
   EFI_STATUS Status;
 
-  // LK needs special uninit that can't be done from an uefi event
-  if(mLKApi)
-    mLKApi->platform_uninit();
-
   // Shut down UEFI boot services. ExitBootServices() will notify every driver that created an event on
   // ExitBootServices event. Example the Interrupt DXE driver will disable the interrupts on this event.
   Status = UtilShutdownUefiBootServices ();
