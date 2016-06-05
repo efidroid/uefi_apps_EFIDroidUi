@@ -186,6 +186,15 @@ static int libboot_identify_blockio(EFI_BLOCK_IO_PROTOCOL* BlockIo, bootimg_cont
     return rc;
 }
 
+static void* lkapi_add_custom_atags(void *tags) {
+  if(mLKApi) return mLKApi->boot_extend_atags(tags);
+  return tags;
+}
+
+static void lkapi_patch_fdt(void *fdt) {
+  if(mLKApi) mLKApi->boot_extend_fdt(fdt);
+}
+
 EFI_STATUS
 AndroidBootFromBlockIo (
   IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
@@ -205,6 +214,8 @@ AndroidBootFromBlockIo (
   // setup context
   bootimg_context_t context;
   libboot_init_context(&context);
+  context.add_custom_atags = lkapi_add_custom_atags;
+  context.patch_fdt = lkapi_patch_fdt;
 
   // identify
   int rc = libboot_identify_blockio(BlockIo, &context);
