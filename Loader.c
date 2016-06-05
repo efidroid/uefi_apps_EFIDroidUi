@@ -158,7 +158,7 @@ STATIC VOID DecompError(CHAR8* Str) {
   MenuShowMessage("Decompression Error", Str);
 }
 
-static boot_intn_t internal_io_fn_blockio_read(boot_io_t* io, void* buf, boot_uintn_t blkoff, boot_uintn_t count) {
+STATIC boot_intn_t internal_io_fn_blockio_read(boot_io_t* io, void* buf, boot_uintn_t blkoff, boot_uintn_t count) {
     EFI_BLOCK_IO_PROTOCOL* BlockIo = io->pdata;
     EFI_STATUS Status;
 
@@ -169,7 +169,7 @@ static boot_intn_t internal_io_fn_blockio_read(boot_io_t* io, void* buf, boot_ui
     return count;
 }
 
-static int libboot_identify_blockio(EFI_BLOCK_IO_PROTOCOL* BlockIo, bootimg_context_t* context) {
+STATIC INTN libboot_identify_blockio(EFI_BLOCK_IO_PROTOCOL* BlockIo, bootimg_context_t* context) {
     boot_io_t* io = libboot_platform_alloc(sizeof(boot_io_t));
     if(!io) return -1;
     io->read = internal_io_fn_blockio_read;
@@ -178,7 +178,7 @@ static int libboot_identify_blockio(EFI_BLOCK_IO_PROTOCOL* BlockIo, bootimg_cont
     io->pdata = BlockIo;
     io->pdata_is_allocated = 0;
 
-    int rc = libboot_identify(io, context);
+    INTN rc = libboot_identify(io, context);
     if(rc) {
         libboot_platform_free(io);
     }
@@ -186,12 +186,12 @@ static int libboot_identify_blockio(EFI_BLOCK_IO_PROTOCOL* BlockIo, bootimg_cont
     return rc;
 }
 
-static void* lkapi_add_custom_atags(void *tags) {
+STATIC VOID* lkapi_add_custom_atags(VOID *tags) {
   if(mLKApi) return mLKApi->boot_extend_atags(tags);
   return tags;
 }
 
-static void lkapi_patch_fdt(void *fdt) {
+STATIC VOID lkapi_patch_fdt(VOID *fdt) {
   if(mLKApi) mLKApi->boot_extend_fdt(fdt);
 }
 
@@ -218,7 +218,7 @@ AndroidBootFromBlockIo (
   context.patch_fdt = lkapi_patch_fdt;
 
   // identify
-  int rc = libboot_identify_blockio(BlockIo, &context);
+  INTN rc = libboot_identify_blockio(BlockIo, &context);
   if(rc) goto CLEANUP;
 
   // load image
@@ -349,7 +349,7 @@ AndroidGetDecompRamdiskFromBlockIo (
   libboot_init_context(&context);
 
   // identify
-  int rc = libboot_identify_blockio(BlockIo, &context);
+  INTN rc = libboot_identify_blockio(BlockIo, &context);
   if(rc) goto ERROR;
 
   // load image
