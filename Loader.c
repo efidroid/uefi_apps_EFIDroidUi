@@ -1,5 +1,7 @@
 #include "EFIDroidUi.h"
 
+typedef VOID (*LINUX_KERNEL)(UINT32 Zero, UINT32 Arch, UINTN ParametersBase);
+
 EFI_STATUS
 AndroidVerify (
   IN VOID* Buffer
@@ -26,11 +28,13 @@ AndroidPatchCmdline (
   CHAR8 *DevPathString = NULL;
   UINTN Len;
 
-  CONST CHAR8* CmdlineExt = mLKApi->boot_get_cmdline_extension();
-  if(CmdlineExt) {
-    CHAR8* CmdlineExtCopy = AllocateCopyPool(AsciiStrSize(CmdlineExt), CmdlineExt);
-    libboot_cmdline_addall(&Context->cmdline, CmdlineExtCopy, 1);
-    FreePool(CmdlineExtCopy);
+  if(mLKApi) {
+    CONST CHAR8* CmdlineExt = mLKApi->boot_get_cmdline_extension();
+    if(CmdlineExt) {
+      CHAR8* CmdlineExtCopy = AllocateCopyPool(AsciiStrSize(CmdlineExt), CmdlineExt);
+      libboot_cmdline_addall(&Context->cmdline, CmdlineExtCopy, 1);
+      FreePool(CmdlineExtCopy);
+    }
   }
 
   // check mbhandle
@@ -137,7 +141,11 @@ BootContext (
   //
   PreparePlatformHardware ();
 
-  mLKApi->boot_exec((VOID*)(UINTN)context->kernel_addr, context->kernel_arguments[0], context->kernel_arguments[1], context->kernel_arguments[2]);
+  if(mLKApi)
+    mLKApi->boot_exec((VOID*)(UINTN)context->kernel_addr, context->kernel_arguments[0], context->kernel_arguments[1], context->kernel_arguments[2]);
+
+  LINUX_KERNEL LinuxKernel = (LINUX_KERNEL)(UINTN)context->kernel_addr;
+  LinuxKernel (context->kernel_arguments[0], context->kernel_arguments[1], context->kernel_arguments[2]);
 
   // Kernel should never exit
   // After Life services are not provided
@@ -207,7 +215,8 @@ AndroidBootFromBlockIo (
   if(rc) goto CLEANUP;
 
   // update addresses if necessary
-  mLKApi->boot_update_addrs(&context.kernel_addr, &context.ramdisk_addr, &context.tags_addr);
+  if(mLKApi)
+    mLKApi->boot_update_addrs(&context.kernel_addr, &context.ramdisk_addr, &context.tags_addr);
 
   if(!DisablePatching) {
     // get decompressor
