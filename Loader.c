@@ -26,6 +26,13 @@ AndroidPatchCmdline (
   CHAR8 *DevPathString = NULL;
   UINTN Len;
 
+  CONST CHAR8* CmdlineExt = mLKApi->boot_get_cmdline_extension();
+  if(CmdlineExt) {
+    CHAR8* CmdlineExtCopy = AllocateCopyPool(AsciiStrSize(CmdlineExt), CmdlineExt);
+    libboot_cmdline_addall(&Context->cmdline, CmdlineExtCopy, 1);
+    FreePool(CmdlineExtCopy);
+  }
+
   // check mbhandle
   if(mbhandle) {
     // get devpath
