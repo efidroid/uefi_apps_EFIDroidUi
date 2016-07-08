@@ -170,7 +170,7 @@ STATIC boot_intn_t internal_io_fn_blockio_read(boot_io_t* io, void* buf, boot_ui
 }
 
 STATIC INTN libboot_identify_blockio(EFI_BLOCK_IO_PROTOCOL* BlockIo, bootimg_context_t* context) {
-    boot_io_t* io = libboot_platform_alloc(sizeof(boot_io_t));
+    boot_io_t* io = libboot_alloc(sizeof(boot_io_t));
     if(!io) return -1;
     io->read = internal_io_fn_blockio_read;
     io->blksz = BlockIo->Media->BlockSize;
@@ -180,7 +180,7 @@ STATIC INTN libboot_identify_blockio(EFI_BLOCK_IO_PROTOCOL* BlockIo, bootimg_con
 
     INTN rc = libboot_identify(io, context);
     if(rc) {
-        libboot_platform_free(io);
+        libboot_free(io);
     }
 
     return rc;
@@ -257,7 +257,7 @@ AndroidBootFromBlockIo (
     RamdiskUncompressedLen += objsize;
 
     // allocate uncompressed ramdisk memory
-    NewRamdisk = libboot_platform_bigalloc(RamdiskUncompressedLen);
+    NewRamdisk = libboot_bigalloc(RamdiskUncompressedLen);
     if (!NewRamdisk) {
       AsciiSPrint(Buf, sizeof(Buf), "Can't allocate memory for decompressing ramdisk: %r", Status);
       MenuShowMessage("Error", Buf);
@@ -282,7 +282,7 @@ AndroidBootFromBlockIo (
     }
 
     // free old data
-    libboot_platform_bigfree(context.ramdisk_data);
+    libboot_bigfree(context.ramdisk_data);
 
     // set new data
     context.ramdisk_data = NewRamdisk;
@@ -325,7 +325,7 @@ CLEANUP:
   libboot_error_stack_reset();
 
   // cleanup
-  libboot_platform_bigfree(NewRamdisk);
+  libboot_bigfree(NewRamdisk);
   libboot_free_context(&context);
 
   return EFI_SUCCESS;
