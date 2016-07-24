@@ -474,11 +474,13 @@ GetAndroidImgInfo (
       *IconPath = "icons/android.png";
       *ImgName = AsciiStrDup("Recovery");
     }
-
-    return EFI_SUCCESS;
   }
 
-  return EFI_UNSUPPORTED;
+  else {
+    *IsRecovery = FALSE;
+  }
+
+  return EFI_SUCCESS;
 }
 
 STATIC EFI_STATUS
@@ -634,13 +636,15 @@ FindAndroidBlockIo (
       Icon = libaroma_stream_ramdisk(Cache->IconPath);
       IsRecovery = Cache->IsRecovery;
 
-      FreePool(Name);
-      Name = AllocateZeroPool(4096);
-      if(Name) {
-        AsciiSPrint(Name, 4096, "%a (Internal)", Cache->Name);
-      }
-      else {
-        Name = AsciiStrDup(Cache->Name);
+      if (IsRecovery) {
+        FreePool(Name);
+        Name = AllocateZeroPool(4096);
+        if(Name) {
+          AsciiSPrint(Name, 4096, "%a (Internal)", Cache->Name);
+        }
+        else {
+          Name = AsciiStrDup(Cache->Name);
+        }
       }
 
       FreePool(Cache);
@@ -648,37 +652,41 @@ FindAndroidBlockIo (
     }
   }
 
-  CPIO_NEWC_HEADER *Ramdisk;
-  Status = AndroidGetDecompressedRamdisk (context, &Ramdisk);
-  if(!EFI_ERROR(Status)) {
-    CHAR8* ImgName = NULL;
-    Status = GetAndroidImgInfo(Ramdisk, &IconPath, &ImgName, &IsRecovery);
-    if(!EFI_ERROR(Status) && ImgName) {
-      // write to cache
-      if (context->checksum) {
-        IMGINFO_CACHE Cache;
-        AsciiSPrint(Cache.Name, sizeof(Cache.Name), "%a", ImgName);
-        AsciiSPrint(Cache.IconPath, sizeof(Cache.IconPath), "%a", IconPath);
-        Cache.IsRecovery = IsRecovery;
+  if(context->type==BOOTIMG_TYPE_ANDROID) {
+    CPIO_NEWC_HEADER *Ramdisk;
+    Status = AndroidGetDecompressedRamdisk (context, &Ramdisk);
+    if(!EFI_ERROR(Status)) {
+      CHAR8* ImgName = NULL;
+      Status = GetAndroidImgInfo(Ramdisk, &IconPath, &ImgName, &IsRecovery);
+      if(!EFI_ERROR(Status)) {
+        // write to cache
+        if (context->checksum) {
+          IMGINFO_CACHE Cache;
+          AsciiSPrint(Cache.Name, sizeof(Cache.Name), "%a", ImgName?:"");
+          AsciiSPrint(Cache.IconPath, sizeof(Cache.IconPath), "%a", IconPath?:"");
+          Cache.IsRecovery = IsRecovery;
 
-        CHAR16 Buf[50];
-        UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
-        UtilSetEFIDroidDataVariable(Buf, &Cache, sizeof(Cache));
+          CHAR16 Buf[50];
+          UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
+          UtilSetEFIDroidDataVariable(Buf, &Cache, sizeof(Cache));
+        }
+
+        if (ImgName && IconPath) {
+          Icon = libaroma_stream_ramdisk(IconPath);
+          FreePool(Name);
+          Name = AllocateZeroPool(4096);
+          if(Name) {
+            AsciiSPrint(Name, 4096, "%a (Internal)", ImgName);
+            FreePool(ImgName);
+          }
+          else {
+            Name = ImgName;
+          }
+        }
       }
 
-      Icon = libaroma_stream_ramdisk(IconPath);
-      FreePool(Name);
-      Name = AllocateZeroPool(4096);
-      if(Name) {
-        AsciiSPrint(Name, 4096, "%a (Internal)", ImgName);
-        FreePool(ImgName);
-      }
-      else {
-        Name = ImgName;
-      }
+      FreePool(Ramdisk);
     }
-
-    FreePool(Ramdisk);
   }
 
 SKIP:
