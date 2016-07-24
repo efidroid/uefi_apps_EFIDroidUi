@@ -23,10 +23,10 @@
 #include <limits.h>
 #include <stdio.h>
 
-#define LIBBOOT_FMT_UINTN "%u"
-#define LIBBOOT_FMT_UINT32 "%u"
-#define LIBBOOT_FMT_ADDR "%x"
-#define LIBBOOT_FMT_INT "%d"
+#define LIBBOOT_FMT_UINTN "u"
+#define LIBBOOT_FMT_UINT32 "u"
+#define LIBBOOT_FMT_ADDR "x"
+#define LIBBOOT_FMT_INT "d"
 
 #define LIBBOOT_ASSERT ASSERT
 #define LIBBOOT_OFFSETOF(StrucName, Member)  OFFSET_OF(StrucName, Member)
