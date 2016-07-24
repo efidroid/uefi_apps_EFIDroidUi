@@ -531,10 +531,6 @@ FindAndroidBlockIo (
   }
   custom_init_context(context);
 
-  // identify
-  INTN rc = libboot_identify_blockio(BlockIo, context);
-  if(rc) goto FREEBUFFER;
-
   // build lastbootentry info
   LastBootEntry.Type = LAST_BOOT_TYPE_BLOCKIO;
   TmpStr = gEfiDevicePathToTextProtocol->ConvertDevicePathToText(DevicePath, FALSE, FALSE);
@@ -583,11 +579,7 @@ FindAndroidBlockIo (
           goto FREEBUFFER;
         }
 
-        // recreate context
-        libboot_free_context(context);
-        custom_init_context(context);
-
-        // identify
+        // identify with replacement file
         INTN rc = libboot_identify_file(BootFile, context);
         if(rc) goto FREEBUFFER;
 
@@ -626,6 +618,12 @@ FindAndroidBlockIo (
   }
   else {
     Name = AsciiStrDup("Unknown");
+  }
+
+  if (!context->rootio) {
+    // identify
+    INTN rc = libboot_identify_blockio(BlockIo, context);
+    if(rc) goto FREEBUFFER;
   }
 
   if (context->checksum) {
