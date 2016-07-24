@@ -40,7 +40,6 @@
 
 #include <LittleKernel.h>
 
-#include "bootimg.h"
 #include <lib/boot.h>
 
 extern EFI_GUID gEFIDroidVariableGuid;
@@ -160,11 +159,6 @@ AutoBootContext (
 VOID custom_init_context(bootimg_context_t* context);
 INTN libboot_identify_blockio(EFI_BLOCK_IO_PROTOCOL* BlockIo, bootimg_context_t* context);
 INTN libboot_identify_file(EFI_FILE_PROTOCOL* File, bootimg_context_t* context);
-
-EFI_STATUS
-AndroidVerify (
-  IN VOID* Buffer
-);
 
 EFI_STATUS
 AndroidGetDecompressedRamdisk (

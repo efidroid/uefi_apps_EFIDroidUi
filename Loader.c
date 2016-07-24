@@ -4,20 +4,6 @@
 
 typedef VOID (*LINUX_KERNEL)(UINT32 Zero, UINT32 Arch, UINTN ParametersBase);
 
-EFI_STATUS
-AndroidVerify (
-  IN VOID* Buffer
-)
-{
-  boot_img_hdr_t *AndroidHdr = Buffer;
-
-  if(CompareMem(AndroidHdr->magic, BOOT_MAGIC, BOOT_MAGIC_SIZE)!=0) {
-    return EFI_UNSUPPORTED;
-  }
-
-  return EFI_SUCCESS;
-}
-
 STATIC EFI_STATUS
 AndroidPatchCmdline (
   bootimg_context_t         *Context,
