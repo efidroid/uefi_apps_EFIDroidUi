@@ -153,7 +153,7 @@ void* libboot_platform_getmemory(void *pdata, libboot_platform_getmemory_callbac
 }
 
 void* libboot_platform_bootalloc(boot_uintn_t addr, boot_uintn_t sz) {
-  printf("alloc: 0x%08x - 0x%08x ; 0x%08x\n", addr, addr+sz, sz);
+  DEBUG((EFI_D_INFO, "alloc: 0x%08x - 0x%08x ; 0x%08x\n", addr, addr+sz, sz));
   UINTN      AlignedSize = sz;
   UINTN      AddrOffset = 0;
   EFI_PHYSICAL_ADDRESS AllocationAddress = AlignMemoryRange(addr, &AlignedSize, &AddrOffset, EFI_PAGE_SIZE);

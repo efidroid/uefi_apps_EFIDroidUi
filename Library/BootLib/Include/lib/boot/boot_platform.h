@@ -31,9 +31,20 @@
 #define LIBBOOT_ASSERT ASSERT
 #define LIBBOOT_OFFSETOF(StrucName, Member)  OFFSET_OF(StrucName, Member)
 
-#define LOGV(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#if !defined(MDEPKG_NDEBUG)
+  #define LIBBOOT_DEBUG(fmt, ...)     \
+    do {                              \
+      if (DebugPrintEnabled ()) {     \
+        printf (fmt, ##__VA_ARGS__);  \
+      }                               \
+    } while (FALSE)
+#else
+  #define LIBBOOT_DEBUG(Expression)
+#endif
+
+#define LOGV(fmt, ...) LIBBOOT_DEBUG(fmt, ##__VA_ARGS__)
 #define LOGE(fmt, ...) printf(fmt, ##__VA_ARGS__)
-#define LOGI(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#define LOGI(fmt, ...) LIBBOOT_DEBUG(fmt, ##__VA_ARGS__)
 
 typedef UINTN  boot_uintn_t;
 typedef INTN   boot_intn_t;
