@@ -299,23 +299,22 @@ FastbootCommandLoop (
 
     mFastbootState = STATE_COMMAND;
 
-    FASTBOOT_COMMAND *MatchedCommand = NULL;
     for (Command = CommandList; Command; Command = Command->Next) {
+      UINTN CmdLen = AsciiStrLen((CHAR8*)Buffer);
+
       if (CompareMem(Buffer, Command->Prefix, Command->PrefixLen))
         continue;
 
-      if(MatchedCommand==NULL || Command->PrefixLen>MatchedCommand->PrefixLen)
-        MatchedCommand = Command;
-    }
+      if (CmdLen>Command->PrefixLen && Buffer[Command->PrefixLen]!=' ' && Buffer[Command->PrefixLen-1]!=':')
+		continue;
 
-    if(MatchedCommand) {
-      CHAR8* Arg = (CHAR8*) Buffer + MatchedCommand->PrefixLen;
+      CHAR8* Arg = (CHAR8*) Buffer + Command->PrefixLen;
       if(Arg[0]==' ')
         Arg++;
 
-      MatchedCommand->Handle(Arg, DownloadBase, DownloadSize);
+      Command->Handle(Arg, DownloadBase, DownloadSize);
       if (mFastbootState == STATE_STOP)
-        break;
+        goto STOP;
       if (mFastbootState == STATE_COMMAND)
         FastbootFail("unknown reason");
 
@@ -325,13 +324,12 @@ FastbootCommandLoop (
       goto AGAIN;
     }
 
-    else {
-      FastbootInfo("unknown command");
-      FastbootInfo("See 'fastboot oem help'");
-      FastbootFail("");
-    }
+    FastbootInfo("unknown command");
+    FastbootInfo("See 'fastboot oem help'");
+    FastbootFail("");
   }
 
+STOP:
   if (mFastbootState!=STATE_STOP && mFastbootState!=STATE_STOPPED) {
     mFastbootState = STATE_OFFLINE;
     DEBUG((EFI_D_ERROR, "fastboot: oops!\n"));
