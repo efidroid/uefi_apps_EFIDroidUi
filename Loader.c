@@ -1,5 +1,7 @@
 #include "EFIDroidUi.h"
 
+#define SIDELOAD_FILENAME L"Sideload.efi"
+
 typedef VOID (*LINUX_KERNEL)(UINT32 Zero, UINT32 Arch, UINTN ParametersBase);
 
 EFI_STATUS
@@ -247,6 +249,133 @@ VOID custom_init_context(bootimg_context_t* context) {
 }
 
 EFI_STATUS
+BootEfiContext (
+  IN bootimg_context_t      *context
+)
+{
+  EFI_STATUS                Status;
+  EFI_RAM_DISK_PROTOCOL     *RamDiskProtocol;
+  EFI_DEVICE_PATH_PROTOCOL  *DevicePath;
+  EFI_GUID                  DiskGuid = gEfiVirtualDiskGuid;
+  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   *Volume;
+  EFI_FILE_PROTOCOL                 *Root;
+  EFI_FILE_PROTOCOL                 *EfiFile;
+
+  // get ramdisk protocol
+  Status = gBS->LocateProtocol (&gEfiRamDiskProtocolGuid, NULL, (VOID **) &RamDiskProtocol);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  // Allocate ramdisk
+  UINT64 RamDiskSize = MAX(context->kernel_size + SIZE_1MB, SIZE_1MB);
+  VOID* RamDisk = AllocatePool(RamDiskSize);
+  if (RamDisk==NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  // mkfs.vfat
+  Status = MakeDosFs(RamDisk, RamDiskSize);
+  if (EFI_ERROR (Status)) {
+    goto ERROR_FREE_RAMDISK;
+  }
+
+  // register ramdisk
+  Status = RamDiskProtocol->Register((UINTN)RamDisk, RamDiskSize, &DiskGuid, NULL, &DevicePath);
+  if (EFI_ERROR (Status)) {
+    goto ERROR_FREE_RAMDISK;
+  }
+
+  // get handle
+  EFI_DEVICE_PATH_PROTOCOL* Protocol = DevicePath;
+  EFI_HANDLE FSHandle;
+  Status = gBS->LocateDevicePath (
+                  &gEfiSimpleFileSystemProtocolGuid,
+                  &Protocol,
+                  &FSHandle
+                  );
+  if (EFI_ERROR (Status)) {
+    goto ERROR_UNREGISTER_RAMDISK;
+  }
+
+  // get the SimpleFilesystem protocol on that handle
+  Volume = NULL;
+  Status = gBS->HandleProtocol (
+                  FSHandle,
+                  &gEfiSimpleFileSystemProtocolGuid,
+                  (VOID **)&Volume
+                  );
+  if (EFI_ERROR (Status)) {
+    goto ERROR_UNREGISTER_RAMDISK;
+  }
+
+  // Open the root directory of the volume
+  Root = NULL;
+  Status = Volume->OpenVolume (
+                     Volume,
+                     &Root
+                     );
+  if (EFI_ERROR (Status) || Root==NULL) {
+    goto ERROR_UNREGISTER_RAMDISK;
+  }
+
+  // Create EFI file
+  EfiFile = NULL;
+  Status = Root->Open (
+                   Root,
+                   &EfiFile,
+                   SIDELOAD_FILENAME,
+                   EFI_FILE_MODE_READ|EFI_FILE_MODE_WRITE|EFI_FILE_MODE_CREATE,
+                   0
+                   );
+  if (EFI_ERROR (Status)) {
+    goto ERROR_UNREGISTER_RAMDISK;
+  }
+
+  // write kernel to efi file
+  UINTN WriteSize = context->kernel_size;
+  Status = EfiFile->Write(EfiFile, &WriteSize, (VOID*)context->kernel_data);
+  if (EFI_ERROR (Status)) {
+    goto ERROR_UNREGISTER_RAMDISK;
+  }
+
+  // build device path
+  EFI_DEVICE_PATH_PROTOCOL *LoaderDevicePath;
+  LoaderDevicePath = FileDevicePath(FSHandle, SIDELOAD_FILENAME);
+  if (LoaderDevicePath==NULL) {
+    goto ERROR_UNREGISTER_RAMDISK;
+  }
+
+  // build arguments
+  CONST CHAR16* Args = L"";
+  UINTN LoadOptionsSize = (UINT32)StrSize (Args);
+  VOID *LoadOptions     = AllocatePool (LoadOptionsSize);
+  StrCpy (LoadOptions, Args);
+
+  // shut down menu
+  MenuPreBoot();
+
+  // start efi application
+  Status = UtilStartEfiApplication (LoaderDevicePath, LoadOptionsSize, LoadOptions);
+
+  // restart menu
+  MenuPostBoot();
+
+ERROR_UNREGISTER_RAMDISK:
+  // unregister ramdisk
+  Status = RamDiskProtocol->Unregister(DevicePath);
+  if (EFI_ERROR (Status)) {
+    ASSERT(FALSE);
+  }
+
+ERROR_FREE_RAMDISK:
+  // free ramdisk memory
+  FreePool(RamDisk);
+
+  return Status;
+}
+
+EFI_STATUS
 AutoBootContext (
   IN bootimg_context_t      *context,
   IN multiboot_handle_t     *mbhandle,
@@ -266,6 +395,15 @@ AutoBootContext (
 
   // load image
   rc = libboot_load(context);
+
+  // libboot returns an error because it can't handle efi files
+  // but it still set the correct inner type of the boot image
+  if(context->type==BOOTIMG_TYPE_EFI) {
+    ReturnStatus = BootEfiContext(context);
+    goto CLEANUP;
+  }
+
+  // libboot returned an error, and this is not a EFI image
   if(rc) goto CLEANUP;
 
   // update addresses if necessary

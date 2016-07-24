@@ -70,39 +70,6 @@ CommandPowerOff (
   gRT->ResetSystem (EfiResetShutdown, EFI_SUCCESS, 0, NULL);
 }
 
-STATIC
-BOOLEAN
-IsEfiFile (
-  VOID* Buffer
-)
-{
-  EFI_IMAGE_DOS_HEADER                *DosHdr;
-  EFI_IMAGE_OPTIONAL_HEADER_PTR_UNION Hdr;
-
-  DosHdr = (EFI_IMAGE_DOS_HEADER *)Buffer;
-
-  if (DosHdr->e_magic == EFI_IMAGE_DOS_SIGNATURE) {
-    //
-    // Valid DOS header so get address of PE header
-    //
-    Hdr.Pe32 = (EFI_IMAGE_NT_HEADERS32 *)(((CHAR8 *)DosHdr) + DosHdr->e_lfanew);
-  } else {
-    //
-    // No Dos header so assume image starts with PE header.
-    //
-    Hdr.Pe32 = (EFI_IMAGE_NT_HEADERS32 *)Buffer;
-  }
-
-  if (Hdr.Pe32->Signature != EFI_IMAGE_NT_SIGNATURE) {
-    //
-    // Not a valid PE image so Exit
-    //
-    return FALSE;
-  }
-
-  return TRUE;
-}
-
 STATIC VOID
 CommandBoot (
   CHAR8 *Arg,
@@ -110,187 +77,23 @@ CommandBoot (
   UINT32 Size
 )
 {
-  EFI_RAM_DISK_PROTOCOL     *RamDiskProtocol;
-  EFI_DEVICE_PATH_PROTOCOL  *DevicePath;
-  boot_img_hdr_t            *AndroidHdr;
-  UINT64                    DataAddr;
-  EFI_STATUS                Status;
-  EFI_GUID                  DiskGuid = gEfiVirtualDiskGuid;
-  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   *Volume;
-  EFI_FILE_PROTOCOL                 *Root;
-  EFI_FILE_PROTOCOL                 *EfiFile;
-  UINTN                     WaitIndex;
-  EFI_INPUT_KEY             Key;
+  // stop fastboot
+  FastbootOkay("");
+  FastbootStopNow();
 
-  AndroidHdr = Data;
-  DataAddr = (UINT64)(UINTN)Data;
-  DevicePath = NULL;
-
-  // verify Android header
-  Status = AndroidVerify(AndroidHdr);
-  if (EFI_ERROR(Status)) {
-    FastbootFail("Not a boot image");
-    return;
+  // check if we need to enable patching
+  BOOLEAN DisablePatching = TRUE;
+  CHAR8* Var = UtilGetEFIDroidVariable("fastboot-enable-boot-patch");
+  if (Var && !AsciiStrCmp(Var, "1")) {
+    DisablePatching = FALSE;
+    FreePool(Var);
   }
 
-  // calculate offsets
-  UINTN KernelOffset  = AndroidHdr->page_size;
+  // boot Android
+  AndroidBootFromBuffer(Data, Size, NULL, DisablePatching, NULL);
 
-  // EFI file without a ramdisk
-  if(IsEfiFile((VOID*)(UINTN)(DataAddr+KernelOffset))) {
-    // get ramdisk protocol
-    Status = gBS->LocateProtocol (&gEfiRamDiskProtocolGuid, NULL, (VOID **) &RamDiskProtocol);
-    if (EFI_ERROR (Status)) {
-      FastbootFail("Can't locate ramdisk protocol");
-      return;
-    }
-
-    // Allocate ramdisk
-    UINT64 RamDiskSize = MAX(AndroidHdr->kernel_size + SIZE_1MB, SIZE_1MB);
-    VOID* RamDisk = AllocatePool(RamDiskSize);
-    if (RamDisk==NULL) {
-      FastbootFail("Can't allocate ramdisk memory");
-      return;
-    }
-
-    // mkfs.vfat
-    Status = MakeDosFs(RamDisk, RamDiskSize);
-    if (EFI_ERROR (Status)) {
-      FastbootFail("Can't format ramdisk to FAT");
-      goto ERROR_FREE_RAMDISK;
-    }
-
-    // register ramdisk
-    Status = RamDiskProtocol->Register((UINTN)RamDisk, RamDiskSize, &DiskGuid, NULL, &DevicePath);
-    if (EFI_ERROR (Status)) {
-      FastbootFail("Can't register ramdisk");
-      goto ERROR_FREE_RAMDISK;
-    }
-
-    // get handle
-    EFI_DEVICE_PATH_PROTOCOL* Protocol = DevicePath;
-    EFI_HANDLE FSHandle;
-    Status = gBS->LocateDevicePath (
-                    &gEfiSimpleFileSystemProtocolGuid,
-                    &Protocol,
-                    &FSHandle
-                    );
-    if (EFI_ERROR (Status)) {
-      FastbootFail("Can't get FS handle");
-      goto ERROR_UNREGISTER_RAMDISK;
-    }
-
-    // get the SimpleFilesystem protocol on that handle
-    Volume = NULL;
-    Status = gBS->HandleProtocol (
-                    FSHandle,
-                    &gEfiSimpleFileSystemProtocolGuid,
-                    (VOID **)&Volume
-                    );
-    if (EFI_ERROR (Status)) {
-      FastbootFail("Can't get FS protocol");
-      goto ERROR_UNREGISTER_RAMDISK;
-    }
-
-    // Open the root directory of the volume
-    Root = NULL;
-    Status = Volume->OpenVolume (
-                       Volume,
-                       &Root
-                       );
-    if (EFI_ERROR (Status) || Root==NULL) {
-      FastbootFail("Can't open volume");
-      goto ERROR_UNREGISTER_RAMDISK;
-    }
-
-    // Create EFI file
-    EfiFile = NULL;
-    Status = Root->Open (
-                     Root,
-                     &EfiFile,
-                     SIDELOAD_FILENAME,
-                     EFI_FILE_MODE_READ|EFI_FILE_MODE_WRITE|EFI_FILE_MODE_CREATE,
-                     0
-                     );
-    if (EFI_ERROR (Status)) {
-      FastbootFail("Can't create file");
-      goto ERROR_UNREGISTER_RAMDISK;
-    }
-
-    // write kernel to efi file
-    UINTN WriteSize = AndroidHdr->kernel_size;
-    Status = EfiFile->Write(EfiFile, &WriteSize, (VOID*)(UINTN)(DataAddr+KernelOffset));
-    if (EFI_ERROR (Status)) {
-      FastbootFail("Can't write to file");
-      goto ERROR_UNREGISTER_RAMDISK;
-    }
-
-    // build device path
-    EFI_DEVICE_PATH_PROTOCOL *LoaderDevicePath;
-    LoaderDevicePath = FileDevicePath(FSHandle, L"Sideload.efi");
-    if (LoaderDevicePath==NULL) {
-      FastbootFail("Can't build file device path");
-      goto ERROR_UNREGISTER_RAMDISK;
-    }
-
-    // build arguments
-    CONST CHAR16* Args = L"";
-    UINTN LoadOptionsSize = (UINT32)StrSize (Args);
-    VOID *LoadOptions     = AllocatePool (LoadOptionsSize);
-    StrCpy (LoadOptions, Args);
-
-    // send OKAY
-    FastbootOkay("");
-
-    // stop fastboot
-    FastbootStopNow();
-
-    // shut down menu
-    MenuPreBoot();
-
-    // start efi application
-    Status = UtilStartEfiApplication (LoaderDevicePath, LoadOptionsSize, LoadOptions);
-
-    // wait for user input
-    Status = gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &WaitIndex);
-    if(!EFI_ERROR(Status)) {
-        gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
-    }
-
-    // restart menu
-    MenuPostBoot();
-
-    // start fastboot
-    FastbootInit();
-
-ERROR_UNREGISTER_RAMDISK:
-    // unregister ramdisk
-    Status = RamDiskProtocol->Unregister(DevicePath);
-    if (EFI_ERROR (Status)) {
-      ASSERT(FALSE);
-    }
-
-ERROR_FREE_RAMDISK:
-    // free ramdisk memory
-    FreePool(RamDisk);
-  }
-
-  // Android
-  else {
-    // send OKAY
-    FastbootOkay("");
-    FastbootStopNow();
-
-    BOOLEAN DisablePatching = TRUE;
-    CHAR8* Var = UtilGetEFIDroidVariable("fastboot-enable-boot-patch");
-    if (Var && !AsciiStrCmp(Var, "1")) {
-      DisablePatching = FALSE;
-      FreePool(Var);
-    }
-
-    // boot Android
-    AndroidBootFromBuffer(Data, Size, NULL, DisablePatching, NULL);
-  }
+  // start fastboot
+  FastbootInit();
 }
 
 #if 0
