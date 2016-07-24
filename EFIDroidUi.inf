@@ -37,8 +37,6 @@
   FileHandleLib
   FstabLib
   UtilLib
-  FileBlockIoLib
-  MemoryBlockIoLib
   MakeDosFsLib
   SquirrelLib
   StdCEntryLib

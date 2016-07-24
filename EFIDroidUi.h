@@ -7,6 +7,7 @@
 #include <Protocol/PartitionName.h>
 #include <Protocol/DevicePathFromText.h>
 #include <Protocol/DevicePathToText.h>
+#include <Protocol/RamDisk.h>
 #include <Guid/FileInfo.h>
 
 #include <Library/BaseMemoryLib.h>
@@ -84,7 +85,7 @@ typedef struct {
 
 typedef struct {
   UINTN                 Signature;
-  EFI_BLOCK_IO_PROTOCOL *BlockIo;
+  bootimg_context_t     *context;
   multiboot_handle_t    *mbhandle;
   BOOLEAN               DisablePatching;
   LAST_BOOT_ENTRY       LastBootEntry;
@@ -149,13 +150,25 @@ AndroidBootFromBuffer (
 );
 
 EFI_STATUS
+AutoBootContext (
+  IN bootimg_context_t      *context,
+  IN multiboot_handle_t     *mbhandle,
+  IN BOOLEAN                DisablePatching,
+  IN LAST_BOOT_ENTRY        *LastBootEntry
+);
+
+VOID custom_init_context(bootimg_context_t* context);
+INTN libboot_identify_blockio(EFI_BLOCK_IO_PROTOCOL* BlockIo, bootimg_context_t* context);
+INTN libboot_identify_file(EFI_FILE_PROTOCOL* File, bootimg_context_t* context);
+
+EFI_STATUS
 AndroidVerify (
   IN VOID* Buffer
 );
 
 EFI_STATUS
-AndroidGetDecompRamdiskFromBlockIo (
-  IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
+AndroidGetDecompressedRamdisk (
+  IN bootimg_context_t      *context,
   OUT CPIO_NEWC_HEADER      **DecompressedRamdiskOut
 );
 

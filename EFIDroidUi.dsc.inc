@@ -15,8 +15,6 @@
   EFIDroidMenuLib|EFIDroidUEFIApps/EFIDroidUi/Library/MenuLib/MenuLib.inf
   UEFIRamdiskLib|EFIDroidUEFIApps/EFIDroidUi/Library/UEFIRamdiskLib/UEFIRamdiskLib.inf
   UtilLib|EFIDroidUEFIApps/EFIDroidUi/Library/UtilLib/UtilLib.inf
-  FileBlockIoLib|EFIDroidUEFIApps/EFIDroidUi/Library/FileBlockIoLib/FileBlockIoLib.inf
-  MemoryBlockIoLib|EFIDroidUEFIApps/EFIDroidUi/Library/MemoryBlockIoLib/MemoryBlockIoLib.inf
   MakeDosFsLib|EFIDroidUEFIApps/EFIDroidUi/Library/MakeDosFsLib/MakeDosFsLib.inf
 
 [PcdsFixedAtBuild]

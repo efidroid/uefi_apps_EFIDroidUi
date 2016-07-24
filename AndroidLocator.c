@@ -91,7 +91,7 @@ CallbackBootAndroid (
 {
   MENU_ENTRY_PDATA *PData = This->Private;
 
-  return AndroidBootFromBlockIo(PData->BlockIo, PData->mbhandle, PData->DisablePatching, &PData->LastBootEntry);
+  return AutoBootContext(PData->context, PData->mbhandle, PData->DisablePatching, &PData->LastBootEntry);
 }
 
 MENU_ENTRY*
@@ -492,8 +492,6 @@ FindAndroidBlockIo (
   EFI_STATUS                Status;
   EFI_BLOCK_IO_PROTOCOL     *BlockIo;
   EFI_PARTITION_NAME_PROTOCOL *PartitionName;
-  UINTN                     BufferSize;
-  boot_img_hdr_t            *AndroidHdr;
   BOOLEAN                   IsRecovery = FALSE;
   CONST CHAR8               *IconPath = NULL;
   LIBAROMA_STREAMP          Icon = NULL;
@@ -502,6 +500,7 @@ FindAndroidBlockIo (
   LAST_BOOT_ENTRY           LastBootEntry = {0};
   CHAR16                    *TmpStr;
   EFI_DEVICE_PATH_PROTOCOL  *DevicePath = NULL;
+  bootimg_context_t         *context = NULL;
 
   Status = EFI_SUCCESS;
 
@@ -523,23 +522,16 @@ FindAndroidBlockIo (
     return Status;
   }
 
-  // allocate a buffer for the android header aligned on the block size
-  BufferSize = ALIGN_VALUE(sizeof(boot_img_hdr_t), BlockIo->Media->BlockSize);
-  AndroidHdr = AllocatePool(BufferSize);
-  if(AndroidHdr == NULL)
+  // setup context
+  context = AllocatePool(sizeof(*context));
+  if (context==NULL) {
     return EFI_OUT_OF_RESOURCES;
-
-  // read android header
-  Status = BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, 0, BufferSize, AndroidHdr);
-  if(EFI_ERROR(Status)) {
-    goto FREEBUFFER;
   }
+  custom_init_context(context);
 
-  // verify android header
-  Status = AndroidVerify(AndroidHdr);
-  if(EFI_ERROR(Status)) {
-    goto FREEBUFFER;
-  }
+  // identify
+  INTN rc = libboot_identify_blockio(BlockIo, context);
+  if(rc) goto FREEBUFFER;
 
   // build lastbootentry info
   LastBootEntry.Type = LAST_BOOT_TYPE_BLOCKIO;
@@ -589,10 +581,13 @@ FindAndroidBlockIo (
           goto FREEBUFFER;
         }
 
-        Status = FileBlockIoCreate(BootFile, &BlockIo);
-        if (EFI_ERROR(Status)) {
-          goto FREEBUFFER;
-        }
+        // recreate context
+        libboot_free_context(context);
+        custom_init_context(context);
+
+        // identify
+        INTN rc = libboot_identify_file(BootFile, context);
+        if(rc) goto FREEBUFFER;
 
         // build lastbootentry info
         LastBootEntry.Type = LAST_BOOT_TYPE_FILE;
@@ -607,19 +602,6 @@ FindAndroidBlockIo (
         }
         AsciiSPrint(LastBootEntry.FilePathName, sizeof(LastBootEntry.FilePathName), "%s", TmpStr);
         FreePool(TmpStr);
-
-        // read android header
-        SetMem(AndroidHdr, BufferSize, 0);
-        Status = BlockIo->ReadBlocks(BlockIo, BlockIo->Media->MediaId, 0, BufferSize, AndroidHdr);
-        if(EFI_ERROR(Status)) {
-          goto FREEBUFFER;
-        }
-
-        // verify android header
-        Status = AndroidVerify(AndroidHdr);
-        if(EFI_ERROR(Status)) {
-          goto FREEBUFFER;
-        }
       }
 
       // this is a recovery partition
@@ -644,11 +626,9 @@ FindAndroidBlockIo (
     Name = AsciiStrDup("Unknown");
   }
 
-  UINT32 Crc32 = 0;
-  Status = gBS->CalculateCrc32(AndroidHdr, sizeof(*AndroidHdr), &Crc32);
-  if (!EFI_ERROR(Status)) {
+  if (context->checksum) {
     CHAR16 Buf[50];
-    UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", Crc32);
+    UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
     IMGINFO_CACHE* Cache = UtilGetEFIDroidDataVariable(Buf);
     if (Cache) {
       Icon = libaroma_stream_ramdisk(Cache->IconPath);
@@ -669,20 +649,20 @@ FindAndroidBlockIo (
   }
 
   CPIO_NEWC_HEADER *Ramdisk;
-  Status = AndroidGetDecompRamdiskFromBlockIo (BlockIo, &Ramdisk);
+  Status = AndroidGetDecompressedRamdisk (context, &Ramdisk);
   if(!EFI_ERROR(Status)) {
     CHAR8* ImgName = NULL;
     Status = GetAndroidImgInfo(Ramdisk, &IconPath, &ImgName, &IsRecovery);
     if(!EFI_ERROR(Status) && ImgName) {
       // write to cache
-      if (Crc32) {
+      if (context->checksum) {
         IMGINFO_CACHE Cache;
         AsciiSPrint(Cache.Name, sizeof(Cache.Name), "%a", ImgName);
         AsciiSPrint(Cache.IconPath, sizeof(Cache.IconPath), "%a", IconPath);
         Cache.IsRecovery = IsRecovery;
 
         CHAR16 Buf[50];
-        UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", Crc32);
+        UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
         UtilSetEFIDroidDataVariable(Buf, &Cache, sizeof(Cache));
       }
 
@@ -708,7 +688,7 @@ SKIP:
     goto FREEBUFFER;
   }
   MENU_ENTRY_PDATA* EntryPData = Entry->Private;
-  EntryPData->BlockIo = BlockIo;
+  EntryPData->context = context;
   EntryPData->LastBootEntry = LastBootEntry;
 
   if(Icon==NULL) {
@@ -744,7 +724,11 @@ SKIP:
   Status = EFI_SUCCESS;
 
 FREEBUFFER:
-  FreePool(AndroidHdr);
+  if(EFI_ERROR(Status)) {
+    libboot_free_context(context);
+    if(context)
+      FreePool(context);
+  }
 
   return Status;
 }
@@ -792,7 +776,8 @@ FindMultibootSFS (
   EFI_FILE_INFO                     *NodeInfo;
   CHAR16                            *FilenameBuf;
   BOOLEAN                           NoFile;
-  multiboot_handle_t                *mbhandle;
+  multiboot_handle_t                *mbhandle = NULL;
+  bootimg_context_t                 *context = NULL;
   EFI_DEVICE_PATH_PROTOCOL          *DevicePath = NULL;
   LAST_BOOT_ENTRY                   LastBootEntry = {0};
 
@@ -956,7 +941,6 @@ ENUMERATE:
     if(mbhandle->Name && mbhandle->PartitionBoot) {
       EFI_FILE_PROTOCOL     *BootFile;
       EFI_FILE_PROTOCOL     *IconFile;
-      EFI_BLOCK_IO_PROTOCOL *BlockIo;
       LIBAROMA_STREAMP      IconStream = NULL;
 
       // open boot file
@@ -971,11 +955,16 @@ ENUMERATE:
         goto NEXT;
       }
 
-      // create block IO
-      Status = FileBlockIoCreate(BootFile, &BlockIo);
-      if (EFI_ERROR(Status)) {
+      // setup context
+      context = AllocatePool(sizeof(*context));
+      if (context == NULL) {
         goto NEXT;
       }
+      custom_init_context(context);
+
+      // identify
+      // ignore the result because we want multiboot systems to be always visible
+      libboot_identify_file(BootFile, context);
 
       // create new menu entry
       MENU_ENTRY *Entry = MenuCreateBootEntry();
@@ -1004,7 +993,7 @@ ENUMERATE:
       Entry->Icon = IconStream;
       Entry->Name = AsciiStrDup(mbhandle->Name);
       Entry->Description = mbhandle->Description?AsciiStrDup(mbhandle->Description):NULL;
-      EntryPData->BlockIo = BlockIo;
+      EntryPData->context = context;
       EntryPData->LastBootEntry = LastBootEntry;
       EntryPData->mbhandle = mbhandle;
       MenuAddEntry(mBootMenuMain, Entry);
@@ -1013,9 +1002,16 @@ ENUMERATE:
     }
 
 NEXT:
-    if(EFI_ERROR(Status) && mbhandle) {
-      FreePool(mbhandle);
-      mbhandle = NULL;
+    if(EFI_ERROR(Status)) {
+      if (mbhandle) {
+        FreePool(mbhandle);
+        mbhandle = NULL;
+      }
+      if (context) {
+        libboot_free_context(context);
+        FreePool(context);
+        context = NULL;
+      }
     }
 
     if(FilenameBuf) {

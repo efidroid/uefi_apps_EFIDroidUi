@@ -169,8 +169,8 @@ STATIC boot_intn_t internal_io_fn_blockio_read(boot_io_t* io, void* buf, boot_ui
     return count;
 }
 
-STATIC INTN libboot_identify_blockio(EFI_BLOCK_IO_PROTOCOL* BlockIo, bootimg_context_t* context) {
-    boot_io_t* io = libboot_platform_alloc(sizeof(boot_io_t));
+INTN libboot_identify_blockio(EFI_BLOCK_IO_PROTOCOL* BlockIo, bootimg_context_t* context) {
+    boot_io_t* io = libboot_alloc(sizeof(boot_io_t));
     if(!io) return -1;
     io->read = internal_io_fn_blockio_read;
     io->blksz = BlockIo->Media->BlockSize;
@@ -180,7 +180,50 @@ STATIC INTN libboot_identify_blockio(EFI_BLOCK_IO_PROTOCOL* BlockIo, bootimg_con
 
     INTN rc = libboot_identify(io, context);
     if(rc) {
-        libboot_platform_free(io);
+        libboot_free(io);
+    }
+
+    return rc;
+}
+
+STATIC boot_intn_t internal_io_fn_file_read(boot_io_t* io, void* buf, boot_uintn_t blkoff, boot_uintn_t count) {
+    EFI_FILE_PROTOCOL  *File = io->pdata;
+    EFI_STATUS         Status;
+    UINTN              BufferSize = count*io->blksz;
+
+    Status = FileHandleSetPosition(File, blkoff*io->blksz);
+    if (EFI_ERROR (Status)) {
+      return .1;
+    }
+
+    Status = FileHandleRead(File, &BufferSize, buf);
+    if (EFI_ERROR (Status)) {
+      return -1;
+    }
+
+    return BufferSize;
+}
+
+INTN libboot_identify_file(EFI_FILE_PROTOCOL* File, bootimg_context_t* context) {
+    EFI_STATUS Status;
+    UINT64     FileSize = 0;
+
+    Status = FileHandleGetSize(File, &FileSize);
+    if (EFI_ERROR (Status)) {
+      return -1;
+    }
+
+    boot_io_t* io = libboot_alloc(sizeof(boot_io_t));
+    if(!io) return -1;
+    io->read = internal_io_fn_file_read;
+    io->blksz = 1;
+    io->numblocks = FileSize*io->blksz;
+    io->pdata = File;
+    io->pdata_is_allocated = 0;
+
+    INTN rc = libboot_identify(io, context);
+    if(rc) {
+        libboot_free(io);
     }
 
     return rc;
@@ -195,44 +238,42 @@ STATIC VOID lkapi_patch_fdt(VOID *fdt) {
   if(mLKApi) mLKApi->boot_extend_fdt(fdt);
 }
 
+VOID custom_init_context(bootimg_context_t* context) {
+  libboot_init_context(context);
+  context->add_custom_atags = lkapi_add_custom_atags;
+  context->patch_fdt = lkapi_patch_fdt;
+}
+
 EFI_STATUS
-AndroidBootFromBlockIo (
-  IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
+AutoBootContext (
+  IN bootimg_context_t      *context,
   IN multiboot_handle_t     *mbhandle,
   IN BOOLEAN                DisablePatching,
   IN LAST_BOOT_ENTRY        *LastBootEntry
 )
 {
   EFI_STATUS                Status;
+  EFI_STATUS                ReturnStatus = EFI_UNSUPPORTED;
   VOID                      *NewRamdisk = NULL;
   UINT32                    RamdiskUncompressedLen = 0;
   BOOLEAN                   RecoveryMode = FALSE;
   CHAR8                     Buf[100];
+  INTN                      rc;
   UINT32                    i;
   CHAR8                     **error_stack;
 
-  // setup context
-  bootimg_context_t context;
-  libboot_init_context(&context);
-  context.add_custom_atags = lkapi_add_custom_atags;
-  context.patch_fdt = lkapi_patch_fdt;
-
-  // identify
-  INTN rc = libboot_identify_blockio(BlockIo, &context);
-  if(rc) goto CLEANUP;
-
   // load image
-  rc = libboot_load(&context);
+  rc = libboot_load(context);
   if(rc) goto CLEANUP;
 
   // update addresses if necessary
   if(mLKApi)
-    mLKApi->boot_update_addrs(&context.kernel_addr, &context.ramdisk_addr, &context.tags_addr);
+    mLKApi->boot_update_addrs(&context->kernel_addr, &context->ramdisk_addr, &context->tags_addr);
 
-  if(!DisablePatching) {
+  if(!DisablePatching && context->ramdisk_data) {
     // get decompressor
     CONST CHAR8 *DecompName;
-    decompress_fn Decompressor = decompress_method(context.ramdisk_data, context.ramdisk_size, &DecompName);
+    decompress_fn Decompressor = decompress_method(context->ramdisk_data, context->ramdisk_size, &DecompName);
     if(Decompressor==NULL) {
       MenuShowMessage("Error", "Can't find decompressor.");
       goto CLEANUP;
@@ -257,7 +298,7 @@ AndroidBootFromBlockIo (
     RamdiskUncompressedLen += objsize;
 
     // allocate uncompressed ramdisk memory
-    NewRamdisk = libboot_platform_bigalloc(RamdiskUncompressedLen);
+    NewRamdisk = libboot_alloc(RamdiskUncompressedLen);
     if (!NewRamdisk) {
       AsciiSPrint(Buf, sizeof(Buf), "Can't allocate memory for decompressing ramdisk: %r", Status);
       MenuShowMessage("Error", Buf);
@@ -265,7 +306,7 @@ AndroidBootFromBlockIo (
     }
 
     // decompress ramdisk
-    if(Decompressor(context.ramdisk_data, context.ramdisk_size, NULL, NULL, NewRamdisk, NULL, DecompError)) {
+    if(Decompressor(context->ramdisk_data, context->ramdisk_size, NULL, NULL, NewRamdisk, NULL, DecompError)) {
       goto CLEANUP;
     }
 
@@ -281,17 +322,15 @@ AndroidBootFromBlockIo (
       RecoveryMode = TRUE;
     }
 
-    // free old data
-    libboot_platform_bigfree(context.ramdisk_data);
-
-    // set new data
-    context.ramdisk_data = NewRamdisk;
-    context.ramdisk_size = ((UINT32)cpiohd)-((UINT32)NewRamdisk);
+    // replace ramdisk data
+    libboot_free(context->ramdisk_data);
+    context->ramdisk_data = NewRamdisk;
+    context->ramdisk_size = ((UINT32)cpiohd)-((UINT32)NewRamdisk);
     NewRamdisk = NULL;
   }
 
   // patch cmdline
-  Status = AndroidPatchCmdline(&context, mbhandle, RecoveryMode, DisablePatching);
+  Status = AndroidPatchCmdline(context, mbhandle, RecoveryMode, DisablePatching);
   if (EFI_ERROR(Status)) {
     AsciiSPrint(Buf, sizeof(Buf), "Can't load cmdline: %r", Status);
     MenuShowMessage("Error", Buf);
@@ -299,7 +338,7 @@ AndroidBootFromBlockIo (
   }
 
   // prepare for boot
-  rc = libboot_prepare(&context);
+  rc = libboot_prepare(context);
   if(rc) goto CLEANUP;
 
   // set LastBootEntry variable
@@ -313,7 +352,7 @@ AndroidBootFromBlockIo (
   }
 
   // BOOT
-  BootContext(&context);
+  BootContext(context);
 
   // WE SHOULD NEVER GET HERE
 
@@ -325,15 +364,17 @@ CLEANUP:
   libboot_error_stack_reset();
 
   // cleanup
-  libboot_platform_bigfree(NewRamdisk);
-  libboot_free_context(&context);
+  libboot_free(NewRamdisk);
 
-  return EFI_SUCCESS;
+  // unload
+  libboot_unload(context);
+
+  return ReturnStatus;
 }
 
 EFI_STATUS
-AndroidGetDecompRamdiskFromBlockIo (
-  IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
+AndroidGetDecompressedRamdisk (
+  IN bootimg_context_t      *context,
   OUT CPIO_NEWC_HEADER      **DecompressedRamdiskOut
 )
 {
@@ -344,23 +385,15 @@ AndroidGetDecompRamdiskFromBlockIo (
 
   Status = EFI_LOAD_ERROR;
 
-  // setup context
-  bootimg_context_t context;
-  libboot_init_context(&context);
-
-  // identify
-  INTN rc = libboot_identify_blockio(BlockIo, &context);
-  if(rc) goto ERROR;
-
   // load image
-  rc = libboot_load(&context);
+  INTN rc = libboot_load_partial(context, LIBBOOT_LOAD_TYPE_RAMDISK, 0);
   if(rc) goto ERROR;
 
   // check if we have a ramdisk
-  if(!context.ramdisk_data) goto ERROR;
+  if(!context->ramdisk_data) goto ERROR;
 
   // get decompressor
-  decompress_fn Decompressor = decompress_method(context.ramdisk_data, context.ramdisk_size, &DecompName);
+  decompress_fn Decompressor = decompress_method(context->ramdisk_data, context->ramdisk_size, &DecompName);
   if(Decompressor==NULL) goto ERROR;
 
   // get uncompressed size
@@ -370,7 +403,7 @@ AndroidGetDecompRamdiskFromBlockIo (
   if(DecompressedRamdisk==NULL) goto ERROR;
 
   // decompress ramdisk
-  if(Decompressor(context.ramdisk_data, context.ramdisk_size, NULL, NULL, (VOID*)DecompressedRamdisk, NULL, DecompError))
+  if(Decompressor(context->ramdisk_data, context->ramdisk_size, NULL, NULL, (VOID*)DecompressedRamdisk, NULL, DecompError))
     goto ERROR;
 
   // return data
@@ -380,11 +413,15 @@ AndroidGetDecompRamdiskFromBlockIo (
   goto CLEANUP;
 
 ERROR:
-  FreePool(DecompressedRamdisk);
+  if(DecompressedRamdisk)
+    FreePool(DecompressedRamdisk);
 
 CLEANUP:
-  // cleanup
-  libboot_free_context(&context);
+  if(context->ramdisk_data) {
+    libboot_free(context->ramdisk_data);
+    context->ramdisk_data = NULL;
+    context->ramdisk_size = 0;
+  }
 
   return Status;
 }
@@ -397,13 +434,20 @@ AndroidBootFromFile (
   IN LAST_BOOT_ENTRY    *LastBootEntry
 )
 {
-  EFI_STATUS                Status;
-  EFI_BLOCK_IO_PROTOCOL     *BlockIo;
+  EFI_STATUS Status = EFI_UNSUPPORTED;
 
-  Status = FileBlockIoCreate(File, &BlockIo);
+  // setup context
+  bootimg_context_t context;
+  custom_init_context(&context);
 
-  Status = AndroidBootFromBlockIo(BlockIo, mbhandle, DisablePatching, LastBootEntry);
-  FileBlockIoFree(BlockIo);
+  // identify
+  INTN rc = libboot_identify_file(File, &context);
+  if(rc) goto CLEANUP;
+
+  Status = AutoBootContext(&context, mbhandle, DisablePatching, LastBootEntry);
+
+CLEANUP:
+  libboot_free_context(&context);
 
   return Status;
 }
@@ -417,13 +461,46 @@ AndroidBootFromBuffer (
   IN LAST_BOOT_ENTRY    *LastBootEntry
 )
 {
-  EFI_STATUS                Status;
-  EFI_BLOCK_IO_PROTOCOL     *BlockIo;
+  EFI_STATUS Status = EFI_UNSUPPORTED;
 
-  Status = MemoryBlockIoCreate(Buffer, Size, &BlockIo);
+  // setup context
+  bootimg_context_t context;
+  custom_init_context(&context);
 
-  Status = AndroidBootFromBlockIo(BlockIo, mbhandle, DisablePatching, LastBootEntry);
-  MemoryBlockIoFree(BlockIo);
+  // identify
+  INTN rc = libboot_identify_memory(Buffer, Size, &context);
+  if(rc) goto CLEANUP;
+
+  Status = AutoBootContext(&context, mbhandle, DisablePatching, LastBootEntry);
+
+CLEANUP:
+  libboot_free_context(&context);
+
+  return Status;
+}
+
+EFI_STATUS
+AndroidBootFromBlockIo (
+  IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
+  IN multiboot_handle_t     *mbhandle,
+  IN BOOLEAN                DisablePatching,
+  IN LAST_BOOT_ENTRY        *LastBootEntry
+)
+{
+  EFI_STATUS Status = EFI_UNSUPPORTED;
+
+  // setup context
+  bootimg_context_t context;
+  custom_init_context(&context);
+
+  // identify
+  INTN rc = libboot_identify_blockio(BlockIo, &context);
+  if(rc) goto CLEANUP;
+
+  Status = AutoBootContext(&context, mbhandle, DisablePatching, LastBootEntry);
+
+CLEANUP:
+  libboot_free_context(&context);
 
   return Status;
 }
