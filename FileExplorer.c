@@ -70,9 +70,11 @@ MenuItemCallback (
 
     FindFiles(Menu, File, ItemContext->FileName, ItemContext->Handle);
     MenuStackPush(Menu);
+
+    return EFI_SUCCESS;
   }
 
-  else if (ItemContext->FileExtension) {
+  if (ItemContext->FileExtension) {
     if(!StrCmp(ItemContext->FileExtension, L"efi")) {
       // open file
       EFI_FILE_HANDLE File = NULL;
@@ -136,10 +138,38 @@ MenuItemCallback (
         AsciiSPrint(Buf, 100, "Error loading: %r", Status);
         MenuShowMessage("Error", Buf);
       }
+
+      return EFI_SUCCESS;
     }
   }
 
-  return EFI_SUCCESS;
+  // open file
+  EFI_FILE_HANDLE File = NULL;
+  Status = ItemContext->Root->Open (
+                   ItemContext->Root,
+                   &File,
+                   ItemContext->FileName,
+                   EFI_FILE_MODE_READ,
+                   0
+                   );
+  if (EFI_ERROR (Status)) {
+    CHAR8 Buf[100];
+    AsciiSPrint(Buf, 100, "Can't open file: %r", Status);
+    MenuShowMessage("Error", Buf);
+
+    return Status;
+  }
+
+  // boot via libboot
+  Status = AndroidBootFromFile(File, NULL, TRUE, NULL);
+  if (EFI_ERROR (Status)) {
+    CHAR8 Buf[100];
+    AsciiSPrint(Buf, 100, "Can't boot file: %r", Status);
+    MenuShowMessage("Error", Buf);
+
+    return Status;
+  }
+  return Status;
 }
 
 VOID
