@@ -199,6 +199,9 @@ main (
   if(!UtilVariableExists(L"ui-show-file-explorer", &gEFIDroidVariableGuid))
     SettingBoolSet("ui-show-file-explorer", TRUE);
 
+  // init UI
+  MenuInit();
+
   // create menus
   mBootMenuMain = MenuCreate();
 
@@ -289,8 +292,6 @@ main (
   Entry->Callback = RebootCallback;
   Entry->Private = UnicodeStrDup(L"download");
   MenuAddEntry(mPowerMenu, Entry);
-
-  MenuInit();
 
   // show previous boot error
   CHAR8* EFIDroidErrorStr = UtilGetEFIDroidVariable("EFIDroidErrorStr");

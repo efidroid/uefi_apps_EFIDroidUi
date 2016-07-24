@@ -12,6 +12,7 @@ STATIC EFI_DEVICE_PATH_PROTOCOL        *mEspDevicePath = NULL;
 
 STATIC BOOLEAN mFirstAndroidEntry = TRUE;
 STATIC BOOLEAN mFirstRecoveryEntry = TRUE;
+STATIC BOOLEAN mFirstCacheScan = TRUE;
 
 STATIC
 VOID
@@ -656,6 +657,11 @@ FindAndroidBlockIo (
   }
 
   if(context->type==BOOTIMG_TYPE_ANDROID) {
+    if (mFirstCacheScan) {
+      MenuShowProgressDialog("Updating entry cache", FALSE);
+      mFirstCacheScan = FALSE;
+    }
+
     CPIO_NEWC_HEADER *Ramdisk;
     Status = AndroidGetDecompressedRamdisk (context, &Ramdisk);
     if(!EFI_ERROR(Status)) {
@@ -1144,6 +1150,8 @@ AndroidLocatorAddItems (
   VOID
 )
 {
+  mFirstCacheScan = TRUE;
+
   // add Android options
   VisitAllInstancesOfProtocol (
     &gEfiBlockIoProtocolGuid,
