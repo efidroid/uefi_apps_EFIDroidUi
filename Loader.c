@@ -65,15 +65,15 @@ AndroidPatchCmdline (
     HARDDRIVE_DEVICE_PATH *Hd = (HARDDRIVE_DEVICE_PATH*) Node;
     switch (Hd->SignatureType) {
     case SIGNATURE_TYPE_MBR:
-      Len = 3+1+8+1+1;
+      Len = 3+1+8+1+1 + AsciiStrLen(mbhandle->MultibootConfig);
       DevPathString = AllocatePool(Len);
-      AsciiSPrint(DevPathString, Len, "MBR,%08x,", *((UINT32 *) (&(Hd->Signature[0]))));
+      AsciiSPrint(DevPathString, Len, "MBR,%08x,%a", *((UINT32 *) (&(Hd->Signature[0]))), mbhandle->MultibootConfig);
       break;
 
     case SIGNATURE_TYPE_GUID:
-      Len = 3+1+36+1+1;
+      Len = 3+1+36+1+1 + AsciiStrLen(mbhandle->MultibootConfig);
       DevPathString = AllocatePool(Len);
-      AsciiSPrint(DevPathString, Len, "GPT,%g,", (EFI_GUID *) &(Hd->Signature[0]));
+      AsciiSPrint(DevPathString, Len, "GPT,%g,%a", (EFI_GUID *) &(Hd->Signature[0]), mbhandle->MultibootConfig);
       break;
 
     default:
