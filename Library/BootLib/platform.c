@@ -30,52 +30,56 @@
 
 extern lkapi_t *mLKApi;
 
-boot_uint32_t libboot_qcdt_pmic_target(boot_uint8_t num_ent) {
+static boot_uint32_t boot_get_hwid_zero(const char* name) {
+    uint32_t data = 0;
     if(mLKApi)
-        return mLKApi->boot_get_pmic_target(num_ent);
+        mLKApi->boot_get_hwid(name, &data);
+    return data;
+};
+
+boot_uint32_t libboot_qcdt_pmic_target(boot_uint8_t num_ent) {
+    if(num_ent==0)
+        return boot_get_hwid_zero("qcom,pmic_rev1");
+    if(num_ent==1)
+        return boot_get_hwid_zero("qcom,pmic_rev2");
+    if(num_ent==2)
+        return boot_get_hwid_zero("qcom,pmic_rev3");
+    if(num_ent==3)
+        return boot_get_hwid_zero("qcom,pmic_rev4");
+
     return 0;
 }
 
 boot_uint32_t libboot_qcdt_platform_id(void) {
-    if(mLKApi)
-        return mLKApi->boot_get_platform_id();
-    return 0;
+    return boot_get_hwid_zero("qcom,platform_id");
 }
 
 boot_uint32_t libboot_qcdt_hardware_id(void) {
-    if(mLKApi)
-        return mLKApi->boot_get_hardware_id();
-    return 0;
+    return boot_get_hwid_zero("qcom,platform_hw");
 }
 
 boot_uint32_t libboot_qcdt_hardware_subtype(void) {
-    if(mLKApi)
-        return mLKApi->boot_get_hardware_subtype();
-    return 0;
+    return boot_get_hwid_zero("qcom,subtype");
 }
 
 boot_uint32_t libboot_qcdt_soc_version(void) {
-    if(mLKApi)
-        return mLKApi->boot_get_soc_version();
-    return 0;
+    return boot_get_hwid_zero("qcom,soc_rev");
 }
 
 boot_uint32_t libboot_qcdt_target_id(void) {
-    if(mLKApi)
-        return mLKApi->boot_get_target_id();
-    return 0;
+    return boot_get_hwid_zero("qcom,variant_id");
 }
 
 boot_uint32_t libboot_qcdt_foundry_id(void) {
-    if(mLKApi)
-        return mLKApi->boot_get_foundry_id();
-    return 0;
+    return boot_get_hwid_zero("qcom,foundry_id");
 }
 
 boot_uint32_t libboot_qcdt_get_hlos_subtype(void) {
-    if(mLKApi)
-        return mLKApi->boot_get_hlos_subtype();
-    return 0;
+    return boot_get_hwid_zero("qcom,platform_subtype");
+}
+
+boot_uintn_t libboot_platform_machtype(void) {
+    return boot_get_hwid_zero("qcom,machtype");
 }
 
 void libboot_platform_memmove(void* dst, const void* src, boot_uintn_t num) {
@@ -146,21 +150,6 @@ void* libboot_platform_getmemory(void *pdata, libboot_platform_getmemory_callbac
   }
 
   return pdata;
-}
-
-boot_uintn_t libboot_platform_machtype(void) {
-    if(mLKApi)
-        return mLKApi->boot_get_machine_type();
-    return 0;
-}
-
-void* libboot_platform_bigalloc(boot_uintn_t size) {
-    return AllocatePool(size);
-}
-
-void libboot_platform_bigfree(void *ptr) {
-  if(ptr)
-    FreePool(ptr);
 }
 
 void* libboot_platform_bootalloc(boot_uintn_t addr, boot_uintn_t sz) {
