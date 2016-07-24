@@ -624,6 +624,11 @@ FindAndroidBlockIo (
     // identify
     INTN rc = libboot_identify_blockio(BlockIo, context);
     if(rc) goto FREEBUFFER;
+
+    // hide qcmbn images and ELF's like tz and rpm
+    // we don't do this for replacement partitions because the user may want to boot these image types
+    if(context->type==BOOTIMG_TYPE_QCMBN || context->type==BOOTIMG_TYPE_ELF)
+      goto FREEBUFFER;
   }
 
   if (context->checksum) {
