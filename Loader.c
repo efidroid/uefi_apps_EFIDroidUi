@@ -543,11 +543,7 @@ ERROR:
     FreePool(DecompressedRamdisk);
 
 CLEANUP:
-  if(context->ramdisk_data) {
-    libboot_free(context->ramdisk_data);
-    context->ramdisk_data = NULL;
-    context->ramdisk_size = 0;
-  }
+  libboot_unload(context);
 
   return Status;
 }
