@@ -254,7 +254,6 @@ main (
   Entry->Name = AsciiStrDup("File Explorer");
   Entry->Callback = FileExplorerCallback;
   Entry->HideBootMessage = TRUE;
-  Entry->Hidden = !SettingBoolGet("ui-show-file-explorer");
   Entry->Update = FileExplorerUpdate;
   MenuAddEntry(mBootMenuMain, Entry);
 
@@ -267,7 +266,6 @@ main (
   Entry->Name = AsciiStrDup("Fastboot");
   Entry->Callback = FastbootCallback;
   Entry->HideBootMessage = TRUE;
-  Entry->Hidden = !SettingBoolGet("ui-show-fastboot");
   Entry->Update = FastbootMenuEntryUpdate;
   MenuAddEntry(mBootMenuMain, Entry);
 #endif
