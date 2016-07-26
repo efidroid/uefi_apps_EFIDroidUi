@@ -91,4 +91,4 @@
   TRUE
 
 [BuildOptions]
-  GCC:*_*_*_CC_FLAGS     = -Wno-error -DAVOID_TABLES -DANDROID_TILE_BASED_DECODE
+  GCC:*_*_*_CC_FLAGS     = -Wno-unused-label -Wno-main -Wno-unused-variable -Wno-unused-but-set-variable -DAVOID_TABLES -DANDROID_TILE_BASED_DECODE
