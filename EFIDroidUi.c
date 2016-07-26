@@ -9,6 +9,7 @@ EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL *gEfiDevicePathFromTextProtocol = NULL;
 
 STATIC EFI_GUID mUefiShellFileGuid = {0x7C04A583, 0x9E3E, 0x4f1c, {0xAD, 0x65, 0xE0, 0x52, 0x68, 0xD0, 0xB4, 0xD1 }};
 
+STATIC
 EFI_STATUS
 BootOptionEfiOption (
   IN MENU_ENTRY* This
@@ -24,6 +25,15 @@ BootOptionEfiOption (
   }
 
   return BootOption->Status;
+}
+
+STATIC
+VOID
+UefiMenuEntryUpdate (
+  IN MENU_ENTRY* This
+)
+{
+  This->Hidden = !SettingBoolGet("ui-show-uefi-options");
 }
 
 STATIC VOID
@@ -52,6 +62,7 @@ AddEfiBootOptions (
       // GROUP: UEFI
       Entry = MenuCreateGroupEntry();
       Entry->Name = AsciiStrDup("UEFI");
+      Entry->Update = UefiMenuEntryUpdate;
       MenuAddEntry(mBootMenuMain, Entry);
       First = FALSE;
     }
@@ -84,6 +95,7 @@ AddEfiBootOptions (
     Entry->Callback = BootOptionEfiOption;
     Entry->Private = &BootOption[Index];
     Entry->ResetGop = TRUE;
+    Entry->Update = UefiMenuEntryUpdate;
     MenuAddEntry(mBootMenuMain, Entry);
   }
 }
@@ -193,6 +205,8 @@ main (
     UtilSetEFIDroidVariable("fastboot-enable-boot-patch", "0");
   if(!UtilVariableExists(L"ui-show-file-explorer", &gEFIDroidVariableGuid))
     SettingBoolSet("ui-show-file-explorer", TRUE);
+  if(!UtilVariableExists(L"ui-show-uefi-options", &gEFIDroidVariableGuid))
+    SettingBoolSet("ui-show-uefi-options", FALSE);
 
   // init UI
   MenuInit();

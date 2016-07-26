@@ -24,6 +24,19 @@ ShowFileExplorerCallback (
   return EFI_SUCCESS;
 }
 
+STATIC
+EFI_STATUS
+ShowUEFIOptionsCallback (
+  MENU_ENTRY* This
+)
+{
+  SettingBoolSet("ui-show-uefi-options", !This->ToggleEnabled);
+  This->ToggleEnabled = SettingBoolGet("ui-show-uefi-options");
+  InvalidateActiveMenu();
+  MainMenuUpdateUi();
+  return EFI_SUCCESS;
+}
+
 EFI_STATUS
 SettingsMenuShow (
   VOID
@@ -36,6 +49,15 @@ SettingsMenuShow (
   Menu = MenuCreate();
   Menu->Title = AsciiStrDup("Settings");
   Menu->BackCallback = SettingsMenuBackCallback;
+
+  // UEFI options
+  Entry = MenuCreateEntry();
+  Entry->Name = AsciiStrDup("Show UEFI boot options");
+  Entry->ShowToggle = TRUE;
+  Entry->ToggleEnabled = SettingBoolGet("ui-show-uefi-options");
+  Entry->HideBootMessage = TRUE;
+  Entry->Callback = ShowUEFIOptionsCallback;
+  MenuAddEntry(Menu, Entry);
 
   // file explorer
   Entry = MenuCreateEntry();
