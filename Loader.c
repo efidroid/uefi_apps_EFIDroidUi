@@ -234,6 +234,7 @@ VOID custom_init_context(bootimg_context_t* context) {
   context->patch_fdt = lkapi_patch_fdt;
 }
 
+STATIC
 EFI_STATUS
 BootEfiContext (
   IN bootimg_context_t      *context

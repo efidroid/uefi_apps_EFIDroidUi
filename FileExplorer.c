@@ -172,6 +172,7 @@ MenuItemCallback (
   return Status;
 }
 
+STATIC
 VOID
 MenuItemFreeCallback (
   MENU_ENTRY* This

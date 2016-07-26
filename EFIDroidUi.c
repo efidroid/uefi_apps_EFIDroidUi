@@ -101,6 +101,7 @@ AddEfiBootOptions (
 }
 
 #if defined (MDE_CPU_ARM)
+STATIC
 EFI_STATUS
 FastbootCallback (
   IN MENU_ENTRY* This
@@ -120,6 +121,7 @@ FastbootMenuEntryUpdate (
 }
 #endif
 
+STATIC
 EFI_STATUS
 RebootCallback (
   IN MENU_ENTRY* This
@@ -133,6 +135,7 @@ RebootCallback (
   return EFI_DEVICE_ERROR;
 }
 
+STATIC
 EFI_STATUS
 PowerOffCallback (
   IN MENU_ENTRY* This
@@ -142,6 +145,7 @@ PowerOffCallback (
   return EFI_DEVICE_ERROR;
 }
 
+STATIC
 EFI_STATUS
 RebootLongPressCallback (
   IN MENU_ENTRY* This
@@ -151,6 +155,7 @@ RebootLongPressCallback (
   return EFI_SUCCESS;
 }
 
+STATIC
 EFI_STATUS
 PowerMenuBackCallback (
   MENU_OPTION* This
@@ -159,6 +164,7 @@ PowerMenuBackCallback (
   return EFI_ABORTED;
 }
 
+STATIC
 EFI_STATUS
 MainMenuActionCallback (
   MENU_OPTION* This
