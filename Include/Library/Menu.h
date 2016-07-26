@@ -32,6 +32,7 @@ struct _MENU_ENTRY {
   // selection
   BOOLEAN Hidden;
   BOOLEAN Selectable;
+  VOID (*Update) (struct _MENU_ENTRY* This);
 
   // callback
   EFI_STATUS (*Callback) (struct _MENU_ENTRY* This);

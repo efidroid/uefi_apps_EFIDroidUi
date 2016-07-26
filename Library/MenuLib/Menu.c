@@ -686,6 +686,27 @@ MenuGetHeight (
   return Height;
 }
 
+STATIC
+VOID
+MenuUpdateEntries (
+  MENU_OPTION         *Menu
+  )
+{
+  LIST_ENTRY   *Link;
+  MENU_ENTRY   *Entry;
+
+  Link = Menu->Head.ForwardLink;
+  while (Link != NULL && Link != &Menu->Head) {
+    Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
+
+    if (Entry->Update) {
+      Entry->Update(Entry);
+    }
+
+    Link = Link->ForwardLink;
+  }
+}
+
 UINTN
 MenuGetItemPosY (
   MENU_OPTION         *Menu,
@@ -975,10 +996,14 @@ BuildAromaMenu (
   MENU_ENTRY   *Entry;
   UINTN        Index;
   UINTN        item_y = 0;
-  UINTN        MenuHeight = libaroma_dp(MenuGetHeight(Menu));
-  UINTN        MenuWidth  = Menu->ListWidth?libaroma_dp(Menu->ListWidth):dc->w;
+  UINTN        MenuHeight;
+  UINTN        MenuWidth;
 
   InvalidateMenu(Menu);
+  MenuUpdateEntries(Menu);
+
+  MenuHeight = libaroma_dp(MenuGetHeight(Menu));
+  MenuWidth  = Menu->ListWidth?libaroma_dp(Menu->ListWidth):dc->w;
 
   LIBAROMA_CANVASP cv  = libaroma_canvas(MenuWidth, MenuHeight);
   LIBAROMA_CANVASP cva = libaroma_canvas(MenuWidth, MenuHeight);
@@ -990,6 +1015,9 @@ BuildAromaMenu (
   while (Link != NULL && Link != &Menu->Head) {
     Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
     UINTN ItemHeight = libaroma_dp(Entry->ItemHeight);
+
+    if (Entry->Update)
+      Entry->Update(Entry);
 
     if (Entry->Hidden)
       goto NEXT;
