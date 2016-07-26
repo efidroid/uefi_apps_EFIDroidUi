@@ -204,7 +204,7 @@ main (
   if(!UtilVariableExists(L"fastboot-enable-boot-patch", &gEFIDroidVariableGuid))
     UtilSetEFIDroidVariable("fastboot-enable-boot-patch", "0");
   if(!UtilVariableExists(L"ui-show-file-explorer", &gEFIDroidVariableGuid))
-    SettingBoolSet("ui-show-file-explorer", TRUE);
+    SettingBoolSet("ui-show-file-explorer", FALSE);
   if(!UtilVariableExists(L"ui-show-uefi-options", &gEFIDroidVariableGuid))
     SettingBoolSet("ui-show-uefi-options", FALSE);
 
