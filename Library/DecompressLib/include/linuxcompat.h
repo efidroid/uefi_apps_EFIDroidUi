@@ -4,15 +4,20 @@
 // UEFI includes
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
-#include <Library/PrintLib.h>
-#include <Library/MemoryAllocationLib.h>
+
+// libc includes
+#include <stdlib.h>
+#include <errno.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
 
 // types
-typedef UINT8 u8;
-typedef UINT16 u16;
-typedef UINT32 u32;
-typedef UINT64 u64;
-typedef UINTN size_t;
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
 typedef u16 __le16;
 typedef u16 __be16;
 typedef u32 __le32;
@@ -20,34 +25,11 @@ typedef u32 __be32;
 typedef u64 __le64;
 typedef u64 __be64;
 
-typedef UINT8 uint8_t;
-typedef UINT16 uint16_t;
-typedef UINT32 uint32_t;
-typedef UINT64 uint64_t;
-typedef INT32 int32_t;
-typedef BOOLEAN bool;
-
-#define false FALSE
-#define true TRUE
-
-// errno
-#define	ENOMEM		12	/* Out of memory */
-#define	EINVAL		22	/* Invalid argument */
-
 // memory allocation
-#define malloc(x) AllocatePool(x)
-#define free(x) FreePool(x)
 #define kmalloc(x, y) malloc(x)
 #define kfree(x) free(x)
 #define vmalloc(x) malloc(x)
 #define vfree(x) free(x)
-
-// memory operations
-#define memcpy CopyMem
-#define memcmp CompareMem
-#define memset(buf, val, sz) SetMem(buf, sz, val)
-#define memmove CopyMem
-//#define memzero(s, n)     memset((s), (0), (n))
 
 // debug
 #define pr_debug(fmt, ...) DEBUG((EFI_D_INFO, fmt, __VA_ARGS__))
@@ -56,7 +38,6 @@ typedef BOOLEAN bool;
 #define __initconst
 #define __init
 #define noinline
-#define __packed __attribute__((packed))
 #define __force
 #define __always_inline	inline __attribute__((always_inline))
 
