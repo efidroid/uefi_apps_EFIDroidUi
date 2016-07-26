@@ -229,4 +229,9 @@ MenuStackPop (
   VOID
 );
 
+VOID
+MenuShowTutorial (
+  VOID
+);
+
 #endif /* ! MENU_H */

@@ -352,6 +352,14 @@ main (
   // clear the watchdog timer
   gBS->SetWatchdogTimer (0, 0, 0, NULL);
 
+  // first boot?
+  UINTN* LastBootVersion = UtilGetEFIDroidDataVariable(L"last-boot-version");
+  if(LastBootVersion==NULL) {
+    UINTN NewValue = 1;
+    UtilSetEFIDroidDataVariable(L"last-boot-version", &NewValue, sizeof(NewValue));
+    MenuShowTutorial();
+  }
+
   // show main menu
   MenuStackPush(mBootMenuMain);
   MenuEnter (0, TRUE);

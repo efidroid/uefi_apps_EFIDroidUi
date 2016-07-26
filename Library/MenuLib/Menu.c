@@ -1863,3 +1863,97 @@ MenuStackPop (
 
   return OldMenu;
 }
+
+VOID
+MenuShowTutorial (
+  VOID
+)
+{
+  UINTN           WaitIndex;
+  EFI_INPUT_KEY   Key;
+  EFI_STATUS      Status;
+
+  if(Initialized==FALSE)
+    return;
+
+  int statusbar_height = libaroma_dp(24);
+
+  // draw background
+  libaroma_draw_rect(
+    dc, 0, 0, dc->w, dc->h, RGB(0097A7), 0xff
+  );
+
+  // draw statusbar
+  libaroma_draw_rect(
+    dc, 0, 0, dc->w, statusbar_height, RGB(00838F), 0xff
+  );
+  libaroma_draw_text(
+      dc,
+      "EFIDroid",
+      0, libaroma_dp(2) ,RGB(FFFFFF), dc->w,
+      LIBAROMA_FONT(0,3)|LIBAROMA_TEXT_CENTER,
+      100
+  );
+
+  // draw welcome title
+  libaroma_draw_text(
+      dc,
+      "<size=10>Welcome to EFIDroid</size>\n\n"
+      "<size=5>"
+      "You can't use your touchscreen in this bootloader. Instead you have to use your physical buttons. On menu entries with three dots on the right you can long-press <b>POWER</b> to get more options.\n\n\n"
+      "<b>POWER</b>: select highlighted item\n\n"
+      "<b>VOLUME-UP</b>: go up\n\n"
+      "<b>VOLUME-DOWN</b>: go down\n\n"
+      "</size>",
+      0, statusbar_height + libaroma_dp(30), RGB(FFFFFF), dc->w,
+      LIBAROMA_FONT(0,10)|LIBAROMA_TEXT_CENTER,
+      100
+  );
+
+  // draw FAB circle
+  int center_x=(dc->w>>1);
+  int center_y=(dc->h-libaroma_dp(56 * 3));
+  libaroma_draw_circle(
+    dc, RGB(EDFE3E), center_x, center_y, libaroma_dp(56), 0xff
+  );
+  // draw FAB arrow
+  LIBAROMA_CANVASP arrow_forward = libaroma_image_ex(libaroma_stream_ramdisk("icons/ic_arrow_forward_black_24px.svg"), 0, 0);
+  if(arrow_forward) {
+    int dpsz=libaroma_dp(24);
+    libaroma_draw_scale_smooth(
+      dc, arrow_forward,
+      center_x - libaroma_dp(12),
+      center_y - libaroma_dp(12),
+      dpsz, dpsz,
+      0, 0, arrow_forward->w, arrow_forward->h
+    );
+  }
+
+  // FAB description
+  libaroma_draw_text(
+      dc,"Press <b>POWER</b> to continue",
+      0, dc->h - libaroma_dp(56), RGB(FFFFFF), dc->w,
+      LIBAROMA_FONT(0,5)|LIBAROMA_TEXT_CENTER,
+      100
+  );
+
+  // sync
+  libaroma_sync();
+
+  while(TRUE) {
+    Status = gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &WaitIndex);
+    if(EFI_ERROR (Status))
+      return;
+
+    Status = gST->ConIn->ReadKeyStroke (gST->ConIn, &Key);
+    if(EFI_ERROR (Status))
+      return;
+
+    if(Key.ScanCode==SCAN_NULL) {
+      switch(Key.UnicodeChar) {
+        case CHAR_CARRIAGE_RETURN:
+          return;
+      }
+    }
+  }
+}
