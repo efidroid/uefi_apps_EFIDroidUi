@@ -37,6 +37,19 @@ ShowUEFIOptionsCallback (
   return EFI_SUCCESS;
 }
 
+STATIC
+EFI_STATUS
+ShowFastbootCallback (
+  MENU_ENTRY* This
+)
+{
+  SettingBoolSet("ui-show-fastboot", !This->ToggleEnabled);
+  This->ToggleEnabled = SettingBoolGet("ui-show-fastboot");
+  InvalidateActiveMenu();
+  MainMenuUpdateUi();
+  return EFI_SUCCESS;
+}
+
 EFI_STATUS
 SettingsMenuShow (
   VOID
@@ -66,6 +79,15 @@ SettingsMenuShow (
   Entry->ToggleEnabled = SettingBoolGet("ui-show-file-explorer");
   Entry->HideBootMessage = TRUE;
   Entry->Callback = ShowFileExplorerCallback;
+  MenuAddEntry(Menu, Entry);
+
+  // fastboot
+  Entry = MenuCreateEntry();
+  Entry->Name = AsciiStrDup("Show Fastboot");
+  Entry->ShowToggle = TRUE;
+  Entry->ToggleEnabled = SettingBoolGet("ui-show-fastboot");
+  Entry->HideBootMessage = TRUE;
+  Entry->Callback = ShowFastbootCallback;
   MenuAddEntry(Menu, Entry);
 
   MenuStackPush(Menu);

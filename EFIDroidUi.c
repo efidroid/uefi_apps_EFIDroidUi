@@ -109,6 +109,15 @@ FastbootCallback (
   FastbootInit();
   return EFI_SUCCESS;
 }
+
+STATIC
+VOID
+FastbootMenuEntryUpdate (
+  IN MENU_ENTRY* This
+)
+{
+  This->Hidden = !SettingBoolGet("ui-show-fastboot");
+}
 #endif
 
 EFI_STATUS
@@ -207,6 +216,8 @@ main (
     SettingBoolSet("ui-show-file-explorer", FALSE);
   if(!UtilVariableExists(L"ui-show-uefi-options", &gEFIDroidVariableGuid))
     SettingBoolSet("ui-show-uefi-options", FALSE);
+  if(!UtilVariableExists(L"ui-show-fastboot", &gEFIDroidVariableGuid))
+    SettingBoolSet("ui-show-fastboot", TRUE);
 
   // init UI
   MenuInit();
@@ -256,6 +267,8 @@ main (
   Entry->Name = AsciiStrDup("Fastboot");
   Entry->Callback = FastbootCallback;
   Entry->HideBootMessage = TRUE;
+  Entry->Hidden = !SettingBoolGet("ui-show-fastboot");
+  Entry->Update = FastbootMenuEntryUpdate;
   MenuAddEntry(mBootMenuMain, Entry);
 #endif
 
