@@ -1913,9 +1913,9 @@ MenuShowTutorial (
   // draw FAB circle
   int center_x=(dc->w>>1);
   int center_y=(dc->h-libaroma_dp(56 * 3));
-  libaroma_draw_circle(
-    dc, RGB(EDFE3E), center_x, center_y, libaroma_dp(56), 0xff
-  );
+  int r=libaroma_dp(28);
+  libaroma_gradient(dc, center_x-r, center_y-r, r*2, r*2, RGB(EDFE3E), RGB(EDFE3E), r, 0x1111);
+
   // draw FAB arrow
   LIBAROMA_CANVASP arrow_forward = libaroma_image_ex(libaroma_stream_ramdisk("icons/ic_arrow_forward_black_24px.svg"), 0, 0);
   if(arrow_forward) {
