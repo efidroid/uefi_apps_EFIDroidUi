@@ -7,7 +7,6 @@ MENU_OPTION                 *mPowerMenu = NULL;
 EFI_DEVICE_PATH_TO_TEXT_PROTOCOL   *gEfiDevicePathToTextProtocol = NULL;
 EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL *gEfiDevicePathFromTextProtocol = NULL;
 
-STATIC MENU_ENTRY *FileExplorerEntry = NULL;
 STATIC EFI_GUID mUefiShellFileGuid = {0x7C04A583, 0x9E3E, 0x4f1c, {0xAD, 0x65, 0xE0, 0x52, 0x68, 0xD0, 0xB4, 0xD1 }};
 
 EFI_STATUS
@@ -152,10 +151,6 @@ MainMenuUpdateUi (
   VOID
 )
 {
-  if (FileExplorerEntry) {
-    FileExplorerEntry->Hidden = !SettingBoolGet("ui-show-file-explorer");
-  }
-
   InvalidateMenu(mBootMenuMain);
 
   return EFI_SUCCESS;
@@ -235,8 +230,8 @@ main (
   Entry->Callback = FileExplorerCallback;
   Entry->HideBootMessage = TRUE;
   Entry->Hidden = !SettingBoolGet("ui-show-file-explorer");
+  Entry->Update = FileExplorerUpdate;
   MenuAddEntry(mBootMenuMain, Entry);
-  FileExplorerEntry = Entry;
 
 #if defined (MDE_CPU_ARM)
   FastbootCommandsAdd();

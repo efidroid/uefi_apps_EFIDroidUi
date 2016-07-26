@@ -176,6 +176,11 @@ FileExplorerCallback (
   IN MENU_ENTRY* This
 );
 
+VOID
+FileExplorerUpdate (
+  IN MENU_ENTRY* This
+);
+
 EFI_STATUS
 SettingsMenuShow (
   VOID

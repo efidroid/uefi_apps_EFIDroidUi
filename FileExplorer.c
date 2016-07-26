@@ -389,3 +389,11 @@ FileExplorerCallback (
   MenuStackPush(FileSystemMenu);
   return EFI_SUCCESS;
 }
+
+VOID
+FileExplorerUpdate (
+  IN MENU_ENTRY* This
+)
+{
+  This->Hidden = !SettingBoolGet("ui-show-file-explorer");
+}
