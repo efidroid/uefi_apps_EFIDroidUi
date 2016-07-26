@@ -632,54 +632,47 @@ FindAndroidBlockIo (
       goto FREEBUFFER;
   }
 
-  if (context->checksum) {
-    CHAR16 Buf[50];
-    UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
-    IMGINFO_CACHE* Cache = UtilGetEFIDroidDataVariable(Buf);
-    if (Cache) {
-      Icon = libaroma_stream_ramdisk(Cache->IconPath);
-      IsRecovery = Cache->IsRecovery;
-
-      if (IsRecovery) {
-        FreePool(Name);
-        Name = AllocateZeroPool(4096);
-        if(Name) {
-          AsciiSPrint(Name, 4096, "%a (Internal)", Cache->Name);
-        }
-        else {
-          Name = AsciiStrDup(Cache->Name);
-        }
-      }
-
-      FreePool(Cache);
-      goto SKIP;
-    }
-  }
-
   if(context->type==BOOTIMG_TYPE_ANDROID) {
+    // try to get info from cache
+    if (context->checksum) {
+      CHAR16 Buf[50];
+      UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
+      IMGINFO_CACHE* Cache = UtilGetEFIDroidDataVariable(Buf);
+      if (Cache) {
+        Icon = libaroma_stream_ramdisk(Cache->IconPath);
+        IsRecovery = Cache->IsRecovery;
+
+        if (IsRecovery) {
+          FreePool(Name);
+          Name = AllocateZeroPool(4096);
+          if(Name) {
+            AsciiSPrint(Name, 4096, "%a (Internal)", Cache->Name);
+          }
+          else {
+            Name = AsciiStrDup(Cache->Name);
+          }
+        }
+
+        FreePool(Cache);
+        goto SKIP;
+      }
+    }
+
+    // show progress dialog on first scan
     if (mFirstCacheScan) {
       MenuShowProgressDialog("Updating entry cache", FALSE);
       mFirstCacheScan = FALSE;
     }
 
-    CPIO_NEWC_HEADER *Ramdisk;
+    // decompress ramdisk
+    CHAR8* ImgName = NULL;
+    CPIO_NEWC_HEADER *Ramdisk = NULL;
     Status = AndroidGetDecompressedRamdisk (context, &Ramdisk);
     if(!EFI_ERROR(Status)) {
-      CHAR8* ImgName = NULL;
+      // get ramdisk info
       Status = GetAndroidImgInfo(Ramdisk, &IconPath, &ImgName, &IsRecovery);
       if(!EFI_ERROR(Status)) {
-        // write to cache
-        if (context->checksum) {
-          IMGINFO_CACHE Cache;
-          AsciiSPrint(Cache.Name, sizeof(Cache.Name), "%a", ImgName?:"");
-          AsciiSPrint(Cache.IconPath, sizeof(Cache.IconPath), "%a", IconPath?:"");
-          Cache.IsRecovery = IsRecovery;
-
-          CHAR16 Buf[50];
-          UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
-          UtilSetEFIDroidDataVariable(Buf, &Cache, sizeof(Cache));
-        }
-
+        // replace icon and name
         if (ImgName && IconPath) {
           Icon = libaroma_stream_ramdisk(IconPath);
           FreePool(Name);
@@ -693,8 +686,23 @@ FindAndroidBlockIo (
           }
         }
       }
+    }
 
+    // cleanup
+    if (Ramdisk) {
       FreePool(Ramdisk);
+    }
+
+    // write info to cache
+    if (context->checksum) {
+      IMGINFO_CACHE Cache;
+      AsciiSPrint(Cache.Name, sizeof(Cache.Name), "%a", ImgName?:"");
+      AsciiSPrint(Cache.IconPath, sizeof(Cache.IconPath), "%a", IconPath?:"");
+      Cache.IsRecovery = IsRecovery;
+
+      CHAR16 Buf[50];
+      UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
+      UtilSetEFIDroidDataVariable(Buf, &Cache, sizeof(Cache));
     }
   }
 
