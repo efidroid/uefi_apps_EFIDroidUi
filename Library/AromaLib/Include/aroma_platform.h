@@ -40,7 +40,9 @@
 /*
  * get tick count
  */
-long libaroma_tick();
+static inline long libaroma_tick(){
+  return 0;
+}
 
 /*
  * MUTEX - NEED MULTICORE THREAD SAFE
