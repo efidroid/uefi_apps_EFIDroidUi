@@ -247,25 +247,47 @@ BootEfiContext (
   EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   *Volume;
   EFI_FILE_PROTOCOL                 *Root;
   EFI_FILE_PROTOCOL                 *EfiFile;
+  VOID* RamDisk = NULL;
+  BOOLEAN FreeRamdisk = FALSE;
+  UINT64 RamDiskSize = 0;
+  CONST CHAR16* EfiFileName = NULL;
+  BOOLEAN FreeEfiFileName = FALSE;
+  VOID* LoadOptions = NULL;
+  UINTN LoadOptionsSize = 0;
 
   // get ramdisk protocol
   Status = gBS->LocateProtocol (&gEfiRamDiskProtocolGuid, NULL, (VOID **) &RamDiskProtocol);
   if (EFI_ERROR (Status)) {
     return Status;
   }
-
-  // Allocate ramdisk
-  UINT64 RamDiskSize = MAX(context->kernel_size + SIZE_1MB, SIZE_1MB);
-  VOID* RamDisk = AllocatePool(RamDiskSize);
-  if (RamDisk==NULL) {
-    return EFI_OUT_OF_RESOURCES;
+  // provided ramdisk
+  if (context->ramdisk_data && context->ramdisk_size>0) {
+    RamDisk = context->ramdisk_data;
+    RamDiskSize = context->ramdisk_size;
+    FreeRamdisk = FALSE;
   }
 
-  // mkfs.vfat
-  Status = MakeDosFs(RamDisk, RamDiskSize);
-  if (EFI_ERROR (Status)) {
-    goto ERROR_FREE_RAMDISK;
+  // kernel only
+  // if we have a ramdisk too, the creator must make the ramdisk big enough
+  else if(context->kernel_data && context->kernel_size>0) {
+    RamDiskSize = MAX(context->kernel_size + context->ramdisk_size + 64*1024, SIZE_1MB);
+    RamDisk = AllocatePool(RamDiskSize);
+    if (RamDisk==NULL) {
+      return EFI_OUT_OF_RESOURCES;
+    }
+    FreeRamdisk = TRUE;
+
+    // mkfs.vfat
+    Status = MakeDosFs(RamDisk, RamDiskSize);
+    if (EFI_ERROR (Status)) {
+      goto ERROR_FREE_RAMDISK;
+    }
   }
+  else {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  // now we have a ramdisk
 
   // register ramdisk
   Status = RamDiskProtocol->Register((UINTN)RamDisk, RamDiskSize, &DiskGuid, NULL, &DevicePath);
@@ -306,38 +328,76 @@ BootEfiContext (
     goto ERROR_UNREGISTER_RAMDISK;
   }
 
-  // Create EFI file
-  EfiFile = NULL;
-  Status = Root->Open (
-                   Root,
-                   &EfiFile,
-                   SIDELOAD_FILENAME,
-                   EFI_FILE_MODE_READ|EFI_FILE_MODE_WRITE|EFI_FILE_MODE_CREATE,
-                   0
-                   );
-  if (EFI_ERROR (Status)) {
-    goto ERROR_UNREGISTER_RAMDISK;
+  // copy optional kernel to ramdisk
+  if(context->kernel_data && context->kernel_size>0) {
+    // Create EFI file
+    EfiFile = NULL;
+    Status = Root->Open (
+                     Root,
+                     &EfiFile,
+                     SIDELOAD_FILENAME,
+                     EFI_FILE_MODE_READ|EFI_FILE_MODE_WRITE|EFI_FILE_MODE_CREATE,
+                     0
+                     );
+    if (EFI_ERROR (Status)) {
+      goto ERROR_UNREGISTER_RAMDISK;
+    }
+
+    // write kernel to efi file
+    UINTN WriteSize = context->kernel_size;
+    Status = EfiFile->Write(EfiFile, &WriteSize, (VOID*)context->kernel_data);
+    if (EFI_ERROR (Status)) {
+      goto ERROR_UNREGISTER_RAMDISK;
+    }
+
+    // use internal filename
+    EfiFileName = SIDELOAD_FILENAME;
   }
 
-  // write kernel to efi file
-  UINTN WriteSize = context->kernel_size;
-  Status = EfiFile->Write(EfiFile, &WriteSize, (VOID*)context->kernel_data);
-  if (EFI_ERROR (Status)) {
+  else if(context->tags_data && context->tags_size>0) {
+    // use filename stored in tags
+    // TODO: convert to char16
+    EfiFileName = Ascii2Unicode((CHAR8*)context->tags_data);
+    if(!EfiFileName) goto ERROR_UNREGISTER_RAMDISK;
+    FreeEfiFileName = TRUE;
+  }
+
+  else {
+    // no kernel and no ramdisk path
     goto ERROR_UNREGISTER_RAMDISK;
   }
 
   // build device path
   EFI_DEVICE_PATH_PROTOCOL *LoaderDevicePath;
-  LoaderDevicePath = FileDevicePath(FSHandle, SIDELOAD_FILENAME);
+  LoaderDevicePath = FileDevicePath(FSHandle, EfiFileName);
   if (LoaderDevicePath==NULL) {
     goto ERROR_UNREGISTER_RAMDISK;
   }
 
   // build arguments
-  CONST CHAR16* Args = L"";
-  UINTN LoadOptionsSize = (UINT32)StrSize (Args);
-  VOID *LoadOptions     = AllocatePool (LoadOptionsSize);
-  StrCpy (LoadOptions, Args);
+  UINTN CmdlineLen = libboot_cmdline_length(&context->cmdline);
+  if (CmdlineLen) {
+    // generate ascii cmdline
+    CHAR8* Cmdline8 = AllocatePool(CmdlineLen);
+    if(!Cmdline8) goto ERROR_UNREGISTER_RAMDISK;
+    libboot_cmdline_generate(&context->cmdline, Cmdline8, CmdlineLen);
+
+    // convert to unicode
+    CHAR16* Cmdline = Ascii2Unicode(Cmdline8);
+    if(!Cmdline8) goto ERROR_UNREGISTER_RAMDISK;
+    FreePool(Cmdline8);
+
+    // set load options
+    LoadOptions = Cmdline;
+    LoadOptionsSize = StrSize(Cmdline);
+  }
+
+  else {
+    CONST CHAR16* Args = L"";
+    LoadOptionsSize = (UINT32)StrSize (Args);
+    LoadOptions     = AllocatePool (LoadOptionsSize);
+    StrCpy (LoadOptions, Args);
+  }
 
   // shut down menu
   MenuPreBoot();
@@ -349,6 +409,14 @@ BootEfiContext (
   MenuPostBoot();
 
 ERROR_UNREGISTER_RAMDISK:
+  // free load options
+  if(LoadOptions)
+    FreePool(LoadOptions);
+
+  // free filename
+  if(FreeEfiFileName)
+    FreePool((VOID*)EfiFileName);
+
   // unregister ramdisk
   Status = RamDiskProtocol->Unregister(DevicePath);
   if (EFI_ERROR (Status)) {
@@ -357,7 +425,8 @@ ERROR_UNREGISTER_RAMDISK:
 
 ERROR_FREE_RAMDISK:
   // free ramdisk memory
-  FreePool(RamDisk);
+  if(RamDisk && FreeRamdisk)
+    FreePool(RamDisk);
 
   return Status;
 }
