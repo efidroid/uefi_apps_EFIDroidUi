@@ -404,6 +404,11 @@ BootEfiContext (
 
   // start efi application
   Status = UtilStartEfiApplication (LoaderDevicePath, LoadOptionsSize, LoadOptions);
+  if(EFI_ERROR(Status)) {
+    CHAR8 Buf[100];
+    AsciiSPrint(Buf, 100, "Can't boot: %r", Status);
+    MenuShowMessage("Error", Buf);
+  }
 
   // restart menu
   MenuPostBoot();
