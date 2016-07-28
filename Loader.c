@@ -356,9 +356,9 @@ BootEfiContext (
 
   else if(context->tags_data && context->tags_size>0) {
     // use filename stored in tags
-    // TODO: convert to char16
     EfiFileName = Ascii2Unicode((CHAR8*)context->tags_data);
     if(!EfiFileName) goto ERROR_UNREGISTER_RAMDISK;
+    PathToUefi((CHAR16*)EfiFileName);
     FreeEfiFileName = TRUE;
   }
 
