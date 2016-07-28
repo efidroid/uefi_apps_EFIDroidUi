@@ -1187,6 +1187,9 @@ AndroidLocatorAddItems (
     MenuAddEntry(mBootMenuMain, RecEntry->RootEntry);
   }
 
+  // reset libboot error stack
+  libboot_error_stack_reset();
+
   return EFI_SUCCESS;
 }
 
