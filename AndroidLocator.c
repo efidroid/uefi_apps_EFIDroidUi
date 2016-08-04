@@ -1,4 +1,5 @@
 #include "EFIDroidUi.h"
+#include <string.h>
 
 STATIC LIST_ENTRY                  mRecoveries;
 STATIC FSTAB                       *mFstab = NULL;
@@ -13,6 +14,8 @@ STATIC EFI_DEVICE_PATH_PROTOCOL        *mEspDevicePath = NULL;
 STATIC BOOLEAN mFirstAndroidEntry = TRUE;
 STATIC BOOLEAN mFirstRecoveryEntry = TRUE;
 STATIC BOOLEAN mFirstCacheScan = TRUE;
+STATIC CHAR8   *mInternalROMName = NULL;
+STATIC CHAR8   *mInternalROMIconPath = NULL;
 
 STATIC
 VOID
@@ -496,6 +499,7 @@ FindAndroidBlockIo (
   EFI_BLOCK_IO_PROTOCOL     *BlockIo;
   EFI_PARTITION_NAME_PROTOCOL *PartitionName;
   BOOLEAN                   IsRecovery = FALSE;
+  BOOLEAN                   IsInternalBoot = FALSE;
   CONST CHAR8               *IconPath = NULL;
   LIBAROMA_STREAMP          Icon = NULL;
   CHAR8                     *Name = NULL;
@@ -511,6 +515,11 @@ FindAndroidBlockIo (
   if (DevicePath==NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
+
+  // get intrnal rom name
+  CONST CHAR8 *ROMName = "Android";
+  if(mInternalROMName)
+    ROMName = mInternalROMName;
 
   //
   // Get the BlockIO protocol on that handle
@@ -603,19 +612,27 @@ FindAndroidBlockIo (
       if(!AsciiStrCmp(Rec->mount_point, "/recovery")) {
         IsRecovery = TRUE;
       }
+      else if(!AsciiStrCmp(Rec->mount_point, "/boot")) {
+        IsInternalBoot = TRUE;
+      }
+    }
+
+    // allocate name
+    Name = AllocateZeroPool(4096);
+    if(!Name) {
+      goto FREEBUFFER;
     }
 
     // set entry description
-    if (!StrCmp(PartitionName->Name, L"boot"))
-      Name = AsciiStrDup("Android (Internal)");
-    else if(IsRecovery)
-      Name = AsciiStrDup("Recovery (Internal)");
-    else {
-      Name = AllocateZeroPool(4096);
-      if(Name) {
-        AsciiSPrint(Name, 4096, "Android (%s)", PartitionName->Name);
-      }
+    if (IsInternalBoot) {
+      AsciiSPrint(Name, 4096, "%a (Internal)", ROMName);
+      if(mInternalROMIconPath)
+        Icon = libaroma_stream_ramdisk(mInternalROMIconPath);
     }
+    else if(IsRecovery)
+      AsciiSPrint(Name, 4096, "Recovery (Internal)");
+    else
+      AsciiSPrint(Name, 4096, "Android (%s)", PartitionName->Name);
   }
   else {
     Name = AsciiStrDup("Unknown");
@@ -639,10 +656,12 @@ FindAndroidBlockIo (
       UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
       IMGINFO_CACHE* Cache = UtilGetEFIDroidDataVariable(Buf);
       if (Cache) {
-        Icon = libaroma_stream_ramdisk(Cache->IconPath);
         IsRecovery = Cache->IsRecovery;
 
         if (IsRecovery) {
+          if(Cache->IconPath)
+            Icon = libaroma_stream_ramdisk(Cache->IconPath);
+
           FreePool(Name);
           Name = AllocateZeroPool(4096);
           if(Name) {
@@ -725,8 +744,13 @@ SKIP:
     RecMenu->RootEntry->Icon = Icon;
     RecMenu->RootEntry->Name = Name;
 
-    Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
-    Entry->Name = AsciiStrDup("Android (Internal)");
+    Entry->Name = AllocateZeroPool(4096);
+    if(Entry->Name)
+      AsciiSPrint(Entry->Name, 4096, "%a (Internal)", ROMName);
+    if(mInternalROMIconPath)
+      Entry->Icon = libaroma_stream_ramdisk(mInternalROMIconPath);
+    else
+      Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
     RecMenu->BaseEntry = Entry;
 
     // add nopatch entry
@@ -1153,12 +1177,140 @@ AndroidLocatorInit (
   return EFI_SUCCESS;
 }
 
+STATIC INT32
+BuildPropHandler (
+  VOID         *Private,
+  CONST CHAR8  *Section,
+  CONST CHAR8  *Name,
+  CONST CHAR8  *Value
+)
+{
+  CHAR8 *ROMName = NULL;
+
+  if(!AsciiStrCmp(Name, "ro.cm.version")) {
+    // allocate
+    ROMName = AllocateZeroPool(4096);
+    CHAR8* ValueDup = AllocateCopyPool(AsciiStrSize(Value), Value);
+
+    if(ROMName && ValueDup) {
+      CHAR8* ValuePtr = strchr(ValueDup, '-');
+      if(ValuePtr) {
+        ValuePtr[0] = '\0';
+      }
+
+      // build rom name
+      AsciiSPrint(ROMName, 4096, "CyanogenMod %a", ValueDup);
+      mInternalROMName = ROMName;
+      mInternalROMIconPath = "icons/recovery_cyanogen.png";
+    }
+
+    // cleanup
+    if(ValueDup)
+      FreePool(ValueDup);
+
+    // stop parsing
+    return 0;
+  }
+
+  return 1;
+}
+
+STATIC EFI_STATUS
+EFIAPI
+FindInternalROMName (
+  IN EFI_HANDLE  Handle,
+  IN VOID        *Instance,
+  IN VOID        *Context
+)
+{
+  EFI_STATUS                        Status;
+  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   *Volume;
+  EFI_FILE_PROTOCOL                 *Root;
+  EFI_FILE_PROTOCOL                 *FileBuildProp;
+  EFI_PARTITION_NAME_PROTOCOL *PartitionName;
+
+  //
+  // Get the SimpleFilesystem protocol on that handle
+  //
+  Volume = NULL;
+  Status = gBS->HandleProtocol (
+                  Handle,
+                  &gEfiSimpleFileSystemProtocolGuid,
+                  (VOID **)&Volume
+                  );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  //
+  // Open the root directory of the volume
+  //
+  Root = NULL;
+  Status = Volume->OpenVolume (
+                     Volume,
+                     &Root
+                     );
+  if (EFI_ERROR (Status) || Root==NULL) {
+    return Status;
+  }
+
+  //
+  // Open multiboot dir
+  //
+  FileBuildProp = NULL;
+  Status = Root->Open (
+                   Root,
+                   &FileBuildProp,
+                   L"\\build.prop",
+                   EFI_FILE_MODE_READ,
+                   0
+                   );
+  if (EFI_ERROR (Status) || FileBuildProp==NULL) {
+    return Status;
+  }
+
+  //
+  // Get the PartitionName protocol on that handle
+  //
+  PartitionName = NULL;
+  Status = gBS->HandleProtocol (
+                  Handle,
+                  &gEfiPartitionNameProtocolGuid,
+                  (VOID **)&PartitionName
+                  );
+  if (EFI_ERROR (Status) || !PartitionName->Name[0]) {
+    return Status;
+  }
+
+  // get fstab rec
+  CHAR8* PartitionNameAscii = Unicode2Ascii(PartitionName->Name);
+  ASSERT(PartitionNameAscii);
+  FSTAB_REC* Rec = FstabGetByPartitionName(mFstab, PartitionNameAscii);
+  FreePool(PartitionNameAscii);
+
+  // check if this is the system partition
+  if(!Rec || AsciiStrCmp(Rec->mount_point, "/system")) {
+    return EFI_NOT_FOUND;
+  }
+
+  IniParseEfiFile(FileBuildProp, BuildPropHandler, NULL);
+
+  return Status;
+}
+
 EFI_STATUS
 AndroidLocatorAddItems (
   VOID
 )
 {
   mFirstCacheScan = TRUE;
+
+  // find system partition
+  VisitAllInstancesOfProtocol (
+    &gEfiSimpleFileSystemProtocolGuid,
+    FindInternalROMName,
+    NULL
+    );
 
   // add Android options
   VisitAllInstancesOfProtocol (
