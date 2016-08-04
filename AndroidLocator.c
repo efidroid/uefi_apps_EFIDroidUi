@@ -1202,6 +1202,23 @@ BuildPropHandler (
     RomIconPath = "icons/rom_omni.png";
   }
 
+  else if(!AsciiStrCmp(Name, "ro.miui.ui.version.name")) {
+    // allocate
+    ROMName = AllocateZeroPool(4096);
+
+    if(ROMName) {
+      // build rom name and icon
+      AsciiSPrint(ROMName, 4096, "MIUI %a", RomGenericName, Value);
+      mInternalROMName = ROMName;
+
+      // set icon
+      mInternalROMIconPath = "icons/recovery_xiaomi.png";
+
+      // stop parsing
+      return 0;
+    }
+  }
+
   if(IsCmLike) {
     // allocate
     ROMName = AllocateZeroPool(4096);
