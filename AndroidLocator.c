@@ -14,8 +14,9 @@ STATIC EFI_DEVICE_PATH_PROTOCOL        *mEspDevicePath = NULL;
 STATIC BOOLEAN mFirstAndroidEntry = TRUE;
 STATIC BOOLEAN mFirstRecoveryEntry = TRUE;
 STATIC BOOLEAN mFirstCacheScan = TRUE;
-STATIC CHAR8   *mInternalROMName = NULL;
-STATIC CHAR8   *mInternalROMIconPath = NULL;
+
+STATIC CHAR8       *mInternalROMName = NULL;
+STATIC CONST CHAR8 *mInternalROMIconPath = NULL;
 
 STATIC
 VOID
@@ -1186,8 +1187,22 @@ BuildPropHandler (
 )
 {
   CHAR8 *ROMName = NULL;
+  BOOLEAN IsCmLike = FALSE;
+  CONST CHAR8* RomGenericName = NULL;
+  CONST CHAR8* RomIconPath = NULL;
 
   if(!AsciiStrCmp(Name, "ro.cm.version")) {
+    IsCmLike = TRUE;
+    RomGenericName = "CyanogenMod";
+    RomIconPath = "icons/recovery_cyanogen.png";
+  }
+  else if(!AsciiStrCmp(Name, "ro.omni.version")) {
+    IsCmLike = TRUE;
+    RomGenericName = "OmniROM";
+    RomIconPath = "icons/rom_omni.png";
+  }
+
+  if(IsCmLike) {
     // allocate
     ROMName = AllocateZeroPool(4096);
     CHAR8* ValueDup = AllocateCopyPool(AsciiStrSize(Value), Value);
@@ -1198,10 +1213,10 @@ BuildPropHandler (
         ValuePtr[0] = '\0';
       }
 
-      // build rom name
-      AsciiSPrint(ROMName, 4096, "CyanogenMod %a", ValueDup);
+      // build rom name and icon
+      AsciiSPrint(ROMName, 4096, "%a %a", RomGenericName, ValueDup);
       mInternalROMName = ROMName;
-      mInternalROMIconPath = "icons/recovery_cyanogen.png";
+      mInternalROMIconPath = RomIconPath;
     }
 
     // cleanup
