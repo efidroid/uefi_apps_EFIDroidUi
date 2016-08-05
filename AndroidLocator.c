@@ -1188,6 +1188,7 @@ BuildPropHandler (
 {
   CHAR8 *ROMName = NULL;
   BOOLEAN IsCmLike = FALSE;
+  BOOLEAN IsPaLike = FALSE;
   CONST CHAR8* RomGenericName = NULL;
   CONST CHAR8* RomIconPath = NULL;
 
@@ -1202,21 +1203,32 @@ BuildPropHandler (
     RomIconPath = "icons/rom_omni.png";
   }
 
+  else if(!AsciiStrCmp(Name, "ro.pa.version")) {
+    IsPaLike = TRUE;
+    RomGenericName = "Paranoid Android";
+    RomIconPath = "icons/rom_aospa.png";
+  }
   else if(!AsciiStrCmp(Name, "ro.miui.ui.version.name")) {
+    IsPaLike = TRUE;
+    RomGenericName = "MIUI";
+    RomIconPath = "icons/recovery_xiaomi.png";
+  }
+
+  if (IsPaLike) {
     // allocate
     ROMName = AllocateZeroPool(4096);
 
     if(ROMName) {
-      // build rom name and icon
-      AsciiSPrint(ROMName, 4096, "MIUI %a", RomGenericName, Value);
+      // build rom name
+      AsciiSPrint(ROMName, 4096, "%a %a", RomGenericName, Value);
       mInternalROMName = ROMName;
 
       // set icon
-      mInternalROMIconPath = "icons/recovery_xiaomi.png";
-
-      // stop parsing
-      return 0;
+      mInternalROMIconPath = RomIconPath;
     }
+
+    // stop parsing
+    return 0;
   }
 
   if(IsCmLike) {
