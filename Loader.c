@@ -70,7 +70,12 @@ AndroidPatchCmdline (
 
     // add to cmdline
     libboot_cmdline_add(&Context->cmdline, "multibootpath", DevPathString, 1);  
-    FreePool(DevPathString);  
+    FreePool(DevPathString);
+
+    // apply cmdline overrides
+    if(!RecoveryMode && mbhandle->ReplacementCmdline) {
+      libboot_cmdline_addall(&Context->cmdline, mbhandle->ReplacementCmdline, 1);
+    }
   }
 
   if(!DisablePatching) {

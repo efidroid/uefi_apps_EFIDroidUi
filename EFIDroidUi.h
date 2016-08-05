@@ -54,6 +54,7 @@ typedef struct {
   CHAR8  *Name;
   CHAR8  *Description;
   CHAR16 *PartitionBoot;
+  CHAR8  *ReplacementCmdline;
 
   // handles
   EFI_HANDLE DeviceHandle;

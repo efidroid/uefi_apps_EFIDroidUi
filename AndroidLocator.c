@@ -807,6 +807,12 @@ IniHandler (
       mbhandle->PartitionBoot = Ascii2Unicode(Value);
     }
   }
+
+  if(!AsciiStrCmp(Section, "replacements")) {
+    if(!AsciiStrCmp(Name, "cmdline")) {
+      mbhandle->ReplacementCmdline = AsciiStrDup(Value);
+    }
+  }
   return 1;
 } 
 
