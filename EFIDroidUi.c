@@ -341,8 +341,10 @@ main (
 
   // run recovery mode handler
   mLKApi = GetLKApi();
-  if (mLKApi && mLKApi->platform_get_uefi_bootmode()==LKAPI_UEFI_BM_RECOVERY) {
+  if (mLKApi && !AsciiStrCmp(mLKApi->platform_get_uefi_bootpart(), "recovery")) {
+#if defined (MDE_CPU_ARM)
     AndroidLocatorHandleRecoveryMode(LastBootEntry);
+#endif
   }
 
   // free last boot entry
