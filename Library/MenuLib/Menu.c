@@ -1309,6 +1309,10 @@ VOID MenuShowProgressDialog (
   BOOLEAN ShowBackground
 )
 {
+  if(!Initialized) {
+    return;
+  }
+
   if(ShowBackground) {
     MenuDrawDarkBackground();
   }
@@ -1640,7 +1644,7 @@ RenderBootScreen(
   MenuShowProgressDialog(text, TRUE);
 }
 
-VOID
+EFI_STATUS
 MenuInit (
   VOID
   )
@@ -1652,8 +1656,7 @@ MenuInit (
   // get graphics protocol
   Status = gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **) &mGop);
   if (EFI_ERROR (Status)) {
-    ASSERT(FALSE);
-    return;
+    return Status;
   }
 
   // get LKDisplay protocol
@@ -1706,8 +1709,7 @@ MenuInit (
 
   Status = AromaInit();
   if (EFI_ERROR (Status)) {
-    ASSERT(FALSE);
-    return;
+    return Status;
   }
 
   colorPrimary = RGB(4CAF50);
@@ -1735,6 +1737,8 @@ MenuInit (
 #endif
 
   Initialized = TRUE;
+
+  return EFI_SUCCESS;
 }
 
 VOID

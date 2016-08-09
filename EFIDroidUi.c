@@ -192,6 +192,14 @@ main (
   EFI_STATUS                          Status;
   MENU_ENTRY                          *Entry;
 
+  // get LKAPi
+  mLKApi = GetLKApi();
+
+  // init fastboot
+#if defined (MDE_CPU_ARM)
+  FastbootCommandsAdd();
+#endif
+
   // init libboot
   libboot_init();
 
@@ -226,7 +234,13 @@ main (
     SettingBoolSet("ui-show-fastboot", TRUE);
 
   // init UI
-  MenuInit();
+  Status = MenuInit();
+  if (EFI_ERROR (Status)) {
+#if defined (MDE_CPU_ARM)
+    FastbootInit();
+#endif
+    return -1;
+  }
 
   // create menus
   mBootMenuMain = MenuCreate();
@@ -264,8 +278,6 @@ main (
   MenuAddEntry(mBootMenuMain, Entry);
 
 #if defined (MDE_CPU_ARM)
-  FastbootCommandsAdd();
-
   // add fastboot option
   Entry = MenuCreateEntry();
   Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
@@ -340,7 +352,6 @@ main (
    UtilSetEFIDroidDataVariable(L"LastBootEntry", NULL, 0);
 
   // run recovery mode handler
-  mLKApi = GetLKApi();
   if (mLKApi && !AsciiStrCmp(mLKApi->platform_get_uefi_bootpart(), "recovery")) {
 #if defined (MDE_CPU_ARM)
     AndroidLocatorHandleRecoveryMode(LastBootEntry);

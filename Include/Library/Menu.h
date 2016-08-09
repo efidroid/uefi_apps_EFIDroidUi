@@ -92,7 +92,7 @@ struct _SCREENSHOT {
 
 extern SCREENSHOT *gScreenShotList;
 
-VOID
+EFI_STATUS
 MenuInit (
   VOID
   );
