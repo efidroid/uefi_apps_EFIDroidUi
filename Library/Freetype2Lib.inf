@@ -31,35 +31,35 @@
 #
 
 [Sources]
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/base/ftbbox.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/base/ftbitmap.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/base/ftfstype.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/base/ftglyph.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/base/ftlcdfil.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/base/ftstroke.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/base/fttype1.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/base/ftbase.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/base/ftsystem.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/base/ftinit.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/base/ftgasp.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/raster/raster.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/sfnt/sfnt.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/smooth/smooth.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/autofit/autofit.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/truetype/truetype.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/cff/cff.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/cid/type1cid.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/bdf/bdf.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/type1/type1.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/type42/type42.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/winfonts/winfnt.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/pcf/pcf.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/pfr/pfr.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/psaux/psaux.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/psnames/psnames.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/pshinter/pshinter.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/gzip/ftgzip.c
-  ../../../EFIDroidModules/libaroma/libs/freetype/src/lzw/ftlzw.c
+  EFIDroidModules/libaroma/libs/freetype/src/base/ftbbox.c
+  EFIDroidModules/libaroma/libs/freetype/src/base/ftbitmap.c
+  EFIDroidModules/libaroma/libs/freetype/src/base/ftfstype.c
+  EFIDroidModules/libaroma/libs/freetype/src/base/ftglyph.c
+  EFIDroidModules/libaroma/libs/freetype/src/base/ftlcdfil.c
+  EFIDroidModules/libaroma/libs/freetype/src/base/ftstroke.c
+  EFIDroidModules/libaroma/libs/freetype/src/base/fttype1.c
+  EFIDroidModules/libaroma/libs/freetype/src/base/ftbase.c
+  EFIDroidModules/libaroma/libs/freetype/src/base/ftsystem.c
+  EFIDroidModules/libaroma/libs/freetype/src/base/ftinit.c
+  EFIDroidModules/libaroma/libs/freetype/src/base/ftgasp.c
+  EFIDroidModules/libaroma/libs/freetype/src/raster/raster.c
+  EFIDroidModules/libaroma/libs/freetype/src/sfnt/sfnt.c
+  EFIDroidModules/libaroma/libs/freetype/src/smooth/smooth.c
+  EFIDroidModules/libaroma/libs/freetype/src/autofit/autofit.c
+  EFIDroidModules/libaroma/libs/freetype/src/truetype/truetype.c
+  EFIDroidModules/libaroma/libs/freetype/src/cff/cff.c
+  EFIDroidModules/libaroma/libs/freetype/src/cid/type1cid.c
+  EFIDroidModules/libaroma/libs/freetype/src/bdf/bdf.c
+  EFIDroidModules/libaroma/libs/freetype/src/type1/type1.c
+  EFIDroidModules/libaroma/libs/freetype/src/type42/type42.c
+  EFIDroidModules/libaroma/libs/freetype/src/winfonts/winfnt.c
+  EFIDroidModules/libaroma/libs/freetype/src/pcf/pcf.c
+  EFIDroidModules/libaroma/libs/freetype/src/pfr/pfr.c
+  EFIDroidModules/libaroma/libs/freetype/src/psaux/psaux.c
+  EFIDroidModules/libaroma/libs/freetype/src/psnames/psnames.c
+  EFIDroidModules/libaroma/libs/freetype/src/pshinter/pshinter.c
+  EFIDroidModules/libaroma/libs/freetype/src/gzip/ftgzip.c
+  EFIDroidModules/libaroma/libs/freetype/src/lzw/ftlzw.c
 
 [Packages]
   StdLib/StdLib.dec

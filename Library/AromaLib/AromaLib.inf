@@ -33,42 +33,42 @@
 [Sources]
   aroma.c
   fb_driver.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/version.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/artworker.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/canvas.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/fb.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/image.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/jpeg.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/png.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/svg.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/text.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/draw/blur.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/draw/commondraw.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/draw/filters.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/draw/gradient.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/draw/path.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/draw/scale.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/engine/alignblt.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/engine/alpha.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/engine/blt.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/engine/color.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/graph/engine/dither.c
+  EFIDroidModules/libaroma/src/aroma/version.c
+  EFIDroidModules/libaroma/src/aroma/graph/artworker.c
+  EFIDroidModules/libaroma/src/aroma/graph/canvas.c
+  EFIDroidModules/libaroma/src/aroma/graph/fb.c
+  EFIDroidModules/libaroma/src/aroma/graph/image.c
+  EFIDroidModules/libaroma/src/aroma/graph/jpeg.c
+  EFIDroidModules/libaroma/src/aroma/graph/png.c
+  EFIDroidModules/libaroma/src/aroma/graph/svg.c
+  EFIDroidModules/libaroma/src/aroma/graph/text.c
+  EFIDroidModules/libaroma/src/aroma/graph/draw/blur.c
+  EFIDroidModules/libaroma/src/aroma/graph/draw/commondraw.c
+  EFIDroidModules/libaroma/src/aroma/graph/draw/filters.c
+  EFIDroidModules/libaroma/src/aroma/graph/draw/gradient.c
+  EFIDroidModules/libaroma/src/aroma/graph/draw/path.c
+  EFIDroidModules/libaroma/src/aroma/graph/draw/scale.c
+  EFIDroidModules/libaroma/src/aroma/graph/engine/alignblt.c
+  EFIDroidModules/libaroma/src/aroma/graph/engine/alpha.c
+  EFIDroidModules/libaroma/src/aroma/graph/engine/blt.c
+  EFIDroidModules/libaroma/src/aroma/graph/engine/color.c
+  EFIDroidModules/libaroma/src/aroma/graph/engine/dither.c
 
-  ../../../../EFIDroidModules/libaroma/src/aroma/utils/array.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/utils/json.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/utils/minutf8.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/utils/motions.c
-  #../../../../EFIDroidModules/libaroma/src/aroma/utils/runtime.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/utils/stream.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/utils/strings.c
-  #../../../../EFIDroidModules/libaroma/src/aroma/utils/system.c
-  ../../../../EFIDroidModules/libaroma/src/aroma/utils/time.c
-  #../../../../EFIDroidModules/libaroma/src/aroma/utils/zip.c
+  EFIDroidModules/libaroma/src/aroma/utils/array.c
+  EFIDroidModules/libaroma/src/aroma/utils/json.c
+  EFIDroidModules/libaroma/src/aroma/utils/minutf8.c
+  EFIDroidModules/libaroma/src/aroma/utils/motions.c
+  #EFIDroidModules/libaroma/src/aroma/utils/runtime.c
+  EFIDroidModules/libaroma/src/aroma/utils/stream.c
+  EFIDroidModules/libaroma/src/aroma/utils/strings.c
+  #EFIDroidModules/libaroma/src/aroma/utils/system.c
+  EFIDroidModules/libaroma/src/aroma/utils/time.c
+  #EFIDroidModules/libaroma/src/aroma/utils/zip.c
 
-  ../../../../EFIDroidModules/libaroma/libs/harfbuzz-ng/src/hb-ucdn/ucdn.c
+  EFIDroidModules/libaroma/libs/harfbuzz-ng/src/hb-ucdn/ucdn.c
 
 [Sources.ARM]
-  ../../../../EFIDroidModules/libaroma/src/aroma/arch/arm/memset32.S
+  EFIDroidModules/libaroma/src/aroma/arch/arm/memset32.S
 
 [Packages]
   StdLib/StdLib.dec

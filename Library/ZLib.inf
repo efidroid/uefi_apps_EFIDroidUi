@@ -31,21 +31,21 @@
 #
 
 [Sources]
-  ../../../EFIDroidModules/libaroma/libs/zlib/src/adler32.c
-  ../../../EFIDroidModules/libaroma/libs/zlib/src/compress.c
-  ../../../EFIDroidModules/libaroma/libs/zlib/src/crc32.c
-  ../../../EFIDroidModules/libaroma/libs/zlib/src/deflate.c
-  ../../../EFIDroidModules/libaroma/libs/zlib/src/gzclose.c
-  ../../../EFIDroidModules/libaroma/libs/zlib/src/gzlib.c
-  ../../../EFIDroidModules/libaroma/libs/zlib/src/gzread.c
-  ../../../EFIDroidModules/libaroma/libs/zlib/src/gzwrite.c
-  ../../../EFIDroidModules/libaroma/libs/zlib/src/infback.c
-  ../../../EFIDroidModules/libaroma/libs/zlib/src/inflate.c
-  ../../../EFIDroidModules/libaroma/libs/zlib/src/inftrees.c
-  ../../../EFIDroidModules/libaroma/libs/zlib/src/inffast.c
-  ../../../EFIDroidModules/libaroma/libs/zlib/src/trees.c
-  ../../../EFIDroidModules/libaroma/libs/zlib/src/uncompr.c
-  ../../../EFIDroidModules/libaroma/libs/zlib/src/zutil.c
+  EFIDroidModules/libaroma/libs/zlib/src/adler32.c
+  EFIDroidModules/libaroma/libs/zlib/src/compress.c
+  EFIDroidModules/libaroma/libs/zlib/src/crc32.c
+  EFIDroidModules/libaroma/libs/zlib/src/deflate.c
+  EFIDroidModules/libaroma/libs/zlib/src/gzclose.c
+  EFIDroidModules/libaroma/libs/zlib/src/gzlib.c
+  EFIDroidModules/libaroma/libs/zlib/src/gzread.c
+  EFIDroidModules/libaroma/libs/zlib/src/gzwrite.c
+  EFIDroidModules/libaroma/libs/zlib/src/infback.c
+  EFIDroidModules/libaroma/libs/zlib/src/inflate.c
+  EFIDroidModules/libaroma/libs/zlib/src/inftrees.c
+  EFIDroidModules/libaroma/libs/zlib/src/inffast.c
+  EFIDroidModules/libaroma/libs/zlib/src/trees.c
+  EFIDroidModules/libaroma/libs/zlib/src/uncompr.c
+  EFIDroidModules/libaroma/libs/zlib/src/zutil.c
 
 [Packages]
   StdLib/StdLib.dec

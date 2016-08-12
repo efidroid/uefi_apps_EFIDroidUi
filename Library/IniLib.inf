@@ -31,7 +31,7 @@
 #
 
 [Sources]
-  ../../../EFIDroidModules/inih/ini.c
+  EFIDroidModules/inih/ini.c
 
 [Packages]
   StdLib/StdLib.dec

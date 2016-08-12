@@ -32,22 +32,22 @@
 
 [Sources]
   platform.c
-  ../../../../EFIDroidModules/libboot/boot.c
-  ../../../../EFIDroidModules/libboot/cmdline.c
-  ../../../../EFIDroidModules/libboot/qcdt.c
+  EFIDroidModules/libboot/boot.c
+  EFIDroidModules/libboot/cmdline.c
+  EFIDroidModules/libboot/qcdt.c
 
-  ../../../../EFIDroidModules/libboot/cksum/crc32.c
+  EFIDroidModules/libboot/cksum/crc32.c
 
-  ../../../../EFIDroidModules/libboot/loaders/android.c
-  ../../../../EFIDroidModules/libboot/loaders/efi.c
-  ../../../../EFIDroidModules/libboot/loaders/elf.c
-  ../../../../EFIDroidModules/libboot/loaders/gzip.c
-  ../../../../EFIDroidModules/libboot/loaders/qcmbn.c
-  ../../../../EFIDroidModules/libboot/loaders/zimage.c
+  EFIDroidModules/libboot/loaders/android.c
+  EFIDroidModules/libboot/loaders/efi.c
+  EFIDroidModules/libboot/loaders/elf.c
+  EFIDroidModules/libboot/loaders/gzip.c
+  EFIDroidModules/libboot/loaders/qcmbn.c
+  EFIDroidModules/libboot/loaders/zimage.c
 
-  ../../../../EFIDroidModules/libboot/tagloaders/atags.c
-  ../../../../EFIDroidModules/libboot/tagloaders/fdt.c
-  ../../../../EFIDroidModules/libboot/tagloaders/qcdt.c
+  EFIDroidModules/libboot/tagloaders/atags.c
+  EFIDroidModules/libboot/tagloaders/fdt.c
+  EFIDroidModules/libboot/tagloaders/qcdt.c
 
 [Packages]
   StdLib/StdLib.dec
