@@ -699,7 +699,6 @@ FindAndroidBlockIo (
           Name = AllocateZeroPool(4096);
           if(Name) {
             AsciiSPrint(Name, 4096, "%a (Internal)", ImgName);
-            FreePool(ImgName);
           }
           else {
             Name = ImgName;
@@ -724,6 +723,9 @@ FindAndroidBlockIo (
       UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
       UtilSetEFIDroidDataVariable(Buf, &Cache, sizeof(Cache));
     }
+
+    if (ImgName)
+      FreePool(ImgName);
   }
 
 SKIP:
