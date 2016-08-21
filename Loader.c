@@ -83,7 +83,7 @@ AndroidPatchCmdline (
 
     // in recovery mode we ptrace the whole system. that doesn't work well with selinux
     if(RecoveryMode)
-      libboot_cmdline_add(&Context->cmdline, "androidboot.selinux", "permissive", 1);
+      libboot_cmdline_add(&Context->cmdline, "androidboot.selinux", "disabled", 1);
   }
 
   CHAR8* DebugValue = UtilGetEFIDroidVariable("multiboot-debuglevel");
