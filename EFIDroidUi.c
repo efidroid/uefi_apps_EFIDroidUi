@@ -225,7 +225,7 @@ main (
   if(!UtilVariableExists(L"multiboot-debuglevel", &gEFIDroidVariableGuid))
     UtilSetEFIDroidVariable("multiboot-debuglevel", "4");
   if(!UtilVariableExists(L"fastboot-enable-boot-patch", &gEFIDroidVariableGuid))
-    UtilSetEFIDroidVariable("fastboot-enable-boot-patch", "0");
+    UtilSetEFIDroidVariable("fastboot-enable-boot-patch", "1");
   if(!UtilVariableExists(L"ui-show-file-explorer", &gEFIDroidVariableGuid))
     SettingBoolSet("ui-show-file-explorer", FALSE);
   if(!UtilVariableExists(L"ui-show-uefi-options", &gEFIDroidVariableGuid))
