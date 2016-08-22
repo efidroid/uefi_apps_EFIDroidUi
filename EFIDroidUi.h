@@ -109,6 +109,14 @@ typedef struct {
   BOOLEAN IsRecovery;
 } IMGINFO_CACHE;
 
+#define STRING_LIST_SIGNATURE             SIGNATURE_32 ('s', 't', 'r', 'l')
+typedef struct {
+  UINTN           Signature;
+  LIST_ENTRY      Link;
+
+  CHAR16          *VariableName;
+} STRING_LIST_ITEM;
+
 EFI_STATUS
 AndroidLocatorInit (
   VOID

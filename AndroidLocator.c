@@ -3,6 +3,7 @@
 
 STATIC LIST_ENTRY                  mRecoveries;
 STATIC FSTAB                       *mFstab = NULL;
+STATIC LIST_ENTRY                  mUsedCacheVariables;
 
 // ESP
 STATIC CHAR16                          *mEspPartitionName = NULL;
@@ -17,6 +18,110 @@ STATIC BOOLEAN mFirstCacheScan = TRUE;
 
 STATIC CHAR8       *mInternalROMName = NULL;
 STATIC CONST CHAR8 *mInternalROMIconPath = NULL;
+
+STATIC
+VOID
+AddCacheVariableToList (
+  LIST_ENTRY   *List,
+  CONST CHAR16 *VariableName
+)
+{
+  STRING_LIST_ITEM *Item;
+
+  // allocate menu
+  Item = AllocateZeroPool (sizeof(*Item));
+  if(Item==NULL)
+    return;
+
+  Item->Signature = STRING_LIST_SIGNATURE;
+  Item->VariableName = UnicodeStrDup(VariableName);
+
+  InsertTailList (List, &Item->Link);
+}
+
+STATIC
+BOOLEAN
+IsCacheVariableInList (
+  CONST CHAR16 *VariableName
+)
+{
+  LIST_ENTRY* Link;
+  STRING_LIST_ITEM* Item;
+
+  for (Link = GetFirstNode (&mUsedCacheVariables);
+       !IsNull (&mUsedCacheVariables, Link);
+       Link = GetNextNode (&mUsedCacheVariables, Link)
+      ) {
+    Item = CR (Link, STRING_LIST_ITEM, Link, STRING_LIST_SIGNATURE);
+
+    if (!StrCmp(Item->VariableName, VariableName))
+      return TRUE;
+  }
+
+  return FALSE;
+}
+
+STATIC
+RETURN_STATUS
+EFIAPI
+IterateVariablesCallbackAddToList (
+  IN  VOID                         *Context,
+  IN  CHAR16                       *VariableName,
+  IN  EFI_GUID                     *VendorGuid,
+  IN  UINT32                       Attributes,
+  IN  UINTN                        DataSize,
+  IN  VOID                         *Data
+  )
+{
+  EFI_STATUS          Status;
+  LIST_ENTRY          *List;
+
+  Status = EFI_SUCCESS;
+  List = Context;
+
+  // skip variables with other GUID's
+  if (!CompareGuid(VendorGuid, &gEFIDroidVariableDataGuid))
+    return Status;
+
+  // skip non-cache variable
+  if (StrStr(VariableName, L"RdInfoCache")!=VariableName)
+    return Status;
+
+  // skip variables which are in the global cache list
+  if (IsCacheVariableInList(VariableName))
+    return Status;
+
+  // add to list
+  AddCacheVariableToList(List, VariableName);
+
+  return Status;
+}
+
+STATIC
+VOID
+RemovedUnusedCacheVariables (
+  VOID
+)
+{
+  LIST_ENTRY VariableRemovalList;
+  LIST_ENTRY* Link;
+  STRING_LIST_ITEM* Item;
+
+  InitializeListHead(&VariableRemovalList);
+
+  // build list of variables to remove
+  UtilIterateVariables(IterateVariablesCallbackAddToList, &VariableRemovalList);
+
+  // remove all unused variables
+  for (Link = GetFirstNode (&VariableRemovalList);
+       !IsNull (&VariableRemovalList, Link);
+       Link = GetNextNode (&VariableRemovalList, Link)
+      ) {
+    Item = CR (Link, STRING_LIST_ITEM, Link, STRING_LIST_SIGNATURE);
+
+    UtilSetEFIDroidDataVariable(Item->VariableName, NULL, 0);
+  }
+}
 
 STATIC
 VOID
@@ -655,6 +760,7 @@ FindAndroidBlockIo (
     if (context->checksum) {
       CHAR16 Buf[50];
       UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
+      AddCacheVariableToList(&mUsedCacheVariables, Buf);
       IMGINFO_CACHE* Cache = UtilGetEFIDroidDataVariable(Buf);
       if (Cache) {
         IsRecovery = Cache->IsRecovery;
@@ -721,6 +827,7 @@ FindAndroidBlockIo (
 
       CHAR16 Buf[50];
       UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
+      AddCacheVariableToList(&mUsedCacheVariables, Buf);
       UtilSetEFIDroidDataVariable(Buf, &Cache, sizeof(Cache));
     }
 
@@ -1167,6 +1274,7 @@ AndroidLocatorInit (
   UINTN                               FstabSize;
 
   InitializeListHead(&mRecoveries);
+  InitializeListHead(&mUsedCacheVariables);
 
   // get fstab data
   Status = UEFIRamdiskGetFile ("fstab.multiboot", (VOID **) &FstabBin, &FstabSize);
@@ -1393,6 +1501,9 @@ AndroidLocatorAddItems (
 
   // reset libboot error stack
   libboot_error_stack_reset();
+
+  // remove unused cache variables
+  RemovedUnusedCacheVariables();
 
   return EFI_SUCCESS;
 }
