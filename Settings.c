@@ -50,6 +50,19 @@ ShowFastbootCallback (
   return EFI_SUCCESS;
 }
 
+STATIC
+EFI_STATUS
+ShowPermissiveCallback (
+  MENU_ENTRY* This
+)
+{
+  SettingBoolSet("boot-force-permissive", !This->ToggleEnabled);
+  This->ToggleEnabled = SettingBoolGet("boot-force-permissive");
+  InvalidateActiveMenu();
+  MainMenuUpdateUi();
+  return EFI_SUCCESS;
+}
+
 EFI_STATUS
 SettingsMenuShow (
   VOID
@@ -88,6 +101,15 @@ SettingsMenuShow (
   Entry->ToggleEnabled = SettingBoolGet("ui-show-fastboot");
   Entry->HideBootMessage = TRUE;
   Entry->Callback = ShowFastbootCallback;
+  MenuAddEntry(Menu, Entry);
+
+  // fastboot
+  Entry = MenuCreateEntry();
+  Entry->Name = AsciiStrDup("Force selinux to permissive");
+  Entry->ShowToggle = TRUE;
+  Entry->ToggleEnabled = SettingBoolGet("boot-force-permissive");
+  Entry->HideBootMessage = TRUE;
+  Entry->Callback = ShowPermissiveCallback;
   MenuAddEntry(Menu, Entry);
 
   MenuStackPush(Menu);

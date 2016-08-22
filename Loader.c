@@ -90,6 +90,9 @@ AndroidPatchCmdline (
   if (DebugValue)
     libboot_cmdline_add(&Context->cmdline, "multiboot.debug", DebugValue, 1);
 
+  if (SettingBoolGet("boot-force-permissive"))
+    libboot_cmdline_add(&Context->cmdline, "androidboot.selinux", "permissive", 1);
+
   return EFI_SUCCESS;
 }
 

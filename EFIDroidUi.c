@@ -232,6 +232,8 @@ main (
     SettingBoolSet("ui-show-uefi-options", FALSE);
   if(!UtilVariableExists(L"ui-show-fastboot", &gEFIDroidVariableGuid))
     SettingBoolSet("ui-show-fastboot", TRUE);
+  if(!UtilVariableExists(L"boot-force-permissive", &gEFIDroidVariableGuid))
+    SettingBoolSet("boot-force-permissive", FALSE);
 
   // init UI
   Status = MenuInit();
