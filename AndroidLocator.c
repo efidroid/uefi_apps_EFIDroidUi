@@ -1164,6 +1164,8 @@ ENUMERATE:
       MenuAddEntry(mBootMenuMain, Entry);
 
       AddMultibootSystemToRecoveryMenu(Entry);
+
+      Status = EFI_SUCCESS;
     }
 
 NEXT:
