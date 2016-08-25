@@ -204,6 +204,21 @@ CallbackBootAndroid (
   return AutoBootContext(PData->context, PData->mbhandle, PData->DisablePatching, &PData->LastBootEntry);
 }
 
+EFI_STATUS
+CallbackBootAndroidNoPatch (
+  IN MENU_ENTRY* This
+)
+{
+  MENU_ENTRY_PDATA *PData = This->Private;
+
+  INT32 Selection = MenuShowDialog("Unpatched boot", "Do you want to boot without any ramdisk patching?", "OK", "CANCEL");
+  if(Selection==0) {
+    RenderBootScreen(This);
+    return AutoBootContext(PData->context, PData->mbhandle, TRUE, &PData->LastBootEntry);
+  }
+  return EFI_SUCCESS;
+}
+
 MENU_ENTRY*
 MenuCreateBootEntry (
   VOID
@@ -877,6 +892,7 @@ SKIP:
 
     Entry->Icon = Icon;
     Entry->Name = Name;
+    Entry->LongPressCallback = CallbackBootAndroidNoPatch;
     MenuAddEntry(mBootMenuMain, Entry);
   }
 
