@@ -1265,6 +1265,7 @@ REDRAW:
     if(Key.ScanCode==SCAN_NULL) {
       switch(Key.UnicodeChar) {
         case CHAR_CARRIAGE_RETURN:
+        case 0x102:
           RenderActiveMenu();
           if(OldMode!=UINT32_MAX)
             mGop->SetMode(mGop, OldMode);
@@ -1419,6 +1420,7 @@ MenuHandleKey (
   if(Key.ScanCode==SCAN_NULL) {
     switch(Key.UnicodeChar) {
       case CHAR_CARRIAGE_RETURN:
+      case 0x102:
         if(Menu->ActionCallback) {
           if(Menu->Selection==-1) {
             Status = Menu->ActionCallback(Menu);
@@ -1956,6 +1958,7 @@ MenuShowTutorial (
     if(Key.ScanCode==SCAN_NULL) {
       switch(Key.UnicodeChar) {
         case CHAR_CARRIAGE_RETURN:
+        case 0x102:
           return;
       }
     }
