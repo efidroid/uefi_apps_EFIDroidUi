@@ -23,6 +23,13 @@ AndroidPatchCmdline (
     }
   }
 
+  // [EFI] Forces disk with valid GPT signature but
+  // invalid Protective MBR to be treated as GPT. If the
+  // primary GPT is corrupted, it enables the backup/alternate
+  // GPT to be used instead.
+  if(RecoveryMode)
+    libboot_cmdline_add(&Context->cmdline, "gpt", NULL, 1);
+
   // check mbhandle
   if(mbhandle) {
     // get devpath
