@@ -17,13 +17,9 @@ AndroidPatchCmdline (
   UINTN Len;
 
   if(mLKApi) {
-    CONST CHAR8* CmdlineExt = mLKApi->boot_get_cmdline_extension();
+    CONST CHAR8* CmdlineExt = mLKApi->boot_get_cmdline_extension(RecoveryMode);
     if(CmdlineExt) {
-      CHAR8* CmdlineExtCopy = AllocateCopyPool(AsciiStrSize(CmdlineExt), CmdlineExt);
-      if (CmdlineExtCopy == NULL)
-        return EFI_OUT_OF_RESOURCES;
-      libboot_cmdline_addall(&Context->cmdline, CmdlineExtCopy, 1);
-      FreePool(CmdlineExtCopy);
+      libboot_cmdline_addall(&Context->cmdline, CmdlineExt, 1);
     }
   }
 
