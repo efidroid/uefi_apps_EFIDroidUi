@@ -1485,6 +1485,8 @@ MenuHandleKey (
 
       // 'e'
       case 0x65:
+      // ESC
+      case 0x1B:
         if (Menu->BackCallback)
           Status = Menu->BackCallback(Menu);
         break;
@@ -1508,6 +1510,11 @@ MenuHandleKey (
           Menu->Selection++;
         else Menu->Selection = MinSelection;
         break;
+      case SCAN_ESC:
+        if(Menu->BackCallback) {
+          Status = Menu->BackCallback(Menu);
+          break;
+        }
     }
   }
 
