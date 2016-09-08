@@ -1511,6 +1511,7 @@ MenuHandleKey (
         else Menu->Selection = MinSelection;
         break;
       case SCAN_ESC:
+      case SCAN_LEFT:
         if(Menu->BackCallback) {
           Status = Menu->BackCallback(Menu);
           break;
