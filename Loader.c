@@ -167,7 +167,7 @@ STATIC boot_intn_t internal_io_fn_blockio_read(boot_io_t* io, void* buf, boot_ui
     if(EFI_ERROR(Status))
         return -1;
 
-    return count;
+    return count*BlockIo->Media->BlockSize;
 }
 
 INTN libboot_identify_blockio(EFI_BLOCK_IO_PROTOCOL* BlockIo, bootimg_context_t* context) {
@@ -194,7 +194,7 @@ STATIC boot_intn_t internal_io_fn_file_read(boot_io_t* io, void* buf, boot_uintn
 
     Status = FileHandleSetPosition(File, blkoff*io->blksz);
     if (EFI_ERROR (Status)) {
-      return .1;
+      return -1;
     }
 
     Status = FileHandleRead(File, &BufferSize, buf);
