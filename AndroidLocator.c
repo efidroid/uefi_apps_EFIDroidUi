@@ -766,7 +766,7 @@ FindAndroidBlockIo (
 
     // hide qcmbn images and ELF's like tz and rpm
     // we don't do this for replacement partitions because the user may want to boot these image types
-    if(context->type==BOOTIMG_TYPE_QCMBN || context->type==BOOTIMG_TYPE_ELF)
+    if(context->type==BOOTIMG_TYPE_QCMBN || (context->type==BOOTIMG_TYPE_ELF && context->magic_test_result==1))
       goto FREEBUFFER;
   }
 
