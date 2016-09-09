@@ -770,7 +770,7 @@ FindAndroidBlockIo (
       goto FREEBUFFER;
   }
 
-  if(context->type==BOOTIMG_TYPE_ANDROID) {
+  if(context->type==BOOTIMG_TYPE_ANDROID || context->type==BOOTIMG_TYPE_ELF) {
     // try to get info from cache
     if (context->checksum) {
       CHAR16 Buf[50];
