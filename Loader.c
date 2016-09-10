@@ -456,6 +456,7 @@ LoaderBootContext (
   IN bootimg_context_t      *context,
   IN multiboot_handle_t     *mbhandle,
   IN BOOLEAN                DisablePatching,
+  IN BOOLEAN                IsRecovery,
   IN LAST_BOOT_ENTRY        *LastBootEntry
 )
 {
@@ -463,7 +464,6 @@ LoaderBootContext (
   EFI_STATUS                ReturnStatus = EFI_UNSUPPORTED;
   VOID                      *NewRamdisk = NULL;
   UINT32                    RamdiskUncompressedLen = 0;
-  BOOLEAN                   RecoveryMode = FALSE;
   CHAR8                     Buf[100];
   INTN                      rc;
   UINT32                    i;
@@ -536,7 +536,7 @@ LoaderBootContext (
 
     // check if this is a recovery ramdisk
     if (CpioGetByName((CPIO_NEWC_HEADER *)NewRamdisk, "sbin/recovery")) {
-      RecoveryMode = TRUE;
+      IsRecovery = TRUE;
     }
 
     // replace ramdisk data
@@ -547,7 +547,7 @@ LoaderBootContext (
   }
 
   // patch cmdline
-  Status = PatchCmdline(context, mbhandle, RecoveryMode, DisablePatching);
+  Status = PatchCmdline(context, mbhandle, IsRecovery, DisablePatching);
   if (EFI_ERROR(Status)) {
     AsciiSPrint(Buf, sizeof(Buf), "Can't load cmdline: %r", Status);
     MenuShowMessage("Error", Buf);
@@ -644,6 +644,7 @@ LoaderBootFromFile (
   IN EFI_FILE_PROTOCOL  *File,
   IN multiboot_handle_t *mbhandle,
   IN BOOLEAN            DisablePatching,
+  IN BOOLEAN            IsRecovery,
   IN LAST_BOOT_ENTRY    *LastBootEntry
 )
 {
@@ -657,7 +658,7 @@ LoaderBootFromFile (
   INTN rc = libboot_identify_file(File, &context);
   if(rc) goto CLEANUP;
 
-  Status = LoaderBootContext(&context, mbhandle, DisablePatching, LastBootEntry);
+  Status = LoaderBootContext(&context, mbhandle, DisablePatching, IsRecovery, LastBootEntry);
 
 CLEANUP:
   libboot_free_context(&context);
@@ -671,6 +672,7 @@ LoaderBootFromBuffer (
   IN UINTN              Size,
   IN multiboot_handle_t *mbhandle,
   IN BOOLEAN            DisablePatching,
+  IN BOOLEAN            IsRecovery,
   IN LAST_BOOT_ENTRY    *LastBootEntry
 )
 {
@@ -684,7 +686,7 @@ LoaderBootFromBuffer (
   INTN rc = libboot_identify_memory(Buffer, Size, &context);
   if(rc) goto CLEANUP;
 
-  Status = LoaderBootContext(&context, mbhandle, DisablePatching, LastBootEntry);
+  Status = LoaderBootContext(&context, mbhandle, DisablePatching, IsRecovery, LastBootEntry);
 
 CLEANUP:
   libboot_free_context(&context);
@@ -697,6 +699,7 @@ LoaderBootFromBlockIo (
   IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
   IN multiboot_handle_t     *mbhandle,
   IN BOOLEAN                DisablePatching,
+  IN BOOLEAN                IsRecovery,
   IN LAST_BOOT_ENTRY        *LastBootEntry
 )
 {
@@ -710,7 +713,7 @@ LoaderBootFromBlockIo (
   INTN rc = libboot_identify_blockio(BlockIo, &context);
   if(rc) goto CLEANUP;
 
-  Status = LoaderBootContext(&context, mbhandle, DisablePatching, LastBootEntry);
+  Status = LoaderBootContext(&context, mbhandle, DisablePatching, IsRecovery, LastBootEntry);
 
 CLEANUP:
   libboot_free_context(&context);

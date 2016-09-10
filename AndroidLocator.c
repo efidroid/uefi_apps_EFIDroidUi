@@ -205,7 +205,7 @@ AndroidBootCallback (
 {
   MENU_ENTRY_PDATA *PData = This->Private;
 
-  return LoaderBootContext(PData->context, PData->mbhandle, PData->DisablePatching, &PData->LastBootEntry);
+  return LoaderBootContext(PData->context, PData->mbhandle, PData->DisablePatching, PData->IsRecovery, &PData->LastBootEntry);
 }
 
 STATIC
@@ -219,7 +219,7 @@ AndroidBootLongPressCallback (
   INT32 Selection = MenuShowDialog("Unpatched boot", "Do you want to boot without any ramdisk patching?", "OK", "CANCEL");
   if(Selection==0) {
     RenderBootScreen(This);
-    return LoaderBootContext(PData->context, PData->mbhandle, TRUE, &PData->LastBootEntry);
+    return LoaderBootContext(PData->context, PData->mbhandle, TRUE, PData->IsRecovery, &PData->LastBootEntry);
   }
   return EFI_SUCCESS;
 }
@@ -850,6 +850,7 @@ AndroidProcessOption (
   MENU_ENTRY_PDATA* EntryPData = Entry->Private;
   EntryPData->context = context;
   EntryPData->LastBootEntry = *LastBootEntry;
+  EntryPData->IsRecovery = Cache->IsRecovery;
 
   if(Cache->IsRecovery) {
     // create recovery menu

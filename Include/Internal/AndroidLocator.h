@@ -8,6 +8,7 @@ typedef struct {
   bootimg_context_t     *context;
   multiboot_handle_t    *mbhandle;
   BOOLEAN               DisablePatching;
+  BOOLEAN               IsRecovery;
   LAST_BOOT_ENTRY       LastBootEntry;
 } MENU_ENTRY_PDATA;
 

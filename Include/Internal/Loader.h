@@ -38,6 +38,7 @@ LoaderBootFromBlockIo (
   IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
   IN multiboot_handle_t     *mbhandle,
   IN BOOLEAN                DisablePatching,
+  IN BOOLEAN                IsRecovery,
   IN LAST_BOOT_ENTRY        *LastBootEntry
 );
 
@@ -46,6 +47,7 @@ LoaderBootFromFile (
   IN EFI_FILE_PROTOCOL  *File,
   IN multiboot_handle_t *mbhandle,
   IN BOOLEAN            DisablePatching,
+  IN BOOLEAN            IsRecovery,
   IN LAST_BOOT_ENTRY    *LastBootEntry
 );
 
@@ -55,6 +57,7 @@ LoaderBootFromBuffer (
   IN UINTN              Size,
   IN multiboot_handle_t *mbhandle,
   IN BOOLEAN            DisablePatching,
+  IN BOOLEAN            IsRecovery,
   IN LAST_BOOT_ENTRY    *LastBootEntry
 );
 
@@ -63,6 +66,7 @@ LoaderBootContext (
   IN bootimg_context_t      *context,
   IN multiboot_handle_t     *mbhandle,
   IN BOOLEAN                DisablePatching,
+  IN BOOLEAN                IsRecovery,
   IN LAST_BOOT_ENTRY        *LastBootEntry
 );
 
