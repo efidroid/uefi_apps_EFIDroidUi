@@ -5,7 +5,7 @@
 typedef VOID (*LINUX_KERNEL)(UINT32 Zero, UINT32 Arch, UINTN ParametersBase);
 
 STATIC EFI_STATUS
-AndroidPatchCmdline (
+PatchCmdline (
   bootimg_context_t         *Context,
   IN multiboot_handle_t     *mbhandle,
   IN BOOLEAN                RecoveryMode,
@@ -448,7 +448,7 @@ ERROR_FREE_RAMDISK:
 }
 
 EFI_STATUS
-AutoBootContext (
+LoaderBootContext (
   IN bootimg_context_t      *context,
   IN multiboot_handle_t     *mbhandle,
   IN BOOLEAN                DisablePatching,
@@ -543,7 +543,7 @@ AutoBootContext (
   }
 
   // patch cmdline
-  Status = AndroidPatchCmdline(context, mbhandle, RecoveryMode, DisablePatching);
+  Status = PatchCmdline(context, mbhandle, RecoveryMode, DisablePatching);
   if (EFI_ERROR(Status)) {
     AsciiSPrint(Buf, sizeof(Buf), "Can't load cmdline: %r", Status);
     MenuShowMessage("Error", Buf);
@@ -586,7 +586,7 @@ CLEANUP:
 }
 
 EFI_STATUS
-AndroidGetDecompressedRamdisk (
+LoaderGetDecompressedRamdisk (
   IN bootimg_context_t      *context,
   OUT CPIO_NEWC_HEADER      **DecompressedRamdiskOut
 )
@@ -636,7 +636,7 @@ CLEANUP:
 }
 
 EFI_STATUS
-AndroidBootFromFile (
+LoaderBootFromFile (
   IN EFI_FILE_PROTOCOL  *File,
   IN multiboot_handle_t *mbhandle,
   IN BOOLEAN            DisablePatching,
@@ -653,7 +653,7 @@ AndroidBootFromFile (
   INTN rc = libboot_identify_file(File, &context);
   if(rc) goto CLEANUP;
 
-  Status = AutoBootContext(&context, mbhandle, DisablePatching, LastBootEntry);
+  Status = LoaderBootContext(&context, mbhandle, DisablePatching, LastBootEntry);
 
 CLEANUP:
   libboot_free_context(&context);
@@ -662,7 +662,7 @@ CLEANUP:
 }
 
 EFI_STATUS
-AndroidBootFromBuffer (
+LoaderBootFromBuffer (
   IN VOID               *Buffer,
   IN UINTN              Size,
   IN multiboot_handle_t *mbhandle,
@@ -680,7 +680,7 @@ AndroidBootFromBuffer (
   INTN rc = libboot_identify_memory(Buffer, Size, &context);
   if(rc) goto CLEANUP;
 
-  Status = AutoBootContext(&context, mbhandle, DisablePatching, LastBootEntry);
+  Status = LoaderBootContext(&context, mbhandle, DisablePatching, LastBootEntry);
 
 CLEANUP:
   libboot_free_context(&context);
@@ -689,7 +689,7 @@ CLEANUP:
 }
 
 EFI_STATUS
-AndroidBootFromBlockIo (
+LoaderBootFromBlockIo (
   IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
   IN multiboot_handle_t     *mbhandle,
   IN BOOLEAN                DisablePatching,
@@ -706,7 +706,7 @@ AndroidBootFromBlockIo (
   INTN rc = libboot_identify_blockio(BlockIo, &context);
   if(rc) goto CLEANUP;
 
-  Status = AutoBootContext(&context, mbhandle, DisablePatching, LastBootEntry);
+  Status = LoaderBootContext(&context, mbhandle, DisablePatching, LastBootEntry);
 
 CLEANUP:
   libboot_free_context(&context);

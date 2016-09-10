@@ -133,7 +133,7 @@ AndroidLocatorHandleRecoveryMode (
 );
 
 EFI_STATUS
-AndroidBootFromBlockIo (
+LoaderBootFromBlockIo (
   IN EFI_BLOCK_IO_PROTOCOL  *BlockIo,
   IN multiboot_handle_t     *mbhandle,
   IN BOOLEAN                DisablePatching,
@@ -141,7 +141,7 @@ AndroidBootFromBlockIo (
 );
 
 EFI_STATUS
-AndroidBootFromFile (
+LoaderBootFromFile (
   IN EFI_FILE_PROTOCOL  *File,
   IN multiboot_handle_t *mbhandle,
   IN BOOLEAN            DisablePatching,
@@ -149,7 +149,7 @@ AndroidBootFromFile (
 );
 
 EFI_STATUS
-AndroidBootFromBuffer (
+LoaderBootFromBuffer (
   IN VOID               *Buffer,
   IN UINTN              Size,
   IN multiboot_handle_t *mbhandle,
@@ -158,7 +158,7 @@ AndroidBootFromBuffer (
 );
 
 EFI_STATUS
-AutoBootContext (
+LoaderBootContext (
   IN bootimg_context_t      *context,
   IN multiboot_handle_t     *mbhandle,
   IN BOOLEAN                DisablePatching,
@@ -170,7 +170,7 @@ INTN libboot_identify_blockio(EFI_BLOCK_IO_PROTOCOL* BlockIo, bootimg_context_t*
 INTN libboot_identify_file(EFI_FILE_PROTOCOL* File, bootimg_context_t* context);
 
 EFI_STATUS
-AndroidGetDecompressedRamdisk (
+LoaderGetDecompressedRamdisk (
   IN bootimg_context_t      *context,
   OUT CPIO_NEWC_HEADER      **DecompressedRamdiskOut
 );

@@ -161,7 +161,7 @@ MenuItemCallback (
   }
 
   // boot via libboot
-  Status = AndroidBootFromFile(File, NULL, TRUE, NULL);
+  Status = LoaderBootFromFile(File, NULL, TRUE, NULL);
   if (EFI_ERROR (Status)) {
     CHAR8 Buf[100];
     AsciiSPrint(Buf, 100, "Can't boot file: %r", Status);

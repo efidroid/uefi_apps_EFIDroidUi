@@ -90,7 +90,7 @@ CommandBoot (
   }
 
   // boot Android
-  AndroidBootFromBuffer(Data, Size, NULL, DisablePatching, NULL);
+  LoaderBootFromBuffer(Data, Size, NULL, DisablePatching, NULL);
 
   // start fastboot
   FastbootInit();

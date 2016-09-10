@@ -201,7 +201,7 @@ CallbackBootAndroid (
 {
   MENU_ENTRY_PDATA *PData = This->Private;
 
-  return AutoBootContext(PData->context, PData->mbhandle, PData->DisablePatching, &PData->LastBootEntry);
+  return LoaderBootContext(PData->context, PData->mbhandle, PData->DisablePatching, &PData->LastBootEntry);
 }
 
 EFI_STATUS
@@ -214,7 +214,7 @@ CallbackBootAndroidNoPatch (
   INT32 Selection = MenuShowDialog("Unpatched boot", "Do you want to boot without any ramdisk patching?", "OK", "CANCEL");
   if(Selection==0) {
     RenderBootScreen(This);
-    return AutoBootContext(PData->context, PData->mbhandle, TRUE, &PData->LastBootEntry);
+    return LoaderBootContext(PData->context, PData->mbhandle, TRUE, &PData->LastBootEntry);
   }
   return EFI_SUCCESS;
 }
@@ -808,7 +808,7 @@ FindAndroidBlockIo (
     // decompress ramdisk
     CHAR8* ImgName = NULL;
     CPIO_NEWC_HEADER *Ramdisk = NULL;
-    Status = AndroidGetDecompressedRamdisk (context, &Ramdisk);
+    Status = LoaderGetDecompressedRamdisk (context, &Ramdisk);
     if(!EFI_ERROR(Status)) {
       // get ramdisk info
       Status = GetAndroidImgInfo(Ramdisk, &IconPath, &ImgName, &IsRecovery);
