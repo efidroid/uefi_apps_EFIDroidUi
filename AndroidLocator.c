@@ -199,7 +199,7 @@ MenuBootEntryCloneCallback (
 
 STATIC
 EFI_STATUS
-CallbackBootAndroid (
+AndroidBootCallback (
   IN MENU_ENTRY* This
 )
 {
@@ -210,7 +210,7 @@ CallbackBootAndroid (
 
 STATIC
 EFI_STATUS
-CallbackBootAndroidNoPatch (
+AndroidBootLongPressCallback (
   IN MENU_ENTRY* This
 )
 {
@@ -245,7 +245,7 @@ MenuCreateBootEntry (
   }
 
   MenuEntry->Private = PData;
-  MenuEntry->Callback = CallbackBootAndroid;
+  MenuEntry->Callback = AndroidBootCallback;
   MenuEntry->FreeCallback = MenuBootEntryFreeCallback;
   MenuEntry->CloneCallback = MenuBootEntryCloneCallback;
 
@@ -573,11 +573,11 @@ FindESP (
 }
 
 STATIC
-EFI_STATUS
+VOID
 GetAndroidImgInfo (
   IN CPIO_NEWC_HEADER   *Ramdisk,
   CONST CHAR8           **IconPath,
-  CHAR8                 **ImgName,
+  CONST CHAR8           **ImgName,
   BOOLEAN               *IsRecovery
 )
 {
@@ -588,39 +588,105 @@ GetAndroidImgInfo (
     // set icon and description
     if (CpioGetByName(Ramdisk, "sbin/twrp")) {
       *IconPath = "icons/recovery_twrp.png";
-      *ImgName = AsciiStrDup("TWRP");
+      *ImgName = "TWRP";
     }
     else if (CpioGetByName(Ramdisk, "sbin/raw-backup.sh")) {
       *IconPath = "icons/recovery_clockwork.png";
-      *ImgName = AsciiStrDup("PhilZ Touch");
+      *ImgName = "PhilZ Touch";
     }
     else if (CpioGetByName(Ramdisk, "res/images/icon_clockwork.png")) {
       *IconPath = "icons/recovery_clockwork.png";
-      *ImgName = AsciiStrDup("ClockworkMod Recovery");
+      *ImgName = "ClockworkMod Recovery";
     }
     else if (CpioGetByName(Ramdisk, "res/images/font_log.png")) {
       *IconPath = "icons/recovery_cyanogen.png";
-      *ImgName = AsciiStrDup("Cyanogen Recovery");
+      *ImgName = "Cyanogen Recovery";
     }
     else if (CpioGetByName(Ramdisk, "sbin/lafd")) {
       *IconPath = "icons/recovery_lglaf.png";
-      *ImgName = AsciiStrDup("LG Laf Recovery");
+      *ImgName = "LG Laf Recovery";
     }
     else if (CpioGetByName(Ramdisk, "res/images/icon_smile.png")) {
       *IconPath = "icons/recovery_xiaomi.png";
-      *ImgName = AsciiStrDup("Xiaomi Recovery");
+      *ImgName = "Xiaomi Recovery";
     }
     else {
       *IconPath = "icons/android.png";
-      *ImgName = AsciiStrDup("Recovery");
+      *ImgName = "Recovery";
     }
   }
 
   else {
     *IsRecovery = FALSE;
   }
+}
 
-  return EFI_SUCCESS;
+STATIC
+EFI_STATUS
+RDInfoCacheRead (
+  bootimg_context_t         *context,
+  IMGINFO_CACHE             *OutCache
+)
+{
+  // try to get info from cache
+  if (context->checksum) {
+    CHAR16 Buf[50];
+    UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
+    AddCacheVariableToList(&mUsedCacheVariables, Buf);
+    IMGINFO_CACHE* Cache = UtilGetEFIDroidDataVariable(Buf);
+
+    CopyMem(OutCache, Cache, sizeof(*OutCache));
+
+    FreePool(Cache);
+    return EFI_SUCCESS;
+  }
+
+  return EFI_NOT_FOUND;
+}
+
+STATIC
+VOID
+RDInfoCacheBuild (
+  bootimg_context_t         *context,
+  IMGINFO_CACHE             *OutCache
+)
+{
+  EFI_STATUS                Status;
+  CONST CHAR8               *IconPath = NULL;
+  CONST CHAR8               *ImgName = NULL;
+  BOOLEAN                   IsRecovery = FALSE;
+
+  // show progress dialog on first scan
+  if (mFirstCacheScan) {
+    MenuShowProgressDialog("Updating entry cache", FALSE);
+    mFirstCacheScan = FALSE;
+  }
+
+  // decompress ramdisk
+  CPIO_NEWC_HEADER *Ramdisk = NULL;
+  Status = LoaderGetDecompressedRamdisk (context, &Ramdisk);
+  if(!EFI_ERROR(Status)) {
+    // build info from ramdisk contents
+    GetAndroidImgInfo(Ramdisk, &IconPath, &ImgName, &IsRecovery);
+  }
+
+  // cleanup
+  if (Ramdisk) {
+    FreePool(Ramdisk);
+  }
+
+  // copy info to OutCache
+  AsciiSPrint(OutCache->Name, sizeof(OutCache->Name), "%a", ImgName?:"");
+  AsciiSPrint(OutCache->IconPath, sizeof(OutCache->IconPath), "%a", IconPath?:"");
+  OutCache->IsRecovery = IsRecovery;
+
+  // store info in cache
+  if (context->checksum) {
+    CHAR16 Buf[50];
+    UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
+    AddCacheVariableToList(&mUsedCacheVariables, Buf);
+    UtilSetEFIDroidDataVariable(Buf, OutCache, sizeof(*OutCache));
+  }
 }
 
 STATIC
@@ -631,19 +697,20 @@ FindAndroidBlockIo (
   IN VOID        *Context
   )
 {
-  EFI_STATUS                Status;
-  EFI_BLOCK_IO_PROTOCOL     *BlockIo;
-  EFI_PARTITION_NAME_PROTOCOL *PartitionName;
-  BOOLEAN                   IsRecovery = FALSE;
-  BOOLEAN                   IsInternalBoot = FALSE;
-  CONST CHAR8               *IconPath = NULL;
-  LIBAROMA_STREAMP          Icon = NULL;
-  CHAR8                     *Name = NULL;
-  MENU_ENTRY                *Entry = NULL;
-  LAST_BOOT_ENTRY           LastBootEntry = {0};
-  CHAR16                    *TmpStr;
-  EFI_DEVICE_PATH_PROTOCOL  *DevicePath = NULL;
-  bootimg_context_t         *context = NULL;
+  EFI_STATUS                  Status;
+  bootimg_context_t           *context = NULL;
+  EFI_DEVICE_PATH_PROTOCOL    *DevicePath = NULL;
+  EFI_BLOCK_IO_PROTOCOL       *BlockIo = NULL;
+  EFI_PARTITION_NAME_PROTOCOL *PartitionNameProtocol = NULL;
+  CONST CHAR16                *PartitionName = NULL;
+  BOOLEAN                     IsInternalRecovery = FALSE;
+  BOOLEAN                     IsInternalBoot = FALSE;
+  IMGINFO_CACHE               Cache;
+  LIBAROMA_STREAMP            Icon = NULL;
+  CHAR8                       *Name = NULL;
+  MENU_ENTRY                  *Entry = NULL;
+  LAST_BOOT_ENTRY             LastBootEntry = {0};
+  CHAR16                      *TmpStr = NULL;
 
   Status = EFI_SUCCESS;
 
@@ -652,7 +719,7 @@ FindAndroidBlockIo (
     return EFI_OUT_OF_RESOURCES;
   }
 
-  // get intrnal rom name
+  // get internal rom name
   CONST CHAR8 *ROMName = "Android";
   if(mInternalROMName)
     ROMName = mInternalROMName;
@@ -686,15 +753,18 @@ FindAndroidBlockIo (
   //
   // Get the PartitionName protocol on that handle
   //
-  PartitionName = NULL;
+  PartitionNameProtocol = NULL;
   Status = gBS->HandleProtocol (
                   Handle,
                   &gEfiPartitionNameProtocolGuid,
-                  (VOID **)&PartitionName
+                  (VOID **)&PartitionNameProtocol
                   );
-  if (!EFI_ERROR (Status) && PartitionName->Name[0]) {
+  if (!EFI_ERROR (Status) && PartitionNameProtocol->Name[0]) {
+    // save partition name
+    PartitionName = PartitionNameProtocol->Name;
+
     // get fstab rec
-    CHAR8* PartitionNameAscii = Unicode2Ascii(PartitionName->Name);
+    CHAR8* PartitionNameAscii = Unicode2Ascii(PartitionNameProtocol->Name);
     ASSERT(PartitionNameAscii);
     FSTAB_REC* Rec = FstabGetByPartitionName(mFstab, PartitionNameAscii);
     FreePool(PartitionNameAscii);
@@ -709,7 +779,7 @@ FindAndroidBlockIo (
         UINTN PathBufSize = 100*sizeof(CHAR16);
         CHAR16 *PathBuf = AllocateZeroPool(PathBufSize);
         ASSERT(PathBuf);
-        UnicodeSPrint(PathBuf, PathBufSize, L"partition_%s.img", PartitionName->Name);
+        UnicodeSPrint(PathBuf, PathBufSize, L"partition_%s.img", PartitionNameProtocol->Name);
 
         // open File
         EFI_FILE_PROTOCOL* BootFile = NULL;
@@ -746,32 +816,12 @@ FindAndroidBlockIo (
 
       // this is a recovery partition
       if(!AsciiStrCmp(Rec->mount_point, "/recovery")) {
-        IsRecovery = TRUE;
+        IsInternalRecovery = TRUE;
       }
       else if(!AsciiStrCmp(Rec->mount_point, "/boot")) {
         IsInternalBoot = TRUE;
       }
     }
-
-    // allocate name
-    Name = AllocateZeroPool(4096);
-    if(!Name) {
-      goto FREEBUFFER;
-    }
-
-    // set entry description
-    if (IsInternalBoot) {
-      AsciiSPrint(Name, 4096, "%a (Internal)", ROMName);
-      if(mInternalROMIconPath)
-        Icon = libaroma_stream_ramdisk(mInternalROMIconPath);
-    }
-    else if(IsRecovery)
-      AsciiSPrint(Name, 4096, "Recovery (Internal)");
-    else
-      AsciiSPrint(Name, 4096, "Android (%s)", PartitionName->Name);
-  }
-  else {
-    Name = AsciiStrDup("Unknown");
   }
 
   if (!context->rootio) {
@@ -785,87 +835,57 @@ FindAndroidBlockIo (
       goto FREEBUFFER;
   }
 
+  // get information about ramdisk
   if(context->type==BOOTIMG_TYPE_ANDROID || context->type==BOOTIMG_TYPE_ELF) {
-    // try to get info from cache
-    if (context->checksum) {
-      CHAR16 Buf[50];
-      UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
-      AddCacheVariableToList(&mUsedCacheVariables, Buf);
-      IMGINFO_CACHE* Cache = UtilGetEFIDroidDataVariable(Buf);
-      if (Cache) {
-        IsRecovery = Cache->IsRecovery;
-
-        if (IsRecovery) {
-          if(Cache->IconPath)
-            Icon = libaroma_stream_ramdisk(Cache->IconPath);
-
-          FreePool(Name);
-          Name = AllocateZeroPool(4096);
-          if(Name) {
-            AsciiSPrint(Name, 4096, "%a (Internal)", Cache->Name);
-          }
-          else {
-            Name = AsciiStrDup(Cache->Name);
-          }
-        }
-
-        FreePool(Cache);
-        goto SKIP;
-      }
+    Status = RDInfoCacheRead(context, &Cache);
+    if (EFI_ERROR(Status)) {
+      RDInfoCacheBuild(context, &Cache);
     }
-
-    // show progress dialog on first scan
-    if (mFirstCacheScan) {
-      MenuShowProgressDialog("Updating entry cache", FALSE);
-      mFirstCacheScan = FALSE;
-    }
-
-    // decompress ramdisk
-    CHAR8* ImgName = NULL;
-    CPIO_NEWC_HEADER *Ramdisk = NULL;
-    Status = LoaderGetDecompressedRamdisk (context, &Ramdisk);
-    if(!EFI_ERROR(Status)) {
-      // get ramdisk info
-      Status = GetAndroidImgInfo(Ramdisk, &IconPath, &ImgName, &IsRecovery);
-      if(!EFI_ERROR(Status)) {
-        // replace icon and name
-        if (ImgName && IconPath) {
-          Icon = libaroma_stream_ramdisk(IconPath);
-          FreePool(Name);
-          Name = AllocateZeroPool(4096);
-          if(Name) {
-            AsciiSPrint(Name, 4096, "%a (Internal)", ImgName);
-          }
-          else {
-            Name = ImgName;
-          }
-        }
-      }
-    }
-
-    // cleanup
-    if (Ramdisk) {
-      FreePool(Ramdisk);
-    }
-
-    // write info to cache
-    if (context->checksum) {
-      IMGINFO_CACHE Cache;
-      AsciiSPrint(Cache.Name, sizeof(Cache.Name), "%a", ImgName?:"");
-      AsciiSPrint(Cache.IconPath, sizeof(Cache.IconPath), "%a", IconPath?:"");
-      Cache.IsRecovery = IsRecovery;
-
-      CHAR16 Buf[50];
-      UnicodeSPrint(Buf, sizeof(Buf), L"RdInfoCache-%08x", context->checksum);
-      AddCacheVariableToList(&mUsedCacheVariables, Buf);
-      UtilSetEFIDroidDataVariable(Buf, &Cache, sizeof(Cache));
-    }
-
-    if (ImgName)
-      FreePool(ImgName);
   }
 
-SKIP:
+  // this is internal recovery
+  if(IsInternalRecovery) {
+    Cache.IsRecovery = TRUE;
+  }
+
+  // default icon
+  if(Cache.IconPath[0]==0) {
+    if(IsInternalBoot && mInternalROMIconPath)
+      AsciiSPrint(Cache.IconPath, sizeof(Cache.IconPath), mInternalROMIconPath);
+    else
+      AsciiSPrint(Cache.IconPath, sizeof(Cache.IconPath), "icons/android.png");
+  }
+
+  // default name
+  if(Cache.Name[0]==0) {
+    if(IsInternalBoot)
+      AsciiSPrint(Cache.Name, sizeof(Cache.Name), "%a", ROMName);
+    else if(Cache.IsRecovery)
+      AsciiSPrint(Cache.Name, sizeof(Cache.Name), "Recovery");
+    else
+      AsciiSPrint(Cache.Name, sizeof(Cache.Name), "Android");
+  }
+
+  // allocate name
+  Name = AllocateZeroPool(4096);
+  if(!Name) {
+    goto FREEBUFFER;
+  }
+
+  // build name
+  CONST CHAR16* ImageLocation;
+  if(IsInternalBoot || IsInternalRecovery)
+    ImageLocation = L"Internal";
+  else if(PartitionName)
+    ImageLocation = PartitionName;
+  else
+    ImageLocation = L"MBR";
+  AsciiSPrint(Name, 4096, "%a (%s)", Cache.Name, ImageLocation);
+
+  // open icon
+  Icon = libaroma_stream_ramdisk(Cache.IconPath);
+
+  // create new menu entry
   Entry = MenuCreateBootEntry();
   if(Entry == NULL) {
     Status = EFI_OUT_OF_RESOURCES;
@@ -875,22 +895,17 @@ SKIP:
   EntryPData->context = context;
   EntryPData->LastBootEntry = LastBootEntry;
 
-  if(Icon==NULL) {
-    Icon = libaroma_stream_ramdisk("icons/android.png");
-  }
-
-  if(IsRecovery) {
+  if(Cache.IsRecovery) {
+    // create recovery menu
     RECOVERY_MENU *RecMenu = CreateRecoveryMenu();
     RecMenu->RootEntry->Icon = Icon;
     RecMenu->RootEntry->Name = Name;
 
+    // use the normal entry as the base entry for all recovery entries
     Entry->Name = AllocateZeroPool(4096);
     if(Entry->Name)
-      AsciiSPrint(Entry->Name, 4096, "%a (Internal)", ROMName);
-    if(mInternalROMIconPath)
-      Entry->Icon = libaroma_stream_ramdisk(mInternalROMIconPath);
-    else
-      Entry->Icon = libaroma_stream_ramdisk("icons/android.png");
+      AsciiSPrint(Entry->Name, 4096, "%a (Internal)", ROMName?:"Android");
+    Entry->Icon = libaroma_stream_ramdisk(mInternalROMIconPath?:"icons/android.png");
     RecMenu->BaseEntry = Entry;
 
     // add nopatch entry
@@ -900,6 +915,7 @@ SKIP:
     FreePool(RecMenu->NoPatchEntry->Name);
     RecMenu->NoPatchEntry->Name = AsciiStrDup(RecMenu->RootEntry->Name);
 
+    // add internal android item to recovery submenu
     MenuAddEntry(RecMenu->SubMenu, Entry);
   }
   else {
@@ -907,7 +923,7 @@ SKIP:
 
     Entry->Icon = Icon;
     Entry->Name = Name;
-    Entry->LongPressCallback = CallbackBootAndroidNoPatch;
+    Entry->LongPressCallback = AndroidBootLongPressCallback;
     MenuAddEntry(mBootMenuMain, Entry);
   }
 
