@@ -159,6 +159,7 @@ MenuAddRecoveryGroupOnce (
   }
 }
 
+STATIC
 VOID
 MenuBootEntryFreeCallback (
   MENU_ENTRY* Entry
@@ -172,6 +173,7 @@ MenuBootEntryFreeCallback (
   FreePool(PData);
 }
 
+STATIC
 EFI_STATUS
 MenuBootEntryCloneCallback (
   MENU_ENTRY* BaseEntry,
@@ -194,6 +196,7 @@ MenuBootEntryCloneCallback (
   return EFI_SUCCESS;
 }
 
+STATIC
 EFI_STATUS
 CallbackBootAndroid (
   IN MENU_ENTRY* This
@@ -204,6 +207,7 @@ CallbackBootAndroid (
   return LoaderBootContext(PData->context, PData->mbhandle, PData->DisablePatching, &PData->LastBootEntry);
 }
 
+STATIC
 EFI_STATUS
 CallbackBootAndroidNoPatch (
   IN MENU_ENTRY* This
@@ -219,6 +223,7 @@ CallbackBootAndroidNoPatch (
   return EFI_SUCCESS;
 }
 
+STATIC
 MENU_ENTRY*
 MenuCreateBootEntry (
   VOID
@@ -248,6 +253,7 @@ MenuCreateBootEntry (
   return MenuEntry;
 }
 
+STATIC
 VOID
 RecoveryEntryFreeCallback (
   MENU_ENTRY* Entry
@@ -268,6 +274,7 @@ RecoveryEntryFreeCallback (
   FreePool(PData);
 }
 
+STATIC
 EFI_STATUS
 RecoveryEntryCloneCallback (
   MENU_ENTRY* BaseEntry,
@@ -299,6 +306,7 @@ RecoveryEntryCloneCallback (
   return EFI_SUCCESS;
 }
 
+STATIC
 EFI_STATUS
 RecoveryCallback (
   IN MENU_ENTRY* This
@@ -310,6 +318,7 @@ RecoveryCallback (
   return EFI_SUCCESS;
 }
 
+STATIC
 EFI_STATUS
 RecoveryLongPressCallback (
   IN MENU_ENTRY* This
@@ -325,6 +334,7 @@ RecoveryLongPressCallback (
   return EFI_SUCCESS;
 }
 
+STATIC
 EFI_STATUS
 RecoveryBackCallback (
   MENU_OPTION* This
@@ -334,6 +344,7 @@ RecoveryBackCallback (
   return EFI_SUCCESS;
 }
 
+STATIC
 RECOVERY_MENU*
 CreateRecoveryMenu (
   VOID
@@ -365,6 +376,7 @@ CreateRecoveryMenu (
   return Menu;
 }
 
+STATIC
 VOID
 AddMultibootSystemToRecoveryMenu (
   MENU_ENTRY         *Entry
@@ -451,6 +463,7 @@ NEXT:
   return NULL;
 }
 
+STATIC
 MENU_ENTRY*
 GetMenuEntryFromLastBootEntry (
   LAST_BOOT_ENTRY *LastBootEntry
@@ -476,8 +489,8 @@ GetMenuEntryFromLastBootEntry (
   return NULL;
 }
 
-STATIC EFI_STATUS
-EFIAPI
+STATIC
+EFI_STATUS
 FindESP (
   IN EFI_HANDLE  Handle,
   IN VOID        *Instance,
@@ -558,7 +571,8 @@ FindESP (
   return Status;
 }
 
-STATIC EFI_STATUS
+STATIC
+EFI_STATUS
 GetAndroidImgInfo (
   IN CPIO_NEWC_HEADER   *Ramdisk,
   CONST CHAR8           **IconPath,
@@ -608,8 +622,8 @@ GetAndroidImgInfo (
   return EFI_SUCCESS;
 }
 
-STATIC EFI_STATUS
-EFIAPI
+STATIC
+EFI_STATUS
 FindAndroidBlockIo (
   IN EFI_HANDLE  Handle,
   IN VOID        *Instance,
@@ -908,7 +922,8 @@ FREEBUFFER:
   return Status;
 }
 
-STATIC INT32
+STATIC
+INT32
 IniHandler (
   VOID         *Private,
   CONST CHAR8  *Section,
@@ -941,8 +956,8 @@ IniHandler (
   return 1;
 } 
 
-STATIC EFI_STATUS
-EFIAPI
+STATIC
+EFI_STATUS
 FindMultibootSFS (
   IN EFI_HANDLE  Handle,
   IN VOID        *Instance,
@@ -1312,7 +1327,8 @@ AndroidLocatorInit (
   return EFI_SUCCESS;
 }
 
-STATIC INT32
+STATIC
+INT32
 BuildPropHandler (
   VOID         *Private,
   CONST CHAR8  *Section,
@@ -1393,8 +1409,8 @@ BuildPropHandler (
   return 1;
 }
 
-STATIC EFI_STATUS
-EFIAPI
+STATIC
+EFI_STATUS
 FindInternalROMName (
   IN EFI_HANDLE  Handle,
   IN VOID        *Instance,
