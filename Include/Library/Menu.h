@@ -2,9 +2,9 @@
 #define MENU_H 1
 
 #include <PiDxe.h>
-#include <Guid/FileInfo.h>
-
 #include <Library/BaseLib.h>
+
+#include <aroma.h>
 
 #define MENU_SIGNATURE             SIGNATURE_32 ('m', 'e', 'n', 'u')
 #define MENU_ENTRY_SIGNATURE       SIGNATURE_32 ('e', 'n', 't', 'r')

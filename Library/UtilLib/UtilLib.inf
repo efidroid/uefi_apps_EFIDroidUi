@@ -40,6 +40,9 @@
   EFIDroidUEFIApps/EFIDroidUi/EFIDroidUi.dec
   EFIDroidUEFIApps/EFIDroidUi/Library/AromaLib/AromaLib.dec
 
+[Packages.ARM]
+  ArmPkg/ArmPkg.dec
+
 [LibraryClasses]
   BaseLib
   UefiBootServicesTableLib

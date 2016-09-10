@@ -1,5 +1,9 @@
 #include "EFIDroidUi.h"
 
+#if defined (MDE_CPU_ARM)
+#include <Library/ArmLib.h>
+#endif
+
 #define SIDELOAD_FILENAME L"Sideload.efi"
 
 typedef VOID (*LINUX_KERNEL)(UINT32 Zero, UINT32 Arch, UINTN ParametersBase);

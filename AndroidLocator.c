@@ -1,4 +1,5 @@
 #include "EFIDroidUi.h"
+
 #include <string.h>
 
 STATIC LIST_ENTRY                  mRecoveries;

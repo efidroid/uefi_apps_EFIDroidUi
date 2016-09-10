@@ -2,44 +2,33 @@
 #define __EFIDROIDUI_H__
 
 #include <PiDxe.h>
-#include <Protocol/FirmwareVolume2.h>
+#include <LittleKernel.h>
+
 #include <Protocol/BlockIo.h>
+#include <Protocol/RamDisk.h>
 #include <Protocol/PartitionName.h>
 #include <Protocol/DevicePathFromText.h>
 #include <Protocol/DevicePathToText.h>
-#include <Protocol/RamDisk.h>
-#include <Guid/FileInfo.h>
+#include <Protocol/LKDisplay.h>
 
-#include <Library/BaseMemoryLib.h>
-#include <Library/DebugLib.h>
-#include <Library/HiiLib.h>
-#include <Library/MemoryAllocationLib.h>
 #include <Library/PrintLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/DevicePathLib.h>
+#include <Library/UefiBootManagerLib.h>
+#include <Library/MemoryAllocationLib.h>
+#include <Library/CacheMaintenanceLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
-#include <Library/UefiLib.h>
-#include <Library/UefiBootManagerLib.h>
-#include <Library/DevicePathLib.h>
+
+#include <Guid/FileSystemVolumeLabelInfo.h>
+
 #include <Library/Cpio.h>
 #include <Library/Decompress.h>
-#include <Library/PcdLib.h>
-#include <Library/DxeServicesLib.h>
-#include <Library/FileHandleLib.h>
+#include <Library/Fstab.h>
+#include <Library/MakeDosFs.h>
+#include <Library/Menu.h>
 #include <Library/UEFIRamdisk.h>
 #include <Library/Util.h>
-#include <Library/Menu.h>
-#include <Library/FileBlockIo.h>
-#include <Library/MemoryBlockIo.h>
-#include <Library/MakeDosFs.h>
-#include <Library/UefiApplicationEntryPoint.h>
-#include <Library/Fstab.h>
-
-#if defined (MDE_CPU_ARM)
-#include <Library/ArmLib.h>
-#endif
-
-#include <LittleKernel.h>
-
 #include <lib/boot.h>
 
 #include <Internal/Fastboot.h>

@@ -1,10 +1,4 @@
 #include "EFIDroidUi.h"
-#include <Protocol/DevicePath.h>
-#include <Protocol/RamDisk.h>
-#include <Protocol/GraphicsOutput.h>
-#include <Protocol/LKDisplay.h>
-#include <IndustryStandard/PeImage.h>
-#include <Library/DevicePathLib.h>
 
 #define SIDELOAD_FILENAME L"Sideload.efi"
 

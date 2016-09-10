@@ -1,5 +1,3 @@
-#include <Library/CacheMaintenanceLib.h>
-
 #include "EFIDroidUi.h"
 
 #define STATE_OFFLINE	0

@@ -39,6 +39,9 @@
   LittleKernelPkg/LittleKernelPkg.dec
   EFIDroidUEFIApps/EFIDroidUi/EFIDroidUi.dec
 
+[Packages.ARM]
+  ArmPkg/ArmPkg.dec
+
 [LibraryClasses]
   CpioLib
   DxeServicesLib

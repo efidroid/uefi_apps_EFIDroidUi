@@ -11,6 +11,10 @@
 #include <aroma.h>
 #endif
 
+#ifdef MDE_CPU_ARM
+#include <Library/ArmLib.h>
+#endif
+
 #define ROUNDUP(a, b)   (((a) + ((b)-1)) & ~((b)-1))
 #define ROUNDDOWN(a, b) ((a) & ~((b)-1))
 #define IS_DEVICE_PATH_NODE(node,type,subtype) (((node)->Type == (type)) && ((node)->SubType == (subtype)))

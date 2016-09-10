@@ -59,5 +59,8 @@
   EFIDroidUEFIApps/EFIDroidUi/Library/BootLib/BootLibPriv.dec
   EFIDroidUEFIApps/EFIDroidUi/Library/AromaLib/AromaLib.dec
 
+[Packages.ARM]
+  ArmPkg/ArmPkg.dec
+
 [Depex]
   TRUE

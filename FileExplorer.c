@@ -1,5 +1,4 @@
 #include "EFIDroidUi.h"
-#include <Guid/FileSystemVolumeLabelInfo.h>
 
 typedef struct {
   MENU_OPTION     *ParentMenu;
