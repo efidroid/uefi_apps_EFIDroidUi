@@ -616,6 +616,12 @@ GetAndroidImgInfo (
     }
   }
 
+  else if (CpioGetByName(Ramdisk, "fota_kernel")) {
+    *IconPath = "icons/sony.png";
+    *ImgName = "Sony FOTA";
+    *IsRecovery = TRUE;
+  }
+
   else {
     *IsRecovery = FALSE;
   }
