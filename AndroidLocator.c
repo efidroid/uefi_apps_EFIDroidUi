@@ -973,7 +973,7 @@ FindAndroidBlockIo (
         UINTN PathBufSize = 100*sizeof(CHAR16);
         CHAR16 *PathBuf = AllocateZeroPool(PathBufSize);
         ASSERT(PathBuf);
-        UnicodeSPrint(PathBuf, PathBufSize, L"partition_%s.img", PartitionNameProtocol->Name);
+        UnicodeSPrint(PathBuf, PathBufSize, L"partition_%a.img", Rec->mount_point+1);
 
         // open File
         EFI_FILE_PROTOCOL* BootFile = NULL;
