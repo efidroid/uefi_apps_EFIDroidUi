@@ -353,12 +353,14 @@ main (
   if(LastBootEntry)
    UtilSetEFIDroidDataVariable(L"LastBootEntry", NULL, 0);
 
-  // run recovery mode handler
-  if (mLKApi && !AsciiStrCmp(mLKApi->platform_get_uefi_bootpart(), "recovery")) {
 #if defined (MDE_CPU_ARM)
-    AndroidLocatorHandleRecoveryMode(LastBootEntry);
-#endif
+  // run recovery mode handler
+  if (mLKApi) {
+    if(!AsciiStrCmp(mLKApi->platform_get_uefi_bootpart(), "recovery") || mLKApi->platform_get_uefi_bootmode()==LKAPI_UEFI_BM_RECOVERY) {
+      AndroidLocatorHandleRecoveryMode(LastBootEntry);
+    }
   }
+#endif
 
   // free last boot entry
   if(LastBootEntry)
