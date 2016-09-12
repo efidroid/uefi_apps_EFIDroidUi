@@ -461,6 +461,7 @@ LoaderBootContext (
 )
 {
   EFI_STATUS                Status;
+  EFI_STATUS                Status2;
   EFI_STATUS                ReturnStatus = EFI_UNSUPPORTED;
   VOID                      *NewRamdisk = NULL;
   UINT32                    RamdiskUncompressedLen = 0;
@@ -487,7 +488,7 @@ LoaderBootContext (
   if(mLKApi)
     mLKApi->boot_update_addrs(&context->kernel_addr, &context->ramdisk_addr, &context->tags_addr);
 
-  if(!DisablePatching && context->ramdisk_data) {
+  if(context->ramdisk_data) {
     // get decompressor
     CONST CHAR8 *DecompName;
     decompress_fn Decompressor = decompress_method(context->ramdisk_data, context->ramdisk_size, &DecompName);
@@ -527,11 +528,43 @@ LoaderBootContext (
       goto CLEANUP;
     }
 
-    // add multiboot binary
+    // get CPIO ramdisk
     CPIO_NEWC_HEADER *cpiohd = (CPIO_NEWC_HEADER *) NewRamdisk;
+
+    // check if this is a merged ramdisk
+    CPIO_NEWC_HEADER* DualRamdiskAndroidHdr = CpioGetByName(cpiohd, "sbin/ramdisk.cpio");
+    CPIO_NEWC_HEADER* DualRamdiskRecoveryHdr = CpioGetByName(cpiohd, "sbin/ramdisk-recovery.cpio");
+    if (DualRamdiskAndroidHdr && DualRamdiskRecoveryHdr) {
+      // get android ramdisk
+      CPIO_NEWC_HEADER* DualRamdiskAndroid;
+      UINTN DualRamdiskAndroidSize;
+      Status = CpioGetData(DualRamdiskAndroidHdr, (VOID**)&DualRamdiskAndroid, &DualRamdiskAndroidSize);
+
+      // get recovery ramdisk
+      CPIO_NEWC_HEADER* DualRamdiskRecovery;
+      UINTN DualRamdiskRecoverySize;
+      Status2 = CpioGetData(DualRamdiskRecoveryHdr, (VOID**)&DualRamdiskRecovery, &DualRamdiskRecoverySize);
+
+      if(!EFI_ERROR(Status) && !EFI_ERROR(Status2)) {
+        if(IsRecovery)
+          cpiohd = DualRamdiskRecovery;
+        else
+          cpiohd = DualRamdiskAndroid;
+
+        NewRamdisk = cpiohd;
+      }
+    }
+
+    // skip to last CPIO object
     cpiohd = CpioGetLast (cpiohd);
-    cpiohd = CpioCreateObj (cpiohd, cpio_name_mbinit, MultibootBin, MultibootSize);
-    cpiohd = CpioCreateObj (cpiohd, CPIO_TRAILER, NULL, 0);
+
+    // add multiboot binary
+    if(!DisablePatching) {
+      cpiohd = CpioCreateObj (cpiohd, cpio_name_mbinit, MultibootBin, MultibootSize);
+      cpiohd = CpioCreateObj (cpiohd, CPIO_TRAILER, NULL, 0);
+    }
+
+    // verify that we didn't overflow the buffer
     ASSERT((UINT32)cpiohd <= ((UINT32)NewRamdisk)+RamdiskUncompressedLen);
 
     // check if this is a recovery ramdisk
