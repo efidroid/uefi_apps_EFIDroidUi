@@ -478,6 +478,7 @@ LoaderBootContext (
   // but it still set the correct inner type of the boot image
   // Also, if the kernel_size is 0, android couldn't boot anyway, so try to boot it as a EFI image
   if(context->type==BOOTIMG_TYPE_EFI || context->kernel_size==0) {
+    libboot_error_stack_reset();
     ReturnStatus = BootEfiContext(context);
     goto CLEANUP;
   }
