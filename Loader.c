@@ -358,7 +358,7 @@ BootEfiContext (
 
     // write kernel to efi file
     UINTN WriteSize = context->kernel_size;
-    Status = EfiFile->Write(EfiFile, &WriteSize, (VOID*)context->kernel_data);
+    Status = FileHandleWrite(EfiFile, &WriteSize, (VOID*)context->kernel_data);
     if (EFI_ERROR (Status)) {
       goto ERROR_UNREGISTER_RAMDISK;
     }

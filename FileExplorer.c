@@ -219,10 +219,10 @@ FindFiles (
   // Pass 2 to get files that are EFI images
   //
   for (Pass = 1; Pass <= 2; Pass++) {
-    FileHandle->SetPosition (FileHandle, 0);
+    FileHandleSetPosition (FileHandle, 0);
     for (;;) {
       BufferSize  = DirBufferSize;
-      Status      = FileHandle->Read (FileHandle, &BufferSize, DirInfo);
+      Status      = FileHandleRead (FileHandle, &BufferSize, DirInfo);
       if (EFI_ERROR (Status) || BufferSize == 0) {
         break;
       }
