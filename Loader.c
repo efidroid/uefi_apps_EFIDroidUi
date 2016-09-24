@@ -260,8 +260,8 @@ BootEfiContext (
   EFI_DEVICE_PATH_PROTOCOL  *DevicePath;
   EFI_GUID                  DiskGuid = gEfiVirtualDiskGuid;
   EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   *Volume;
-  EFI_FILE_PROTOCOL                 *Root;
-  EFI_FILE_PROTOCOL                 *EfiFile;
+  EFI_FILE_PROTOCOL                 *Root = NULL;
+  EFI_FILE_PROTOCOL                 *EfiFile = NULL;
   VOID* RamDisk = NULL;
   BOOLEAN FreeRamdisk = FALSE;
   UINT64 RamDiskSize = 0;
@@ -334,7 +334,6 @@ BootEfiContext (
   }
 
   // Open the root directory of the volume
-  Root = NULL;
   Status = Volume->OpenVolume (
                      Volume,
                      &Root
@@ -346,7 +345,6 @@ BootEfiContext (
   // copy optional kernel to ramdisk
   if(context->kernel_data && context->kernel_size>0) {
     // Create EFI file
-    EfiFile = NULL;
     Status = Root->Open (
                      Root,
                      &EfiFile,
@@ -442,6 +440,9 @@ ERROR_UNREGISTER_RAMDISK:
   if (EFI_ERROR (Status)) {
     ASSERT(FALSE);
   }
+
+  FileHandleClose(EfiFile);
+  FileHandleClose(Root);
 
 ERROR_FREE_RAMDISK:
   // free ramdisk memory

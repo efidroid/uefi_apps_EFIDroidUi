@@ -500,8 +500,8 @@ FindESP (
 {
   EFI_STATUS                        Status;
   EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   *Volume;
-  EFI_FILE_PROTOCOL                 *Root;
-  EFI_FILE_PROTOCOL                 *DirEsp;
+  EFI_FILE_PROTOCOL                 *Root = NULL;
+  EFI_FILE_PROTOCOL                 *DirEsp = NULL;
   EFI_PARTITION_NAME_PROTOCOL       *PartitionName;
 
   mEspDevicePath = DevicePathFromHandle(Handle);
@@ -542,19 +542,17 @@ FindESP (
   //
   // Open the root directory of the volume
   //
-  Root = NULL;
   Status = Volume->OpenVolume (
                      Volume,
                      &Root
                      );
-  if (EFI_ERROR (Status) || Root==NULL) {
+  if (EFI_ERROR (Status)) {
     return Status;
   }
 
   //
-  // Open multiboot dir
+  // ESP dir
   //
-  DirEsp = NULL;
   Status = Root->Open (
                    Root,
                    &DirEsp,
@@ -563,11 +561,16 @@ FindESP (
                    0
                    );
   if (EFI_ERROR (Status)) {
-    return Status;
+    goto Done;
   }
 
   mEspVolume = Volume;
   mEspDir = DirEsp;
+
+  Status = EFI_SUCCESS;
+
+Done:
+  FileHandleClose(Root);
 
   return Status;
 }
@@ -910,6 +913,7 @@ FindAndroidBlockIo (
   IMGINFO_CACHE               CacheDual[2];
   LAST_BOOT_ENTRY             LastBootEntry = {0};
   CHAR16                      *TmpStr = NULL;
+  EFI_FILE_PROTOCOL           *BootFile = NULL;
 
   Status = EFI_SUCCESS;
 
@@ -976,7 +980,6 @@ FindAndroidBlockIo (
         UnicodeSPrint(PathBuf, PathBufSize, L"partition_%a.img", Rec->mount_point+1);
 
         // open File
-        EFI_FILE_PROTOCOL* BootFile = NULL;
         Status = mEspDir->Open (
                          mEspDir,
                          &BootFile,
@@ -1063,6 +1066,7 @@ FindAndroidBlockIo (
 
 FREEBUFFER:
   if(EFI_ERROR(Status)) {
+    FileHandleClose(BootFile);
     libboot_free_context(context);
     if(context)
       FreePool(context);
@@ -1103,7 +1107,36 @@ IniHandler (
     }
   }
   return 1;
-} 
+}
+
+STATIC
+VOID
+FreeMbHandle (
+  multiboot_handle_t *mbhandle
+)
+{
+  if (!mbhandle)
+    return;
+
+  if(mbhandle->Name)
+    FreePool(mbhandle->Name);
+
+  if(mbhandle->Description)
+    FreePool(mbhandle->Description);
+
+  if(mbhandle->PartitionBoot)
+    FreePool(mbhandle->PartitionBoot);
+
+  if(mbhandle->ReplacementCmdline)
+    FreePool(mbhandle->ReplacementCmdline);
+
+  if(mbhandle->MultibootConfig)
+    FreePool(mbhandle->MultibootConfig);
+
+  FileHandleClose(mbhandle->ROMDirectory);
+
+  FreePool(mbhandle);
+}
 
 STATIC
 EFI_STATUS
@@ -1115,14 +1148,10 @@ FindMultibootSFS (
 {
   EFI_STATUS                        Status;
   EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   *Volume;
-  EFI_FILE_PROTOCOL                 *Root;
-  EFI_FILE_PROTOCOL                 *DirMultiboot;
-  EFI_FILE_PROTOCOL                 *FileMultibootIni;
+  EFI_FILE_PROTOCOL                 *Root = NULL;
+  EFI_FILE_PROTOCOL                 *DirMultiboot = NULL;
   EFI_FILE_INFO                     *NodeInfo;
-  CHAR16                            *FilenameBuf;
   BOOLEAN                           NoFile;
-  multiboot_handle_t                *mbhandle = NULL;
-  bootimg_context_t                 *context = NULL;
   EFI_DEVICE_PATH_PROTOCOL          *DevicePath = NULL;
   LAST_BOOT_ENTRY                   LastBootEntry = {0};
 
@@ -1134,7 +1163,6 @@ FindMultibootSFS (
   //
   // Get the SimpleFilesystem protocol on that handle
   //
-  Volume = NULL;
   Status = gBS->HandleProtocol (
                   Handle,
                   &gEfiSimpleFileSystemProtocolGuid,
@@ -1152,7 +1180,7 @@ FindMultibootSFS (
                      Volume,
                      &Root
                      );
-  if (EFI_ERROR (Status) || Root==NULL) {
+  if (EFI_ERROR (Status)) {
     return Status;
   }
 
@@ -1190,19 +1218,21 @@ FindMultibootSFS (
                    );
   if (!EFI_ERROR (Status)) goto ENUMERATE;
 
-  return Status;
+  goto Done;
 
 
 ENUMERATE:
   // enumerate directories
   NoFile      = FALSE;
   NodeInfo    = NULL;
-  FilenameBuf = NULL;
-  mbhandle    = NULL;
   for ( Status = FileHandleFindFirstFile(DirMultiboot, &NodeInfo)
       ; !EFI_ERROR(Status) && !NoFile
       ; Status = FileHandleFindNextFile(DirMultiboot, NodeInfo, &NoFile)
      ){
+    EFI_FILE_PROTOCOL                 *FileMultibootIni = NULL;
+    CHAR16                            *FilenameBuf = NULL;
+    multiboot_handle_t                *mbhandle = NULL;
+    bootimg_context_t                 *context = NULL;
 
     // ignore directories
     if(!NodeIsDir(NodeInfo))
@@ -1218,7 +1248,6 @@ ENUMERATE:
     StrCat(FilenameBuf, PathMultibootIni);
     
     // open multiboot.ini
-    FileMultibootIni = NULL;
     Status = DirMultiboot->Open (
                      DirMultiboot,
                      &FileMultibootIni,
@@ -1271,16 +1300,11 @@ ENUMERATE:
 
     // store as ascii string
     mbhandle->MultibootConfig = Unicode2Ascii(fname);
+    FreePool(fname);
     if (mbhandle->MultibootConfig == NULL) {
       Status = EFI_OUT_OF_RESOURCES;
       goto NEXT;
     }
-
-    // cleanup
-    FreePool(fname);
-
-    // close multiboot.ini
-    FileHandleClose(FileMultibootIni);
 
     // add menu entry
     if(mbhandle->Name && mbhandle->PartitionBoot) {
@@ -1303,20 +1327,22 @@ ENUMERATE:
       // setup context
       context = AllocatePool(sizeof(*context));
       if (context == NULL) {
+        FileHandleClose(BootFile);
         goto NEXT;
       }
       custom_init_context(context);
 
-      // identify
-      // ignore the result because we want multiboot systems to be always visible
-      libboot_identify_file(BootFile, context);
-
       // create new menu entry
       MENU_ENTRY *Entry = MenuCreateBootEntry();
       if(Entry == NULL) {
+        FileHandleClose(BootFile);
         Status = EFI_OUT_OF_RESOURCES;
         goto NEXT;
       }
+
+      // identify
+      // ignore the result because we want multiboot systems to be always visible
+      libboot_identify_file(BootFile, context);
 
       // open icon file
       Status = mbhandle->ROMDirectory->Open (
@@ -1328,6 +1354,7 @@ ENUMERATE:
                        );
       if (!EFI_ERROR (Status)) {
         IconStream = libaroma_stream_efifile(IconFile);
+        FileHandleClose(IconFile);
       }
       if (IconStream==NULL)
         IconStream = libaroma_stream_ramdisk("icons/android.png");
@@ -1351,7 +1378,7 @@ ENUMERATE:
 NEXT:
     if(EFI_ERROR(Status)) {
       if (mbhandle) {
-        FreePool(mbhandle);
+        FreeMbHandle(mbhandle);
         mbhandle = NULL;
       }
       if (context) {
@@ -1361,14 +1388,19 @@ NEXT:
       }
     }
 
+    // close multiboot.ini
+    FileHandleClose(FileMultibootIni);
+    FileMultibootIni = NULL;
+
     if(FilenameBuf) {
       FreePool(FilenameBuf);
       FilenameBuf = NULL;
     }
   }
 
-  // close multiboot dir
+Done:
   FileHandleClose(DirMultiboot);
+  FileHandleClose(Root);
 
   return Status;
 }
@@ -1567,22 +1599,21 @@ FindInternalROMName (
 )
 {
   EFI_STATUS                        Status;
-  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   *Volume;
-  EFI_FILE_PROTOCOL                 *Root;
-  EFI_FILE_PROTOCOL                 *FileBuildProp;
-  EFI_PARTITION_NAME_PROTOCOL *PartitionName;
+  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   *Volume = NULL;
+  EFI_FILE_PROTOCOL                 *Root = NULL;
+  EFI_FILE_PROTOCOL                 *FileBuildProp = NULL;
+  EFI_PARTITION_NAME_PROTOCOL       *PartitionName = NULL;
 
   //
   // Get the SimpleFilesystem protocol on that handle
   //
-  Volume = NULL;
   Status = gBS->HandleProtocol (
                   Handle,
                   &gEfiSimpleFileSystemProtocolGuid,
                   (VOID **)&Volume
                   );
   if (EFI_ERROR (Status)) {
-    return Status;
+    goto Done;
   }
 
   //
@@ -1594,7 +1625,7 @@ FindInternalROMName (
                      &Root
                      );
   if (EFI_ERROR (Status) || Root==NULL) {
-    return Status;
+    goto Done;
   }
 
   //
@@ -1608,8 +1639,8 @@ FindInternalROMName (
                    EFI_FILE_MODE_READ,
                    0
                    );
-  if (EFI_ERROR (Status) || FileBuildProp==NULL) {
-    return Status;
+  if (EFI_ERROR (Status)) {
+    goto Done;
   }
 
   //
@@ -1621,8 +1652,12 @@ FindInternalROMName (
                   &gEfiPartitionNameProtocolGuid,
                   (VOID **)&PartitionName
                   );
-  if (EFI_ERROR (Status) || !PartitionName->Name[0]) {
-    return Status;
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
+  if (!PartitionName->Name[0]) {
+    Status = EFI_NOT_FOUND;
+    goto Done;
   }
 
   // get fstab rec
@@ -1633,10 +1668,15 @@ FindInternalROMName (
 
   // check if this is the system partition
   if(!Rec || AsciiStrCmp(Rec->mount_point, "/system")) {
-    return EFI_NOT_FOUND;
+    Status = EFI_NOT_FOUND;
+    goto Done;
   }
 
   IniParseEfiFile(FileBuildProp, BuildPropHandler, NULL);
+
+Done:
+  FileHandleClose(FileBuildProp);
+  FileHandleClose(Root);
 
   return Status;
 }

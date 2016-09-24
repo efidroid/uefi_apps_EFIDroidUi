@@ -63,12 +63,12 @@ UEFIRamdiskLibConstructor (
   EFI_STATUS                 Status;
   EFI_LOADED_IMAGE_PROTOCOL  *LoadedImage;
   EFI_DEVICE_PATH_PROTOCOL   *DevicePathNode;
-  CHAR16                     *EfiFilePath;
-  CHAR16                     *RamdiskFilePath;
-  EFI_FILE_HANDLE            Root;
-  EFI_FILE_HANDLE            File;
+  CHAR16                     *EfiFilePath = NULL;
+  CHAR16                     *RamdiskFilePath = NULL;
+  EFI_FILE_HANDLE            Root = NULL;
+  EFI_FILE_HANDLE            File = NULL;
   UINT64                     FileSize = 0;
-  CPIO_NEWC_HEADER           *Ramdisk;
+  CPIO_NEWC_HEADER           *Ramdisk = NULL;
   UINTN                      RamdiskSize;
 
   // get ramdisk
@@ -103,7 +103,7 @@ UEFIRamdiskLibConstructor (
       goto NEXT;
     }
 
-    EfiFilePath = ((FILEPATH_DEVICE_PATH *) DevicePathNode)->PathName;
+    EfiFilePath = UnicodeStrDup(((FILEPATH_DEVICE_PATH *) DevicePathNode)->PathName);
     break;
 
 NEXT:
@@ -120,14 +120,16 @@ NEXT:
   // get root file
   Root = UtilOpenRoot(LoadedImage->DeviceHandle);
   if (Root==NULL) {
-    return EFI_UNSUPPORTED;
+    Status = EFI_UNSUPPORTED;
+    goto Done;
   }
 
   // build ramdisk path
   UINTN RamdiskFilePathSize = StrSize(EfiFilePath) + 1 + StrSize(RD_FILENAME) + 1;
   RamdiskFilePath = AllocateZeroPool(RamdiskFilePathSize);
   if (RamdiskFilePath==NULL) {
-    return EFI_OUT_OF_RESOURCES;
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Done;
   }
   UnicodeSPrint(RamdiskFilePath, RamdiskFilePathSize, L"%s\\%s", EfiFilePath, RD_FILENAME);
 
@@ -139,37 +141,52 @@ NEXT:
                 EFI_FILE_MODE_READ,
                 0
                 );
-  FreePool(RamdiskFilePath);
   if (EFI_ERROR (Status)) {
-    return Status;
+    goto Done;
   }
 
   // get file size
   Status = FileHandleGetSize(File, &FileSize);
   if (EFI_ERROR (Status)) {
-    return Status;
+    goto Done;
   }
 
   // allocate ramdisk memory
   Ramdisk = AllocatePool(FileSize);
   if (Ramdisk==NULL) {
-    return EFI_OUT_OF_RESOURCES;
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Done;
   }
 
   // read ramdisk data
   UINTN BytesRead = FileSize;
   Status = File->Read(File, &BytesRead, Ramdisk);
   if (EFI_ERROR (Status)) {
-    FreePool(Ramdisk);
-    return Status;
+    goto Done;
   }
 
   // validate header
-  if(!CpioIsValid (Ramdisk))
-    return EFI_UNSUPPORTED;
+  if(!CpioIsValid (Ramdisk)) {
+    Status = EFI_UNSUPPORTED;
+    goto Done;
+  }
 
   gRamdisk = Ramdisk;
   gRamdiskSize = FileSize;
+  Status = EFI_SUCCESS;
 
-  return EFI_SUCCESS;
+Done:
+  if(EfiFilePath)
+    FreePool(EfiFilePath);
+  if(RamdiskFilePath)
+    FreePool(RamdiskFilePath);
+  FileHandleClose(File);
+  FileHandleClose(Root);
+
+  if(EFI_ERROR(Status)) {
+    if(Ramdisk)
+      FreePool(Ramdisk);
+  }
+
+  return Status;
 }
