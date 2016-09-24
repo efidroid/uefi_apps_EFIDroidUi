@@ -501,7 +501,7 @@ LoaderBootContext (
 
     // get uncompressed size
     // since the Linux decompressor doesn't support predicting the length we hardcode this to 10MB
-    RamdiskUncompressedLen = 10*1024*1024;
+    RamdiskUncompressedLen = 50*1024*1024;
 
     // get init.multiboot from UEFIRamdisk
     UINT8 *MultibootBin;
@@ -650,7 +650,7 @@ LoaderGetDecompressedRamdisk (
 
   // get uncompressed size
   // since the Linux decompressor doesn't support predicting the length we hardcode this to 10MB
-  RamdiskUncompressedLen = 10*1024*1024;
+  RamdiskUncompressedLen = 50*1024*1024;
   DecompressedRamdisk = AllocatePool(RamdiskUncompressedLen);
   if(DecompressedRamdisk==NULL) goto ERROR;
 
