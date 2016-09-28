@@ -156,10 +156,29 @@ boot_uintn_t libboot_platform_strlen(const char* str) {
     return AsciiStrLen(str);
 }
 
+typedef struct {
+  void *pdata;
+  libboot_platform_getmemory_callback_t cb;
+} lkapi_mmap_pdata_t;
+
+static void *lkapi_mmap_cb(void *_pdata, unsigned long long addr, unsigned long long size, int reserved) {
+  lkapi_mmap_pdata_t *pdata = _pdata;
+
+  pdata->pdata = pdata->cb(pdata->pdata, (boot_uintn_t)addr, (boot_uintn_t)size);
+
+  return pdata;
+}
+
 void* libboot_platform_getmemory(void *pdata, libboot_platform_getmemory_callback_t cb) {
   LIST_ENTRY                  *ResourceLink;
   LIST_ENTRY                  ResourceList;
   SYSTEM_MEMORY_RESOURCE      *Resource;
+
+  if(mLKApi) {
+    lkapi_mmap_pdata_t lkapipdata = {pdata, cb};
+    mLKApi->mmap_get_dram(&lkapipdata, lkapi_mmap_cb);
+    return lkapipdata.pdata;
+  }
 
   UtilGetSystemMemoryResources (&ResourceList);
   ResourceLink = ResourceList.ForwardLink;
