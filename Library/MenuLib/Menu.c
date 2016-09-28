@@ -2,6 +2,23 @@
 
 #include "Menu.h"
 #include <Library/UefiLib.h>
+#include <Library/TimerLib.h>
+
+#define ENABLE_PERFORMANCE_DEBUGGING 0
+
+UINT64 gRenderTime = 0;
+UINT64 gSyncTime = 0;
+UINT64 gRenderFrames = 0;
+UINT64 gSyncFrames = 0;
+
+STATIC inline
+UINT64
+GetTimeMs (
+  VOID
+)
+{
+  return GetTimeInNanoSecond(GetPerformanceCounter()) / 1000000ULL;
+}
 
 SCREENSHOT *gScreenShotList;
 
@@ -1760,13 +1777,31 @@ MenuEnter (
   UINTN           WaitIndex;
   EFI_INPUT_KEY   Key;
   EFI_STATUS      Status;
+#if ENABLE_PERFORMANCE_DEBUGGING
+  UINT64          Now;
+#endif
 
   while(TRUE) {
     if(mActiveMenu==NULL)
       break;
 
+#if ENABLE_PERFORMANCE_DEBUGGING
+    Now = GetTimeMs();
+#endif
     RenderActiveMenu();
+#if ENABLE_PERFORMANCE_DEBUGGING
+    gRenderTime += (GetTimeMs() - Now);
+    gRenderFrames++;
+#endif
+
+#if ENABLE_PERFORMANCE_DEBUGGING
+    Now = GetTimeMs();
+#endif
     libaroma_sync();
+#if ENABLE_PERFORMANCE_DEBUGGING
+    gSyncTime += (GetTimeMs() - Now);
+    gSyncFrames++;
+#endif
 
     Status = gBS->WaitForEvent (1, &gST->ConIn->WaitForKey, &WaitIndex);
     ASSERT_EFI_ERROR (Status);

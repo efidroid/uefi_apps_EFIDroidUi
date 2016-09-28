@@ -2,6 +2,11 @@
 
 #define SIDELOAD_FILENAME L"Sideload.efi"
 
+extern UINT64 gRenderTime;
+extern UINT64 gSyncTime;
+extern UINT64 gRenderFrames;
+extern UINT64 gSyncFrames;
+
 STATIC VOID
 CommandRebootInternal (
   CONST CHAR16 *Reason
@@ -187,6 +192,9 @@ CommandDisplayInfo (
   UINTN                                SizeOfInfo;
   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info;
   EFI_STATUS                           Status;
+
+  AsciiSPrint(Buffer, 59, "render:%llu sync:%llu", gRenderFrames==0?0ULL:gRenderTime/gRenderFrames, gSyncFrames==0?0ULL:gSyncTime/gSyncFrames);
+  FastbootInfo(Buffer);
 
   // get graphics protocol
   Status = gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **) &Gop);
