@@ -19,6 +19,7 @@ STATIC BOOLEAN mFirstCacheScan = TRUE;
 
 STATIC CHAR8       *mInternalROMName = NULL;
 STATIC CONST CHAR8 *mInternalROMIconPath = NULL;
+STATIC CONST CHAR8 *mInternalROMAndroidVersion = NULL;
 
 STATIC
 VOID
@@ -1544,6 +1545,9 @@ BuildPropHandler (
     RomGenericName = "MIUI";
     RomIconPath = "icons/recovery_xiaomi.png";
   }
+  else if(!AsciiStrCmp(Name, "ro.build.version.release")) {
+    mInternalROMAndroidVersion = AsciiStrDup(Value);
+  }
 
   if (IsPaLike) {
     // allocate
@@ -1673,6 +1677,19 @@ FindInternalROMName (
   }
 
   IniParseEfiFile(FileBuildProp, BuildPropHandler, NULL);
+  if(!mInternalROMName && mInternalROMAndroidVersion) {
+    // allocate
+    CHAR8* ROMName = AllocateZeroPool(4096);
+
+    if(ROMName) {
+      // build rom name
+      AsciiSPrint(ROMName, 4096, "Android %a", mInternalROMAndroidVersion);
+      mInternalROMName = ROMName;
+
+      // set icon
+      mInternalROMIconPath = "icons/android.png";
+    }
+  }
 
 Done:
   FileHandleClose(FileBuildProp);
