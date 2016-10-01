@@ -86,7 +86,7 @@ PatchCmdline (
   }
 
   if(!DisablePatching) {
-    libboot_cmdline_add(&Context->cmdline, "rdinit", "/init.multiboot", 1);
+    libboot_cmdline_add(&Context->cmdline, "rdinit", "/multiboot_init", 1);
 
     // in recovery mode we ptrace the whole system. that doesn't work well with selinux
     if(RecoveryMode)
@@ -503,17 +503,17 @@ LoaderBootContext (
     // since the Linux decompressor doesn't support predicting the length we hardcode this to 10MB
     RamdiskUncompressedLen = 50*1024*1024;
 
-    // get init.multiboot from UEFIRamdisk
+    // get multiboot_init from UEFIRamdisk
     UINT8 *MultibootBin;
     UINTN MultibootSize;
-    Status = UEFIRamdiskGetFile ("init.multiboot", (VOID **) &MultibootBin, &MultibootSize);
+    Status = UEFIRamdiskGetFile ("multiboot_init", (VOID **) &MultibootBin, &MultibootSize);
     if (EFI_ERROR (Status)) {
       MenuShowMessage("Error", "Multiboot binary not found.");
       goto CLEANUP;
     }
 
     // add multiboot binary size to uncompressed ramdisk size
-    CONST CHAR8 *cpio_name_mbinit = "/init.multiboot";
+    CONST CHAR8 *cpio_name_mbinit = "/multiboot_init";
     UINTN objsize = CpioPredictObjSize(AsciiStrLen(cpio_name_mbinit), MultibootSize);
     RamdiskUncompressedLen += objsize;
 
