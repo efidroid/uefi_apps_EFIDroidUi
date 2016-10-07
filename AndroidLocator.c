@@ -1141,88 +1141,19 @@ FreeMbHandle (
 
 STATIC
 EFI_STATUS
-FindMultibootSFS (
-  IN EFI_HANDLE  Handle,
-  IN VOID        *Instance,
-  IN VOID        *Context
+FindMultibootSFSInternal (
+  IN EFI_HANDLE               Handle,
+  IN VOID                     *Instance,
+  IN VOID                     *Context,
+  IN EFI_DEVICE_PATH_PROTOCOL *DevicePath,
+  IN EFI_FILE_PROTOCOL        *DirMultiboot
   )
 {
   EFI_STATUS                        Status;
-  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   *Volume;
-  EFI_FILE_PROTOCOL                 *Root = NULL;
-  EFI_FILE_PROTOCOL                 *DirMultiboot = NULL;
   EFI_FILE_INFO                     *NodeInfo;
   BOOLEAN                           NoFile;
-  EFI_DEVICE_PATH_PROTOCOL          *DevicePath = NULL;
   LAST_BOOT_ENTRY                   LastBootEntry = {0};
 
-  DevicePath = DevicePathFromHandle(Handle);
-  if (DevicePath==NULL) {
-    return EFI_OUT_OF_RESOURCES;
-  }
-
-  //
-  // Get the SimpleFilesystem protocol on that handle
-  //
-  Status = gBS->HandleProtocol (
-                  Handle,
-                  &gEfiSimpleFileSystemProtocolGuid,
-                  (VOID **)&Volume
-                  );
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-
-  //
-  // Open the root directory of the volume
-  //
-  Root = NULL;
-  Status = Volume->OpenVolume (
-                     Volume,
-                     &Root
-                     );
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-
-  //
-  // Open multiboot dir
-  //
-  DirMultiboot = NULL;
-  Status = Root->Open (
-                   Root,
-                   &DirMultiboot,
-                   L"\\multiboot",
-                   EFI_FILE_MODE_READ,
-                   0
-                   );
-  if (!EFI_ERROR (Status)) goto ENUMERATE;
-
-  DirMultiboot = NULL;
-  Status = Root->Open (
-                   Root,
-                   &DirMultiboot,
-                   L"\\media\\multiboot",
-                   EFI_FILE_MODE_READ,
-                   0
-                   );
-  if (!EFI_ERROR (Status)) goto ENUMERATE;
-
-
-  DirMultiboot = NULL;
-  Status = Root->Open (
-                   Root,
-                   &DirMultiboot,
-                   L"\\media\\0\\multiboot",
-                   EFI_FILE_MODE_READ,
-                   0
-                   );
-  if (!EFI_ERROR (Status)) goto ENUMERATE;
-
-  goto Done;
-
-
-ENUMERATE:
   // enumerate directories
   NoFile      = FALSE;
   NodeInfo    = NULL;
@@ -1399,8 +1330,95 @@ NEXT:
     }
   }
 
-Done:
-  FileHandleClose(DirMultiboot);
+  return Status;
+}
+
+STATIC
+EFI_STATUS
+FindMultibootSFS (
+  IN EFI_HANDLE  Handle,
+  IN VOID        *Instance,
+  IN VOID        *Context
+  )
+{
+  EFI_STATUS                        Status;
+  EFI_SIMPLE_FILE_SYSTEM_PROTOCOL   *Volume;
+  EFI_FILE_PROTOCOL                 *Root = NULL;
+  EFI_FILE_PROTOCOL                 *DirMultiboot = NULL;
+  EFI_DEVICE_PATH_PROTOCOL          *DevicePath = NULL;
+
+  DevicePath = DevicePathFromHandle(Handle);
+  if (DevicePath==NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  //
+  // Get the SimpleFilesystem protocol on that handle
+  //
+  Status = gBS->HandleProtocol (
+                  Handle,
+                  &gEfiSimpleFileSystemProtocolGuid,
+                  (VOID **)&Volume
+                  );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  //
+  // Open the root directory of the volume
+  //
+  Root = NULL;
+  Status = Volume->OpenVolume (
+                     Volume,
+                     &Root
+                     );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  //
+  // Open multiboot dir
+  //
+
+  DirMultiboot = NULL;
+  Status = Root->Open (
+                   Root,
+                   &DirMultiboot,
+                   L"\\multiboot",
+                   EFI_FILE_MODE_READ,
+                   0
+                   );
+  if (!EFI_ERROR (Status)) {
+    FindMultibootSFSInternal(Handle, Instance, Context, DevicePath, DirMultiboot);
+    FileHandleClose(DirMultiboot);
+  }
+
+  DirMultiboot = NULL;
+  Status = Root->Open (
+                   Root,
+                   &DirMultiboot,
+                   L"\\media\\multiboot",
+                   EFI_FILE_MODE_READ,
+                   0
+                   );
+  if (!EFI_ERROR (Status)) {
+    FindMultibootSFSInternal(Handle, Instance, Context, DevicePath, DirMultiboot);
+    FileHandleClose(DirMultiboot);
+  }
+
+  DirMultiboot = NULL;
+  Status = Root->Open (
+                   Root,
+                   &DirMultiboot,
+                   L"\\media\\0\\multiboot",
+                   EFI_FILE_MODE_READ,
+                   0
+                   );
+  if (!EFI_ERROR (Status)) {
+    FindMultibootSFSInternal(Handle, Instance, Context, DevicePath, DirMultiboot);
+    FileHandleClose(DirMultiboot);
+  }
+
   FileHandleClose(Root);
 
   return Status;
