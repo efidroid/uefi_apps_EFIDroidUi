@@ -16,10 +16,6 @@ PatchCmdline (
   IN BOOLEAN                DisablePatching
 )
 {
-  EFI_DEVICE_PATH_PROTOCOL  *DevPath;
-  CHAR8 *DevPathString = NULL;
-  UINTN Len;
-
   if(mLKApi) {
     CONST CHAR8* CmdlineExt = mLKApi->boot_get_cmdline_extension(RecoveryMode);
     if(CmdlineExt) {
@@ -33,6 +29,39 @@ PatchCmdline (
   // GPT to be used instead.
   if(RecoveryMode)
     libboot_cmdline_add(&Context->cmdline, "gpt", NULL, 1);
+
+  // check mbhandle
+  if(mbhandle) {
+    // apply cmdline overrides
+    if(!RecoveryMode && mbhandle->ReplacementCmdline) {
+      libboot_cmdline_addall(&Context->cmdline, mbhandle->ReplacementCmdline, 1);
+    }
+  }
+
+  if(!DisablePatching) {
+    libboot_cmdline_add(&Context->cmdline, "rdinit", "/multiboot_init", 1);
+
+    // in recovery mode we ptrace the whole system. that doesn't work well with selinux
+    if(RecoveryMode)
+      libboot_cmdline_add(&Context->cmdline, "androidboot.selinux", "permissive", 1);
+  }
+
+  if (SettingBoolGet("boot-force-permissive"))
+    libboot_cmdline_add(&Context->cmdline, "androidboot.selinux", "permissive", 1);
+
+  return EFI_SUCCESS;
+}
+
+STATIC EFI_STATUS
+GenerateMultibootCmdline (
+  libboot_list_node_t       *mbcmdline,
+  IN multiboot_handle_t     *mbhandle,
+  IN BOOLEAN                DisablePatching
+)
+{
+  EFI_DEVICE_PATH_PROTOCOL  *DevPath;
+  CHAR8 *DevPathString = NULL;
+  UINTN Len;
 
   // check mbhandle
   if(mbhandle) {
@@ -76,29 +105,13 @@ PatchCmdline (
     }
 
     // add to cmdline
-    libboot_cmdline_add(&Context->cmdline, "multibootpath", DevPathString, 1);  
+    libboot_cmdline_add(mbcmdline, "multibootpath", DevPathString, 1);
     FreePool(DevPathString);
-
-    // apply cmdline overrides
-    if(!RecoveryMode && mbhandle->ReplacementCmdline) {
-      libboot_cmdline_addall(&Context->cmdline, mbhandle->ReplacementCmdline, 1);
-    }
-  }
-
-  if(!DisablePatching) {
-    libboot_cmdline_add(&Context->cmdline, "rdinit", "/multiboot_init", 1);
-
-    // in recovery mode we ptrace the whole system. that doesn't work well with selinux
-    if(RecoveryMode)
-      libboot_cmdline_add(&Context->cmdline, "androidboot.selinux", "permissive", 1);
   }
 
   CHAR8* DebugValue = UtilGetEFIDroidVariable("multiboot-debuglevel");
   if (DebugValue)
-    libboot_cmdline_add(&Context->cmdline, "multiboot.debug", DebugValue, 1);
-
-  if (SettingBoolGet("boot-force-permissive"))
-    libboot_cmdline_add(&Context->cmdline, "androidboot.selinux", "permissive", 1);
+    libboot_cmdline_add(mbcmdline, "multiboot.debug", DebugValue, 1);
 
   return EFI_SUCCESS;
 }
@@ -470,6 +483,9 @@ LoaderBootContext (
   INTN                      rc;
   UINT32                    i;
   CHAR8                     **error_stack;
+  libboot_list_node_t       mbcmdline;
+
+  libboot_list_initialize(&mbcmdline);
 
   // load image
   rc = libboot_load(context);
@@ -512,10 +528,21 @@ LoaderBootContext (
       goto CLEANUP;
     }
 
+    // generate multiboot cmdline
+    Status = GenerateMultibootCmdline(&mbcmdline, mbhandle, DisablePatching);
+    if (EFI_ERROR(Status)) {
+      AsciiSPrint(Buf, sizeof(Buf), "Can't generate multiboot_cmdline: %r", Status);
+      MenuShowMessage("Error", Buf);
+      goto CLEANUP;
+    }
+
     // add multiboot binary size to uncompressed ramdisk size
     CONST CHAR8 *cpio_name_mbinit = "/multiboot_init";
-    UINTN objsize = CpioPredictObjSize(AsciiStrLen(cpio_name_mbinit), MultibootSize);
-    RamdiskUncompressedLen += objsize;
+    RamdiskUncompressedLen += CpioPredictObjSize(AsciiStrLen(cpio_name_mbinit), MultibootSize);
+
+    CONST CHAR8 *cpio_name_mbcmdline = "/multiboot_cmdline";
+    UINTN mbcmdline_len = libboot_cmdline_length(&mbcmdline);
+    RamdiskUncompressedLen += CpioPredictObjSize(AsciiStrLen(cpio_name_mbcmdline), mbcmdline_len);
 
     // allocate uncompressed ramdisk memory
     NewRamdisk = libboot_alloc(RamdiskUncompressedLen);
@@ -560,10 +587,27 @@ LoaderBootContext (
     // skip to last CPIO object
     cpiohd = CpioGetLast (cpiohd);
 
-    // add multiboot binary
+    // add multiboot files
     if(!DisablePatching) {
-      cpiohd = CpioCreateObj (cpiohd, cpio_name_mbinit, MultibootBin, MultibootSize);
-      cpiohd = CpioCreateObj (cpiohd, CPIO_TRAILER, NULL, 0);
+      // multiboot_init
+      cpiohd = CpioCreateObj (cpiohd, cpio_name_mbinit, MultibootBin, MultibootSize, CPIO_MODE_REG|0700);
+
+      // multiboot_cmdline
+      CPIO_NEWC_HEADER *cpiohd_mbcmdline = cpiohd;
+      cpiohd = CpioCreateObj (cpiohd, cpio_name_mbcmdline, NULL, mbcmdline_len, CPIO_MODE_REG|0444);
+
+      // write cmdline data
+      VOID *cpio_mbcmdline_data;
+      Status = CpioGetData(cpiohd_mbcmdline, &cpio_mbcmdline_data, NULL);
+      if (EFI_ERROR(Status)) {
+        AsciiSPrint(Buf, sizeof(Buf), "Can't load cmdline: %r", Status);
+        MenuShowMessage("Error", Buf);
+        goto CLEANUP;
+      }
+      libboot_cmdline_generate(&mbcmdline, cpio_mbcmdline_data, mbcmdline_len);
+
+      // cpio trailer
+      cpiohd = CpioCreateObj (cpiohd, CPIO_TRAILER, NULL, 0, 0);
     }
 
     // verify that we didn't overflow the buffer
