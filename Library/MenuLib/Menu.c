@@ -1832,6 +1832,9 @@ MenuPreBoot (
   VOID
 )
 {
+  if(Initialized==FALSE)
+    return;
+
   mGop->SetMode(mGop, mOldMode);
   if(gLKDisplay)
     gLKDisplay->SetFlushMode(gLKDisplay, OldFlushMode);
@@ -1842,6 +1845,9 @@ MenuPostBoot (
   VOID
 )
 {
+  if(Initialized==FALSE)
+    return;
+
   mGop->SetMode(mGop, mOurMode);
   if(gLKDisplay)
     gLKDisplay->SetFlushMode(gLKDisplay, LK_DISPLAY_FLUSH_MODE_MANUAL);
