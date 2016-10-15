@@ -351,6 +351,27 @@ UtilToLowerString (
 }
 
 /**
+  Converts the unicode character of the string from uppercase to lowercase.
+  This is a internal function.
+
+  @param ConfigString  String to be converted
+
+**/
+VOID
+UtilAsciiToLowerString (
+  IN CHAR8  *String
+  )
+{
+  CHAR8      *TmpStr;
+
+  for (TmpStr = String; *TmpStr != '\0'; TmpStr++) {
+    if (*TmpStr >= 'A' && *TmpStr <= 'Z') {
+      *TmpStr = (CHAR8) (*TmpStr - 'A' + 'a');
+    }
+  }
+}
+
+/**
 
   Check whether current FileName point to a valid
   Efi Image File.

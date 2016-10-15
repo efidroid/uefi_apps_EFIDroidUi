@@ -192,6 +192,11 @@ UtilToLowerString (
   IN CHAR16  *String
   );
 
+VOID
+UtilAsciiToLowerString (
+  IN CHAR8  *String
+  );
+
 CHAR16*
 UtilGetExtensionLower (
   IN UINT16  *FileName
