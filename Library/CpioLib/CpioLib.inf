@@ -38,6 +38,9 @@
   MdeModulePkg/MdeModulePkg.dec
   EFIDroidUEFIApps/EFIDroidUi/EFIDroidUi.dec
 
+[Packages.ARM]
+  ArmPkg/ArmPkg.dec
+
 [LibraryClasses]
   BaseLib
   UefiBootServicesTableLib

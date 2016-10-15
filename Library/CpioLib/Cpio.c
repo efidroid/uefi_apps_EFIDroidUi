@@ -4,7 +4,8 @@
 #include <Library/PrintLib.h>
 #include <Library/Cpio.h>
 
-STATIC CONST CHAR8 *cpio_mode_executable = "000081e8";
+#define LIBUTIL_NOAROMA
+#include <Library/Util.h>
 
 UINT32
 CpioStrToUl (
@@ -76,8 +77,10 @@ CpioGetData (
   if(!CpioIsValid (hdr))
     return EFI_INVALID_PARAMETER;
 
-  *Ptr = ((CHAR8*)hdr) + ALIGN_VALUE (sizeof (CPIO_NEWC_HEADER) + namesize, 4);
-  *Size = filesize;
+  if (Ptr)
+    *Ptr = ((CHAR8*)hdr) + ALIGN_VALUE (sizeof (CPIO_NEWC_HEADER) + namesize, 4);
+  if (Size)
+    *Size = filesize;
 
   return EFI_SUCCESS;
 }
@@ -115,7 +118,8 @@ CpioCreateObj (
   CPIO_NEWC_HEADER   *hdr,
   CONST CHAR8        *name,
   CONST VOID         *data,
-  UINTN              data_size
+  UINTN              data_size,
+  UINT32             mode
 )
 {
   UINT32 namesize = AsciiStrLen (name) + 1;
@@ -144,8 +148,12 @@ CpioCreateObj (
     CopyMem (dataptr, data, data_size);
   }
 
+  CHAR8 StrMode[] = { "00000000" };
+  AsciiSPrint(StrMode, sizeof(StrMode), "%08x", mode);
+  UtilAsciiToLowerString(StrMode);
+
   // mode: -rwxr-x---
-  CopyMem (hdr->c_mode, cpio_mode_executable, AsciiStrLen (cpio_mode_executable));
+  CopyMem (hdr->c_mode, StrMode, sizeof(StrMode));
 
   return (CPIO_NEWC_HEADER *) (dataptr + ALIGN_VALUE (data_size, 4));
 }

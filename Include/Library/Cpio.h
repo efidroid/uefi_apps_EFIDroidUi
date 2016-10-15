@@ -4,6 +4,9 @@
 #define	CPIO_NEWC_MAGIC "070701"
 #define CPIO_TRAILER "TRAILER!!!"
 
+#define CPIO_MODE_REG    0100000
+#define CPIO_MODE_DIR    0040000
+
 typedef struct
 {
   CHAR8 c_magic[6];
@@ -40,6 +43,6 @@ CPIO_NEWC_HEADER *CpioGetByName (CPIO_NEWC_HEADER * hdr, CONST CHAR8 *name);
 
 CPIO_NEWC_HEADER *CpioCreateObj (CPIO_NEWC_HEADER * hdr,
 				     CONST CHAR8 *name, CONST VOID *data,
-				     UINTN data_size);
+				     UINTN data_size, UINT32 mode);
 
 #endif /* ! CPIO_H */
