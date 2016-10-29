@@ -475,7 +475,6 @@ LoaderBootContext (
 )
 {
   EFI_STATUS                Status;
-  EFI_STATUS                Status2;
   EFI_STATUS                ReturnStatus = EFI_UNSUPPORTED;
   VOID                      *NewRamdisk = NULL;
   UINT32                    RamdiskUncompressedLen = 0;
@@ -506,7 +505,7 @@ LoaderBootContext (
   if(mLKApi)
     mLKApi->boot_update_addrs(&context->kernel_addr, &context->ramdisk_addr, &context->tags_addr);
 
-  if(context->ramdisk_data) {
+  if(!DisablePatching && context->ramdisk_data) {
     // get decompressor
     CONST CHAR8 *DecompName;
     decompress_fn Decompressor = decompress_method(context->ramdisk_data, context->ramdisk_size, &DecompName);
@@ -557,58 +556,30 @@ LoaderBootContext (
       goto CLEANUP;
     }
 
-    // get CPIO ramdisk
+    // add multiboot binary
     CPIO_NEWC_HEADER *cpiohd = (CPIO_NEWC_HEADER *) NewRamdisk;
-
-    // check if this is a merged ramdisk
-    CPIO_NEWC_HEADER* DualRamdiskAndroidHdr = CpioGetByName(cpiohd, "sbin/ramdisk.cpio");
-    CPIO_NEWC_HEADER* DualRamdiskRecoveryHdr = CpioGetByName(cpiohd, "sbin/ramdisk-recovery.cpio");
-    if (DualRamdiskAndroidHdr && DualRamdiskRecoveryHdr) {
-      // get android ramdisk
-      CPIO_NEWC_HEADER* DualRamdiskAndroid;
-      UINTN DualRamdiskAndroidSize;
-      Status = CpioGetData(DualRamdiskAndroidHdr, (VOID**)&DualRamdiskAndroid, &DualRamdiskAndroidSize);
-
-      // get recovery ramdisk
-      CPIO_NEWC_HEADER* DualRamdiskRecovery;
-      UINTN DualRamdiskRecoverySize;
-      Status2 = CpioGetData(DualRamdiskRecoveryHdr, (VOID**)&DualRamdiskRecovery, &DualRamdiskRecoverySize);
-
-      if(!EFI_ERROR(Status) && !EFI_ERROR(Status2)) {
-        if(IsRecovery)
-          cpiohd = DualRamdiskRecovery;
-        else
-          cpiohd = DualRamdiskAndroid;
-
-        NewRamdisk = cpiohd;
-      }
-    }
-
-    // skip to last CPIO object
     cpiohd = CpioGetLast (cpiohd);
 
     // add multiboot files
-    if(!DisablePatching) {
-      // multiboot_init
-      cpiohd = CpioCreateObj (cpiohd, cpio_name_mbinit, MultibootBin, MultibootSize, CPIO_MODE_REG|0700);
+    // multiboot_init
+    cpiohd = CpioCreateObj (cpiohd, cpio_name_mbinit, MultibootBin, MultibootSize, CPIO_MODE_REG|0700);
 
-      // multiboot_cmdline
-      CPIO_NEWC_HEADER *cpiohd_mbcmdline = cpiohd;
-      cpiohd = CpioCreateObj (cpiohd, cpio_name_mbcmdline, NULL, mbcmdline_len, CPIO_MODE_REG|0444);
+    // multiboot_cmdline
+    CPIO_NEWC_HEADER *cpiohd_mbcmdline = cpiohd;
+    cpiohd = CpioCreateObj (cpiohd, cpio_name_mbcmdline, NULL, mbcmdline_len, CPIO_MODE_REG|0444);
 
-      // write cmdline data
-      VOID *cpio_mbcmdline_data;
-      Status = CpioGetData(cpiohd_mbcmdline, &cpio_mbcmdline_data, NULL);
-      if (EFI_ERROR(Status)) {
-        AsciiSPrint(Buf, sizeof(Buf), "Can't load cmdline: %r", Status);
-        MenuShowMessage("Error", Buf);
-        goto CLEANUP;
-      }
-      libboot_cmdline_generate(&mbcmdline, cpio_mbcmdline_data, mbcmdline_len);
-
-      // cpio trailer
-      cpiohd = CpioCreateObj (cpiohd, CPIO_TRAILER, NULL, 0, 0);
+    // write cmdline data
+    VOID *cpio_mbcmdline_data;
+    Status = CpioGetData(cpiohd_mbcmdline, &cpio_mbcmdline_data, NULL);
+    if (EFI_ERROR(Status)) {
+      AsciiSPrint(Buf, sizeof(Buf), "Can't load cmdline: %r", Status);
+      MenuShowMessage("Error", Buf);
+      goto CLEANUP;
     }
+    libboot_cmdline_generate(&mbcmdline, cpio_mbcmdline_data, mbcmdline_len);
+
+    // cpio trailer
+    cpiohd = CpioCreateObj (cpiohd, CPIO_TRAILER, NULL, 0, 0);
 
     // verify that we didn't overflow the buffer
     ASSERT((UINT32)cpiohd <= ((UINT32)NewRamdisk)+RamdiskUncompressedLen);
