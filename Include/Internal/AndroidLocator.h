@@ -46,4 +46,14 @@ AndroidLocatorHandleRecoveryMode (
   LAST_BOOT_ENTRY *LastBootEntry
 );
 
+FSTAB*
+AndroidLocatorGetMultibootFsTab (
+  VOID
+);
+
+EFI_FILE_PROTOCOL*
+AndroidLocatorGetEspDir (
+  VOID
+);
+
 #endif /* __INTERNAL_ANDROIDLOCATOR_H__ */

@@ -1527,6 +1527,22 @@ AndroidLocatorInit (
   return EFI_SUCCESS;
 }
 
+FSTAB*
+AndroidLocatorGetMultibootFsTab (
+  VOID
+)
+{
+  return mFstab;
+}
+
+EFI_FILE_PROTOCOL*
+AndroidLocatorGetEspDir (
+  VOID
+)
+{
+  return mEspDir;
+}
+
 STATIC
 INT32
 BuildPropHandler (

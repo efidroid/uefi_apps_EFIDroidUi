@@ -393,6 +393,9 @@ FastbootInit (
   FastbootRegister("download:", CommandDownload);
   FastbootPublish("version", "0.5");
 
+  // we use dynamic allocations, so report the highest possible value
+  FastbootPublish("max-download-size", "0xffffffff");
+
   surf_udc_device.serialno = AsciiStrDup("EFIDroid");
   r = mUsbInterface->udc_init(mUsbInterface, &surf_udc_device);
   ASSERT(r==0);

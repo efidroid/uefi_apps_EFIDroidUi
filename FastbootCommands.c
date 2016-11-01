@@ -439,11 +439,236 @@ CommandSetNvVar (
   }
 }
 
+typedef struct {
+  CHAR16       *PartitionName;
+  VOID         *Data;
+  UINTN        DataSize;
+
+  BOOLEAN      Done;
+} FLASH_CONTEXT;
+
+STATIC
+EFI_STATUS
+HandleBlockIoFlash (
+  IN EFI_HANDLE  Handle,
+  IN VOID        *Instance,
+  IN VOID        *VoidContext
+  )
+{
+  EFI_STATUS                        Status;
+  EFI_BLOCK_IO_PROTOCOL             *BlockIo = NULL;
+  EFI_PARTITION_NAME_PROTOCOL       *PartitionNameProtocol = NULL;
+  FLASH_CONTEXT                     *Context;
+  CHAR8                             Buf[100];
+
+  Context = VoidContext;
+  if(Context->Done)
+    return EFI_SUCCESS;
+
+  //
+  // Get the BlockIO protocol on that handle
+  //
+  BlockIo = NULL;
+  Status = gBS->HandleProtocol (
+                  Handle,
+                  &gEfiBlockIoProtocolGuid,
+                  (VOID **)&BlockIo
+                  );
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  //
+  // Get the PartitionName protocol on that handle
+  //
+  Status = gBS->HandleProtocol (
+                  Handle,
+                  &gEfiPartitionNameProtocolGuid,
+                  (VOID **)&PartitionNameProtocol
+                  );
+  if (EFI_ERROR (Status) || PartitionNameProtocol->Name[0]==0) {
+    return Status;
+  }
+
+  if (StrCmp(PartitionNameProtocol->Name, Context->PartitionName)) {
+    return EFI_NOT_FOUND;
+  }
+
+  Context->Done = TRUE;
+
+  UINTN SizeAligned = ROUNDDOWN(Context->DataSize, BlockIo->Media->BlockSize);
+  UINTN SizeLeft = Context->DataSize - SizeAligned;
+
+  if (SizeAligned>0) {
+    Status = BlockIo->WriteBlocks(BlockIo, BlockIo->Media->MediaId, 0, SizeAligned, Context->Data);
+    if (EFI_ERROR(Status)) {
+      AsciiSPrint(Buf, sizeof(Buf), "can't write blocks %r", Status);
+      FastbootFail(Buf);
+      return Status;
+    }
+  }
+
+  if (SizeLeft>0) {
+    VOID *TmpBuf = AllocateZeroPool(BlockIo->Media->BlockSize);
+    if (TmpBuf == NULL) {
+      FastbootFail("can't allocate memory");
+      return EFI_OUT_OF_RESOURCES;
+    }
+
+    CopyMem(TmpBuf, Context->Data + SizeAligned, SizeLeft);
+
+    Status = BlockIo->WriteBlocks(BlockIo, BlockIo->Media->MediaId, SizeAligned, 1, TmpBuf);
+    FreePool(TmpBuf);
+    if (EFI_ERROR(Status)) {
+      AsciiSPrint(Buf, sizeof(Buf), "can't write blocks %r", Status);
+      FastbootFail(Buf);
+      return Status;
+    }
+  }
+
+  FastbootOkay("");
+  return EFI_SUCCESS;
+}
+
+VOID
+HandleFileFlash (
+  EFI_FILE_PROTOCOL *File,
+  VOID              *Data,
+  UINTN             DataSize
+)
+{
+  UINT64     FileSize = 0;
+  EFI_STATUS Status;
+  CHAR8      Buf[100];
+
+  FastbootInfo("INFO: redirect flash to ESP");
+
+  // get file size
+  Status = FileHandleGetSize(File, &FileSize);
+  if (EFI_ERROR (Status)) {
+    AsciiSPrint(Buf, sizeof(Buf), "can't get file size: %r", Status);
+    FastbootFail(Buf);
+    goto Done;
+  }
+
+  // validate size
+  if (DataSize>FileSize) {
+    FastbootFail("data size exceeds partition size");
+    goto Done;
+  }
+
+  // write data
+  UINTN WriteSize = DataSize;
+  Status = FileHandleWrite(File, &WriteSize, Data);
+  if (EFI_ERROR (Status)) {
+    AsciiSPrint(Buf, sizeof(Buf), "can't write: %r", Status);
+    FastbootFail(Buf);
+    goto Done;
+  }
+
+  // validate return value
+  if (WriteSize!=DataSize) {
+    AsciiSPrint(Buf, sizeof(Buf), "short write: %u/%u bytes written", WriteSize, DataSize);
+    FastbootFail(Buf);
+    goto Done;
+  }
+
+  FastbootOkay("");
+
+Done:
+  return;
+}
+
+STATIC
+VOID
+CommandFlash (
+  CHAR8 *Arg,
+  VOID *Data,
+  UINT32 Size
+)
+{
+  FSTAB              *FsTab;
+  EFI_FILE_PROTOCOL  *EspDir;
+  FLASH_CONTEXT      Context;
+  EFI_STATUS         Status;
+  CHAR8              Buf[100];
+
+  FsTab = AndroidLocatorGetMultibootFsTab ();
+  EspDir = AndroidLocatorGetEspDir ();
+  if (FsTab && EspDir) {
+    FSTAB_REC* Rec = FstabGetByPartitionName(FsTab, Arg);
+    if(Rec && FstabIsUEFI(Rec)) {
+      EFI_FILE_PROTOCOL *PartitionFile = NULL;
+
+      // build filename
+      UINTN PathBufSize = 100*sizeof(CHAR16);
+      CHAR16 *PathBuf = AllocateZeroPool(PathBufSize);
+      ASSERT(PathBuf);
+      UnicodeSPrint(PathBuf, PathBufSize, L"partition_%a.img", Rec->mount_point+1);
+
+      // open File
+      Status = EspDir->Open (
+                       EspDir,
+                       &PartitionFile,
+                       PathBuf,
+                       EFI_FILE_MODE_READ|EFI_FILE_MODE_WRITE,
+                       0
+                       );
+      FreePool(PathBuf);
+      if (EFI_ERROR(Status)) {
+        AsciiSPrint(Buf, sizeof(Buf), "can't open replacement partition: %r", Status);
+        FastbootFail(Buf);
+        return;
+      }
+
+      // flash
+      HandleFileFlash (PartitionFile, Data, (UINTN)Size);
+
+      // close
+      FileHandleClose(PartitionFile);
+      return;
+    }
+  }
+
+  Context.PartitionName = Ascii2Unicode(Arg);
+  Context.Data          = Data;
+  Context.DataSize      = (UINTN)Size;
+  Context.Done          = FALSE;
+
+  // flash
+  VisitAllInstancesOfProtocol (
+    &gEfiBlockIoProtocolGuid,
+    HandleBlockIoFlash,
+    &Context
+    );
+
+  if(Context.PartitionName)
+    FreePool(Context.PartitionName);
+
+  if(!Context.Done)
+    FastbootFail("partition not found");
+}
+
+STATIC
+VOID
+CommandErase (
+  CHAR8 *Arg,
+  VOID *Data,
+  UINT32 Size
+)
+{
+  FastbootInfo("WARNING: erase is not supported");
+  FastbootOkay("");
+}
+
 VOID
 FastbootCommandsAdd (
   VOID
 )
 {
+  FastbootRegister("flash:", CommandFlash);
+  FastbootRegister("erase:", CommandErase);
+
   FastbootRegister("reboot", CommandReboot);
   FastbootRegister("reboot-bootloader", CommandRebootBootloader);
   FastbootRegister("oem reboot-recovery", CommandRebootRecovery);
