@@ -596,9 +596,22 @@ CommandFlash (
   FsTab = AndroidLocatorGetMultibootFsTab ();
   EspDir = AndroidLocatorGetEspDir ();
   if (FsTab && EspDir) {
+    // handle the special uefi prefix
+    BOOLEAN IsUefiFlash = FALSE;
+    if (!AsciiStrnCmp(Arg, "uefi_", 5)) {
+      Arg += 5;
+      IsUefiFlash = TRUE;
+    }
+
     FSTAB_REC* Rec = FstabGetByPartitionName(FsTab, Arg);
     if(Rec && FstabIsUEFI(Rec)) {
       EFI_FILE_PROTOCOL *PartitionFile = NULL;
+
+      // this is a uefi partition flash
+      if (IsUefiFlash) {
+        FastbootInfo("INFO: flash to UEFI partition");
+        goto DO_BLOCKIO_FLASH;
+      }
 
       // build filename
       UINTN PathBufSize = 100*sizeof(CHAR16);
@@ -630,6 +643,7 @@ CommandFlash (
     }
   }
 
+DO_BLOCKIO_FLASH:
   Context.PartitionName = Ascii2Unicode(Arg);
   Context.Data          = Data;
   Context.DataSize      = (UINTN)Size;
