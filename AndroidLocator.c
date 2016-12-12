@@ -829,6 +829,7 @@ AndroidProcessOption (
   // allocate name
   Name = AllocateZeroPool(4096);
   if(!Name) {
+    Status = EFI_OUT_OF_RESOURCES;
     goto FREEBUFFER;
   }
 
