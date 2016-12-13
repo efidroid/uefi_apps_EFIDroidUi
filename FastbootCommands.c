@@ -76,6 +76,10 @@ CommandBoot (
   UINT32 Size
 )
 {
+  if (gFastbootMBHandle) {
+    FastbootInfo("INFO: redirect boot to Multiboot ROM");
+  }
+
   // stop fastboot
   FastbootOkay("");
   FastbootStopNow();
@@ -88,8 +92,13 @@ CommandBoot (
     FreePool(Var);
   }
 
+  // force patching for multiboot ROM's
+  if (gFastbootMBHandle) {
+    DisablePatching = FALSE;
+  }
+
   // boot Android
-  LoaderBootFromBuffer(Data, Size, NULL, DisablePatching, FALSE, NULL);
+  LoaderBootFromBuffer(Data, Size, gFastbootMBHandle, DisablePatching, FALSE, NULL);
 
   // start fastboot
   FastbootInit();
