@@ -4,8 +4,10 @@ lkapi_t *mLKApi = NULL;
 
 MENU_OPTION                 *mBootMenuMain = NULL;
 MENU_OPTION                 *mPowerMenu = NULL;
+MENU_OPTION                 *mFastbootMenu = NULL;
 EFI_DEVICE_PATH_TO_TEXT_PROTOCOL   *gEfiDevicePathToTextProtocol = NULL;
 EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL *gEfiDevicePathFromTextProtocol = NULL;
+multiboot_handle_t *gFastbootMBHandle = NULL;
 
 STATIC EFI_GUID mUefiShellFileGuid = {0x7C04A583, 0x9E3E, 0x4f1c, {0xAD, 0x65, 0xE0, 0x52, 0x68, 0xD0, 0xB4, 0xD1 }};
 
@@ -107,7 +109,31 @@ FastbootCallback (
   IN MENU_ENTRY* This
 )
 {
+  mFastbootMenu->Selection = 0;
+  MenuStackPush(mFastbootMenu);
+  return EFI_SUCCESS;
+}
+
+STATIC
+EFI_STATUS
+FastbootStartCallback (
+  IN MENU_ENTRY* This
+)
+{
+  multiboot_handle_t *mbhandle = This->Private;
+  gFastbootMBHandle = mbhandle;
   FastbootInit();
+  return EFI_SUCCESS;
+}
+
+
+STATIC
+EFI_STATUS
+FastbootBackCallback (
+  MENU_OPTION* This
+)
+{
+  MenuStackPop();
   return EFI_SUCCESS;
 }
 
@@ -118,6 +144,58 @@ FastbootMenuEntryUpdate (
 )
 {
   This->Hidden = !SettingBoolGet("ui-show-fastboot");
+}
+
+VOID
+FastbootAddInternalROM (
+  VOID
+)
+{
+  LIBAROMA_STREAMP      Icon;
+  CONST CHAR8           *InternalROMIconPath;
+
+  // get icon
+  InternalROMIconPath = AndroidLocatorGetInternalROMIconPath();
+  if(InternalROMIconPath)
+    Icon = libaroma_stream_ramdisk(InternalROMIconPath);
+  else
+    Icon = libaroma_stream_ramdisk("icons/android.png");
+
+  // create entry
+  MENU_ENTRY* NewEntry = MenuCreateEntry();
+  if(NewEntry==NULL)
+    return;
+  NewEntry->Name = AllocateZeroPool(4096);
+  if(NewEntry->Name)
+    AsciiSPrint(NewEntry->Name, 4096, "%a (Internal)", AndroidLocatorGetInternalROMName()?:"Android");
+  NewEntry->Icon = Icon;
+  NewEntry->Callback = FastbootStartCallback;
+  NewEntry->HideBootMessage = TRUE;
+
+  MenuAddEntry(mFastbootMenu, NewEntry);
+}
+
+VOID
+AddSystemToFastbootMenu (
+  MENU_ENTRY         *Entry,
+  multiboot_handle_t *mbhandle
+)
+{
+
+  MENU_ENTRY* NewEntry = MenuCreateEntry();
+  if(NewEntry==NULL)
+    return;
+
+  NewEntry->Private = mbhandle;
+  NewEntry->Name = AsciiStrDup(mbhandle->Name);
+  if(mbhandle->Description)
+    NewEntry->Description = AsciiStrDup(mbhandle->Description);
+  if(Entry->Icon)
+    NewEntry->Icon = Entry->Icon;
+  NewEntry->Callback = FastbootStartCallback;
+  NewEntry->HideBootMessage = TRUE;
+
+  MenuAddEntry(mFastbootMenu, NewEntry);
 }
 #endif
 
@@ -250,6 +328,12 @@ main (
   mPowerMenu = MenuCreate();
   mPowerMenu->BackCallback = PowerMenuBackCallback;
   mPowerMenu->HideBackIcon = TRUE;
+
+#if defined (MDE_CPU_ARM)
+  mFastbootMenu = MenuCreate();
+  mFastbootMenu->Title = AsciiStrDup("Please Select OS");
+  mFastbootMenu->BackCallback = FastbootBackCallback;
+#endif
 
   mBootMenuMain->Title = AsciiStrDup("Please Select OS");
   mBootMenuMain->ActionIcon = libaroma_stream_ramdisk("icons/ic_settings_black_24dp.png");

@@ -41,6 +41,7 @@ extern MENU_OPTION *mBootMenuMain;
 extern EFI_DEVICE_PATH_TO_TEXT_PROTOCOL   *gEfiDevicePathToTextProtocol;
 extern EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL *gEfiDevicePathFromTextProtocol;
 extern lkapi_t *mLKApi;
+extern multiboot_handle_t *gFastbootMBHandle;
 
 #define STRING_LIST_SIGNATURE             SIGNATURE_32 ('s', 't', 'r', 'l')
 typedef struct {
@@ -67,6 +68,17 @@ FileExplorerUpdate (
 
 EFI_STATUS
 SettingsMenuShow (
+  VOID
+);
+
+VOID
+AddSystemToFastbootMenu (
+  MENU_ENTRY         *Entry,
+  multiboot_handle_t *mbhandle
+);
+
+VOID
+FastbootAddInternalROM (
   VOID
 );
 

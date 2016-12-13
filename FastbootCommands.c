@@ -541,8 +541,6 @@ HandleFileFlash (
   EFI_STATUS Status;
   CHAR8      Buf[100];
 
-  FastbootInfo("INFO: redirect flash to ESP");
-
   // get file size
   Status = FileHandleGetSize(File, &FileSize);
   if (EFI_ERROR (Status)) {
@@ -593,6 +591,48 @@ CommandFlash (
   EFI_STATUS         Status;
   CHAR8              Buf[100];
 
+  if (gFastbootMBHandle) {
+    // get partition
+    CHAR16 *NameUnicode = Ascii2Unicode(Arg);
+    if (!NameUnicode) {
+      FastbootFail("can't allocate memory");
+      return;
+    }
+    PARTITION_LIST_ITEM *Item = LoaderGetPartitionItem(gFastbootMBHandle, NameUnicode);
+    FreePool(NameUnicode);
+    if (!Item) {
+      FastbootFail("partition not found");
+      return;
+    }
+    if (!Item->IsFile) {
+      FastbootFail("partition is not a file");
+      return;
+    }
+
+    // open File
+    EFI_FILE_PROTOCOL *PartitionFile = NULL;
+    Status = gFastbootMBHandle->ROMDirectory->Open (
+                     gFastbootMBHandle->ROMDirectory,
+                     &PartitionFile,
+                     Item->Value,
+                     EFI_FILE_MODE_READ|EFI_FILE_MODE_WRITE,
+                     0
+                     );
+    if (EFI_ERROR(Status)) {
+      AsciiSPrint(Buf, sizeof(Buf), "can't open replacement partition: %r", Status);
+      FastbootFail(Buf);
+      return;
+    }
+
+    // flash
+    FastbootInfo("INFO: redirect flash to Multiboot ROM");
+    HandleFileFlash (PartitionFile, Data, (UINTN)Size);
+
+    // close
+    FileHandleClose(PartitionFile);
+    return;
+  }
+
   FsTab = AndroidLocatorGetMultibootFsTab ();
   EspDir = AndroidLocatorGetEspDir ();
   if (FsTab && EspDir) {
@@ -635,6 +675,7 @@ CommandFlash (
       }
 
       // flash
+      FastbootInfo("INFO: redirect flash to ESP");
       HandleFileFlash (PartitionFile, Data, (UINTN)Size);
 
       // close

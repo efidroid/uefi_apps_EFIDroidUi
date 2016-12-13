@@ -1098,9 +1098,7 @@ IniHandler (
   }
 
   if(!AsciiStrCmp(Section, "partitions")) {
-    if(!AsciiStrCmp(Name, "boot")) {
-      mbhandle->PartitionBoot = Ascii2Unicode(Value);
-    }
+    LoaderAddPartitionItem(mbhandle, Name, Value);
   }
 
   if(!AsciiStrCmp(Section, "replacements")) {
@@ -1126,8 +1124,7 @@ FreeMbHandle (
   if(mbhandle->Description)
     FreePool(mbhandle->Description);
 
-  if(mbhandle->PartitionBoot)
-    FreePool(mbhandle->PartitionBoot);
+  LoaderFreePartitionItems(mbhandle);
 
   if(mbhandle->ReplacementCmdline)
     FreePool(mbhandle->ReplacementCmdline);
@@ -1197,6 +1194,7 @@ FindMultibootSFSInternal (
     if(mbhandle==NULL) {
       goto NEXT;
     }
+    InitializeListHead(&mbhandle->Partitions);
     mbhandle->DeviceHandle = Handle;
 
     // open ROM directory
@@ -1240,7 +1238,8 @@ FindMultibootSFSInternal (
     }
 
     // add menu entry
-    if(mbhandle->Name && mbhandle->PartitionBoot) {
+    PARTITION_LIST_ITEM *BootPartition = LoaderGetPartitionItem(mbhandle, L"boot");
+    if(mbhandle->Name && BootPartition) {
       EFI_FILE_PROTOCOL     *BootFile;
       EFI_FILE_PROTOCOL     *IconFile;
       LIBAROMA_STREAMP      IconStream = NULL;
@@ -1249,7 +1248,7 @@ FindMultibootSFSInternal (
       Status = mbhandle->ROMDirectory->Open (
                        mbhandle->ROMDirectory,
                        &BootFile,
-                       mbhandle->PartitionBoot,
+                       BootPartition->Value,
                        EFI_FILE_MODE_READ,
                        0
                        );
@@ -1304,6 +1303,7 @@ FindMultibootSFSInternal (
       MenuAddEntry(mBootMenuMain, Entry);
 
       AddMultibootSystemToRecoveryMenu(Entry);
+      AddSystemToFastbootMenu(Entry, mbhandle);
 
       Status = EFI_SUCCESS;
     }
@@ -1544,6 +1544,22 @@ AndroidLocatorGetEspDir (
   return mEspDir;
 }
 
+CONST CHAR8*
+AndroidLocatorGetInternalROMName (
+  VOID
+)
+{
+  return mInternalROMName;
+}
+
+CONST CHAR8*
+AndroidLocatorGetInternalROMIconPath (
+  VOID
+)
+{
+  return mInternalROMIconPath;
+}
+
 STATIC
 INT32
 BuildPropHandler (
@@ -1746,6 +1762,8 @@ AndroidLocatorAddItems (
     FindInternalROMName,
     NULL
     );
+
+  FastbootAddInternalROM();
 
   // add Android options
   VisitAllInstancesOfProtocol (

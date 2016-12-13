@@ -799,3 +799,72 @@ CLEANUP:
 
   return Status;
 }
+
+VOID
+LoaderAddPartitionItem (
+  multiboot_handle_t     *mbhandle,
+  CONST CHAR8            *Name,
+  CONST CHAR8            *Value
+)
+{
+  if (!Name || !Value)
+    return;
+
+  // allocate menu
+  PARTITION_LIST_ITEM *Item = AllocateZeroPool (sizeof(PARTITION_LIST_ITEM));
+  if (Item==NULL)
+    return;
+
+  Item->Signature = PARTITION_LIST_SIGNATURE;
+  Item->Name = Ascii2Unicode(Name);
+  Item->Value = Ascii2Unicode(Value);
+  UINTN ValueLen = StrLen(Item->Value);
+  if (ValueLen>=4) {
+    CONST CHAR16 *Extension = Item->Value+ValueLen-4;
+
+    if (!StrCmp(Extension, L".img"))
+      Item->IsFile = TRUE;
+  }
+
+  InsertTailList (&mbhandle->Partitions, &Item->Link);
+}
+
+PARTITION_LIST_ITEM*
+LoaderGetPartitionItem (
+  multiboot_handle_t     *mbhandle,
+  CONST CHAR16           *Name
+)
+{
+  LIST_ENTRY* Link;
+  PARTITION_LIST_ITEM* Entry;
+  for (Link = GetFirstNode (&mbhandle->Partitions);
+       !IsNull (&mbhandle->Partitions, Link);
+       Link = GetNextNode (&mbhandle->Partitions, Link)
+      ) {
+    Entry = CR (Link, PARTITION_LIST_ITEM, Link, PARTITION_LIST_SIGNATURE);
+
+    if (!StrCmp(Entry->Name, Name))
+      return Entry;
+  }
+
+  return NULL;
+}
+
+VOID
+LoaderFreePartitionItems (
+  multiboot_handle_t     *mbhandle
+)
+{
+  LIST_ENTRY* Link;
+  PARTITION_LIST_ITEM* Entry;
+
+  while(!IsListEmpty(&mbhandle->Partitions)) {
+    Link = GetFirstNode (&mbhandle->Partitions);
+    Entry = CR (Link, PARTITION_LIST_ITEM, Link, PARTITION_LIST_SIGNATURE);
+
+    RemoveEntryList(Link);
+    FreePool(Entry->Name);
+    FreePool(Entry->Value);
+    FreePool(Entry);
+  }
+}

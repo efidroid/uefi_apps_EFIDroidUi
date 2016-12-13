@@ -56,4 +56,14 @@ AndroidLocatorGetEspDir (
   VOID
 );
 
+CONST CHAR8*
+AndroidLocatorGetInternalROMName (
+  VOID
+);
+
+CONST CHAR8*
+AndroidLocatorGetInternalROMIconPath (
+  VOID
+);
+
 #endif /* __INTERNAL_ANDROIDLOCATOR_H__ */

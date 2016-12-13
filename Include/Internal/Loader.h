@@ -22,8 +22,8 @@ typedef struct {
   // ini values
   CHAR8  *Name;
   CHAR8  *Description;
-  CHAR16 *PartitionBoot;
   CHAR8  *ReplacementCmdline;
+  LIST_ENTRY Partitions;
 
   // handles
   EFI_HANDLE DeviceHandle;
@@ -32,6 +32,16 @@ typedef struct {
   // set by MultibootCallback
   CHAR8* MultibootConfig;
 } multiboot_handle_t;
+
+#define PARTITION_LIST_SIGNATURE             SIGNATURE_32 ('m', 'b', 'p', 't')
+typedef struct {
+  UINTN           Signature;
+  LIST_ENTRY      Link;
+
+  CHAR16          *Name;
+  CHAR16          *Value;
+  BOOLEAN         IsFile;
+} PARTITION_LIST_ITEM;
 
 EFI_STATUS
 LoaderBootFromBlockIo (
@@ -91,6 +101,24 @@ INTN
 libboot_identify_file (
   IN EFI_FILE_PROTOCOL *File,
   IN bootimg_context_t *context
+);
+
+VOID
+LoaderAddPartitionItem (
+  multiboot_handle_t     *mbhandle,
+  CONST CHAR8            *Name,
+  CONST CHAR8            *Value
+);
+
+PARTITION_LIST_ITEM*
+LoaderGetPartitionItem (
+  multiboot_handle_t     *mbhandle,
+  CONST CHAR16           *Name
+);
+
+VOID
+LoaderFreePartitionItems (
+  multiboot_handle_t     *mbhandle
 );
 
 #endif /* __INTERNAL_LOADER_H__ */
