@@ -518,16 +518,18 @@ HandleBlockIoFlash (
   }
 
   if (SizeLeft>0) {
-    VOID *TmpBuf = AllocateZeroPool(BlockIo->Media->BlockSize);
+    UINTN NumTmpBufPages = ROUNDUP(BlockIo->Media->BlockSize, EFI_PAGE_SIZE)/EFI_PAGE_SIZE;
+    VOID *TmpBuf = AllocateAlignedPages(NumTmpBufPages, BlockIo->Media->BlockSize);
     if (TmpBuf == NULL) {
       FastbootFail("can't allocate memory");
       return EFI_OUT_OF_RESOURCES;
     }
 
+    ZeroMem(TmpBuf, BlockIo->Media->BlockSize);
     CopyMem(TmpBuf, Context->Data + SizeAligned, SizeLeft);
 
-    Status = BlockIo->WriteBlocks(BlockIo, BlockIo->Media->MediaId, SizeAligned, 1, TmpBuf);
-    FreePool(TmpBuf);
+    Status = BlockIo->WriteBlocks(BlockIo, BlockIo->Media->MediaId, SizeAligned, BlockIo->Media->BlockSize, TmpBuf);
+    FreeAlignedPages(TmpBuf, NumTmpBufPages);
     if (EFI_ERROR(Status)) {
       AsciiSPrint(Buf, sizeof(Buf), "can't write blocks %r", Status);
       FastbootFail(Buf);
