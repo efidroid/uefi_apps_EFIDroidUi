@@ -528,6 +528,15 @@ LoaderBootContext (
       goto CLEANUP;
     }
 
+    // get fstab.multiboot from UEFIRamdisk
+    UINT8 *FstabBin;
+    UINTN FstabSize;
+    Status = UEFIRamdiskGetFile ("fstab.multiboot", (VOID **) &FstabBin, &FstabSize);
+    if (EFI_ERROR (Status)) {
+      MenuShowMessage("Error", "fstab.multiboot not found.");
+      goto CLEANUP;
+    }
+
     // generate multiboot cmdline
     Status = GenerateMultibootCmdline(&mbcmdline, mbhandle, DisablePatching);
     if (EFI_ERROR(Status)) {
@@ -540,6 +549,11 @@ LoaderBootContext (
     CONST CHAR8 *cpio_name_mbinit = "/multiboot_init";
     RamdiskUncompressedLen += CpioPredictObjSize(AsciiStrLen(cpio_name_mbinit), MultibootSize);
 
+    // add fstab file size to uncompressed ramdisk size
+    CONST CHAR8 *cpio_name_mbfstab = "/multiboot_fstab";
+    RamdiskUncompressedLen += CpioPredictObjSize(AsciiStrLen(cpio_name_mbfstab), FstabSize);
+
+    // add cmdline file size to uncompressed ramdisk size
     CONST CHAR8 *cpio_name_mbcmdline = "/multiboot_cmdline";
     UINTN mbcmdline_len = libboot_cmdline_length(&mbcmdline);
     RamdiskUncompressedLen += CpioPredictObjSize(AsciiStrLen(cpio_name_mbcmdline), mbcmdline_len);
@@ -591,6 +605,9 @@ LoaderBootContext (
     if(!DisablePatching) {
       // multiboot_init
       cpiohd = CpioCreateObj (cpiohd, cpio_name_mbinit, MultibootBin, MultibootSize, CPIO_MODE_REG|0700);
+
+      // multiboot fstab
+      cpiohd = CpioCreateObj (cpiohd, cpio_name_mbfstab, FstabBin, FstabSize, CPIO_MODE_REG|0400);
 
       // multiboot_cmdline
       CPIO_NEWC_HEADER *cpiohd_mbcmdline = cpiohd;
