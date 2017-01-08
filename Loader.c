@@ -8,6 +8,22 @@
 
 typedef VOID (*LINUX_KERNEL)(UINT32 Zero, UINT32 Arch, UINTN ParametersBase);
 
+#define KERNEL64_HDR_MAGIC 0x644D5241 /* ARM64 */
+#define IS_ARM64(ptr) (!!( ((KERNEL64_HDR*)(ptr))->magic_64 == KERNEL64_HDR_MAGIC ))
+typedef struct
+{
+  UINT32 insn;
+  UINT32 res1;
+  UINT64 text_offset;
+  UINT64 res2;
+  UINT64 res3;
+  UINT64 res4;
+  UINT64 res5;
+  UINT64 res6;
+  UINT32 magic_64;
+  UINT32 res7;
+} KERNEL64_HDR;
+
 STATIC EFI_STATUS
 PatchCmdline (
   bootimg_context_t         *Context,
@@ -160,7 +176,7 @@ BootContext (
   PreparePlatformHardware ();
 
   if(mLKApi)
-    mLKApi->boot_exec((VOID*)(UINTN)context->kernel_addr, context->kernel_arguments[0], context->kernel_arguments[1], context->kernel_arguments[2]);
+    mLKApi->boot_exec(IS_ARM64((VOID*)(UINTN)context->kernel_addr), (VOID*)(UINTN)context->kernel_addr, context->kernel_arguments[0], context->kernel_arguments[1], context->kernel_arguments[2]);
 
   LINUX_KERNEL LinuxKernel = (LINUX_KERNEL)(UINTN)context->kernel_addr;
   LinuxKernel (context->kernel_arguments[0], context->kernel_arguments[1], context->kernel_arguments[2]);
@@ -484,6 +500,8 @@ LoaderBootContext (
   UINT32                    i;
   CHAR8                     **error_stack;
   libboot_list_node_t       mbcmdline;
+  BOOLEAN                   Is64BitKernel;
+  CONST CHAR8               *MultibootInitUefiRdPath;
 
   libboot_list_initialize(&mbcmdline);
 
@@ -502,9 +520,17 @@ LoaderBootContext (
   // libboot returned an error, and this is not a EFI image
   if(rc) goto CLEANUP;
 
+  Is64BitKernel = IS_ARM64(context->kernel_data);
+  if (Is64BitKernel) {
+    MultibootInitUefiRdPath = "arm64/multiboot_init";
+  }
+  else {
+    MultibootInitUefiRdPath = "arm/multiboot_init";
+  }
+
   // update addresses if necessary
   if(mLKApi)
-    mLKApi->boot_update_addrs(&context->kernel_addr, &context->ramdisk_addr, &context->tags_addr);
+    mLKApi->boot_update_addrs(Is64BitKernel, &context->kernel_addr, &context->ramdisk_addr, &context->tags_addr);
 
   if(context->ramdisk_data) {
     // get decompressor
@@ -522,7 +548,7 @@ LoaderBootContext (
     // get multiboot_init from UEFIRamdisk
     UINT8 *MultibootBin;
     UINTN MultibootSize;
-    Status = UEFIRamdiskGetFile ("multiboot_init", (VOID **) &MultibootBin, &MultibootSize);
+    Status = UEFIRamdiskGetFile (MultibootInitUefiRdPath, (VOID **) &MultibootBin, &MultibootSize);
     if (EFI_ERROR (Status)) {
       MenuShowMessage("Error", "Multiboot binary not found.");
       goto CLEANUP;
