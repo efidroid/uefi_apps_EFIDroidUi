@@ -208,5 +208,6 @@ void* libboot_platform_bootalloc(boot_uintn_t addr, boot_uintn_t sz) {
 }
 
 void libboot_platform_bootfree(boot_uintn_t addr, boot_uintn_t sz) {
-    FreeAlignedMemoryRange(addr, sz, EFI_PAGE_SIZE);
+    if (addr && sz)
+        FreeAlignedMemoryRange(addr, sz, EFI_PAGE_SIZE);
 }
