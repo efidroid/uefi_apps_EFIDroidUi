@@ -893,7 +893,8 @@ UtilStartEfiApplication (
              LoadOptions,
              LoadOptionsSize
              );
-  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR(Status))
+    return Status;
 
   EfiBootManagerProcessLoadOption(&NewOption);
   Status = NewOption.Status;
