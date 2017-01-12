@@ -104,7 +104,6 @@ CommandBoot (
   FastbootInit();
 }
 
-#if 0
 STATIC EFI_TEXT_STRING mOutputStringOrig = NULL;
 STATIC EFI_TEXT_STRING mErrOutputStringOrig = NULL;
 STATIC CHAR8 mOutputBuffer[FASTBOOT_COMMAND_MAX_LENGTH];
@@ -139,6 +138,7 @@ OutputStringHook (
   return EFI_SUCCESS;
 }
 
+STATIC EFI_GUID mPcdShellFile = { 0x7C04A583, 0x9E3E, 0x4f1c, {0xAD, 0x65, 0xE0, 0x52, 0x68, 0xD0, 0xB4, 0xD1}};
 STATIC VOID
 CommandShell (
   CHAR8 *Arg,
@@ -147,7 +147,9 @@ CommandShell (
 )
 {
   EFI_STATUS Status;
-  EFI_STATUS CommandStatus;
+  EFI_DEVICE_PATH_PROTOCOL *DevicePath;
+  VOID* LoadOptions = NULL;
+  UINTN LoadOptionsSize = 0;
   CHAR8 Buffer[59];
 
   // convert to unicode
@@ -157,6 +159,20 @@ CommandShell (
     return;
   }
 
+  // get shell device path
+  Status = UtilGetFvApplicationDevicePath(&mPcdShellFile, &DevicePath);
+  if(EFI_ERROR(Status)) {
+    AsciiSPrint(Buffer, 59, "Error: %r", Status);
+    FastbootFail(Buffer);
+    return;
+  }
+
+  // build load options
+  CONST CHAR16* LoadOptionsStr = L"-nomap -nostartup -noversion -_exit ";
+  LoadOptionsSize = StrSize(LoadOptionsStr) + StrSize(UnicodeCommand) - sizeof(CHAR16);
+  LoadOptions = AllocateCopyPool(LoadOptionsSize, LoadOptionsStr);
+  StrCat (LoadOptions, UnicodeCommand);
+
   // initialize console hook
   mOutputBufferPos = 0;
   mOutputStringOrig = gST->ConOut->OutputString;
@@ -164,8 +180,9 @@ CommandShell (
   gST->ConOut->OutputString = OutputStringHook;
   gST->StdErr->OutputString = OutputStringHook;
 
-  // run shell command
-  Status = ShellExecute (&gImageHandle, UnicodeCommand, FALSE, NULL, &CommandStatus);
+  // start shell
+  Status = UtilStartEfiApplication(DevicePath, LoadOptionsSize, LoadOptions);
+  FreePool(LoadOptions);
 
   // flush output buffer
   if(mOutputBufferPos>0)
@@ -179,12 +196,11 @@ CommandShell (
   if(EFI_ERROR(Status)) {
     AsciiSPrint(Buffer, 59, "Error: %r", Status);
     FastbootFail(Buffer);
+    return;
   }
-  else {
-    FastbootOkay("");
-  }
+
+  FastbootOkay("");
 }
-#endif
 
 STATIC VOID
 CommandDisplayInfo (
@@ -742,7 +758,7 @@ FastbootCommandsAdd (
   FastbootRegister("oem poweroff", CommandPowerOff);
   FastbootRegister("boot", CommandBoot);
 
-  //FastbootRegister("oem shell", CommandShell);
+  FastbootRegister("oem shell", CommandShell);
   FastbootRegister("oem displayinfo", CommandDisplayInfo);
   FastbootRegister("oem exit", CommandExit);
   FastbootRegister("oem screenshot", CommandScreenShot);
