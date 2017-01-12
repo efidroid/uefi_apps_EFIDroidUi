@@ -161,7 +161,7 @@ typedef struct {
   libboot_platform_getmemory_callback_t cb;
 } lkapi_mmap_pdata_t;
 
-static void *lkapi_mmap_cb(void *_pdata, unsigned long long addr, unsigned long long size, int reserved) {
+static void *lkapi_mmap_cb(void *_pdata, unsigned long long addr, unsigned long long size) {
   lkapi_mmap_pdata_t *pdata = _pdata;
 
   pdata->pdata = pdata->cb(pdata->pdata, (boot_uintn_t)addr, (boot_uintn_t)size);
@@ -176,7 +176,7 @@ void* libboot_platform_getmemory(void *pdata, libboot_platform_getmemory_callbac
 
   if(mLKApi) {
     lkapi_mmap_pdata_t lkapipdata = {pdata, cb};
-    mLKApi->mmap_get_dram(&lkapipdata, lkapi_mmap_cb);
+    mLKApi->boot_get_mmap(&lkapipdata, lkapi_mmap_cb);
     return lkapipdata.pdata;
   }
 
