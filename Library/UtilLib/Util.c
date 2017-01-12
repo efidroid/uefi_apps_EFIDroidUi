@@ -7,6 +7,10 @@
 #include <Library/DebugLib.h>
 #include <Library/UefiBootManagerLib.h>
 #include <Library/HobLib.h>
+#include <Library/UefiLib.h>
+#include <Library/DevicePathLib.h>
+
+#include <Protocol/LoadedImage.h>
 
 extern EFI_GUID gEFIDroidVariableGuid;
 extern EFI_GUID gEFIDroidVariableDataGuid;
@@ -831,6 +835,42 @@ libaroma_stream_efifile(
   }
 
   return libaroma_stream_mem((UINTN)Data, Size);
+}
+
+EFI_STATUS
+UtilGetFvApplicationDevicePath (
+  EFI_GUID                          *FileGuid,
+  OUT EFI_DEVICE_PATH_PROTOCOL      **OutDevicePath
+)
+{
+  EFI_STATUS                        Status;
+  MEDIA_FW_VOL_FILEPATH_DEVICE_PATH FileNode;
+  EFI_LOADED_IMAGE_PROTOCOL         *LoadedImage;
+  EFI_DEVICE_PATH_PROTOCOL          *DevicePath;
+
+  Status = gBS->HandleProtocol (
+                  gImageHandle,
+                  &gEfiLoadedImageProtocolGuid,
+                  (VOID **) &LoadedImage
+                  );
+  if (EFI_ERROR(Status))
+    return Status;
+
+  EfiInitializeFwVolDevicepathNode (&FileNode, FileGuid);
+  DevicePath = DevicePathFromHandle (LoadedImage->DeviceHandle);
+  if (DevicePath == NULL)
+    return EFI_NOT_FOUND;
+
+  DevicePath = AppendDevicePathNode (
+                 DevicePath,
+                 (EFI_DEVICE_PATH_PROTOCOL *) &FileNode
+                 );
+  if (DevicePath == NULL)
+    return EFI_NOT_FOUND;
+
+  *OutDevicePath = DevicePath;
+
+  return EFI_SUCCESS;
 }
 
 EFI_STATUS

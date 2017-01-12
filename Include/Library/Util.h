@@ -270,6 +270,12 @@ libaroma_stream_efifile(
 #endif
 
 EFI_STATUS
+UtilGetFvApplicationDevicePath (
+  EFI_GUID                          *FileGuid,
+  OUT EFI_DEVICE_PATH_PROTOCOL      **OutDevicePath
+);
+
+EFI_STATUS
 UtilStartEfiApplication (
   IN EFI_DEVICE_PATH_PROTOCOL    *DevicePath,
   IN UINTN                       LoadOptionsSize,
