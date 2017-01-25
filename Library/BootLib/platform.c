@@ -94,6 +94,11 @@ boot_uint32_t libboot_qcdt_get_oppo_id1(void) {
     return boot_get_hwid_zero("oppo,id1");
 }
 
+const char *libboot_qcdt_get_motorola_model(void)
+{
+    return (char*)boot_get_hwid_zero("motorola,model");
+}
+
 const char *libboot_qcdt_get_default_parser(void) {
     if(mLKApi)
         return mLKApi->boot_get_default_fdt_parser();
