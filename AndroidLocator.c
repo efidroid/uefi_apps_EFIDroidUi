@@ -415,6 +415,55 @@ AddMultibootSystemToRecoveryMenu (
   }
 }
 
+UINTN
+GetMenuIdFromLastBootEntry (
+  MENU_OPTION     *Menu,
+  LAST_BOOT_ENTRY *LastBootEntry
+)
+{
+  LIST_ENTRY   *Link;
+  MENU_ENTRY   *Entry;
+  UINTN        Index;
+
+  Link = Menu->Head.ForwardLink;
+  Index = 0;
+  while (Link != NULL && Link != &Menu->Head) {
+    Entry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
+    MENU_ENTRY_PDATA* EntryPData = Entry->Private;
+
+    if (EntryPData == NULL)
+      goto NEXT;
+    if (EntryPData->Signature != MENU_ANDROID_BOOT_ENTRY_SIGNATURE)
+      goto NEXT;
+
+    LAST_BOOT_ENTRY* LocalLastBootEntry = &EntryPData->LastBootEntry;
+    if (LocalLastBootEntry->Type != LastBootEntry->Type)
+      goto NEXT;
+
+    switch (LocalLastBootEntry->Type) {
+      case LAST_BOOT_TYPE_BLOCKIO:
+        if (!AsciiStrCmp(LocalLastBootEntry->TextDevicePath, LastBootEntry->TextDevicePath))
+          return Index - 1;
+        break;
+
+      case LAST_BOOT_TYPE_FILE:
+      case LAST_BOOT_TYPE_MULTIBOOT:
+        if (
+            !AsciiStrCmp(LocalLastBootEntry->TextDevicePath, LastBootEntry->TextDevicePath) &&
+            !AsciiStrCmp(LocalLastBootEntry->FilePathName, LastBootEntry->FilePathName))
+          return Index - 1;
+
+        break;
+    }
+
+NEXT:
+    Link = Link->ForwardLink;
+    Index++;
+  }
+
+  return 0;
+}
+
 STATIC
 MENU_ENTRY*
 GetMenuEntryFromLastBootEntryInternal (
