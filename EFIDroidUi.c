@@ -446,6 +446,9 @@ main (
   }
 #endif
 
+  // select last booted entry
+  mBootMenuMain->Selection = GetMenuIdFromLastBootEntry(mBootMenuMain, LastBootEntry);
+
   // free last boot entry
   if(LastBootEntry)
     FreePool(LastBootEntry);
