@@ -52,6 +52,18 @@ ShowFastbootCallback (
 
 STATIC
 EFI_STATUS
+AutoselectLastBootCallback (
+  MENU_ENTRY* This
+)
+{
+  SettingBoolSet("ui-autoselect-last-boot", !This->ToggleEnabled);
+  This->ToggleEnabled = SettingBoolGet("ui-autoselect-last-boot");
+  InvalidateActiveMenu();
+  return EFI_SUCCESS;
+}
+
+STATIC
+EFI_STATUS
 ShowPermissiveCallback (
   MENU_ENTRY* This
 )
@@ -103,7 +115,16 @@ SettingsMenuShow (
   Entry->Callback = ShowFastbootCallback;
   MenuAddEntry(Menu, Entry);
 
-  // fastboot
+  // autoselect last booted entry
+  Entry = MenuCreateEntry();
+  Entry->Name = AsciiStrDup("Autoselect last booted OS");
+  Entry->ShowToggle = TRUE;
+  Entry->ToggleEnabled = SettingBoolGet("ui-autoselect-last-boot");
+  Entry->HideBootMessage = TRUE;
+  Entry->Callback = AutoselectLastBootCallback;
+  MenuAddEntry(Menu, Entry);
+
+  // selinux
   Entry = MenuCreateEntry();
   Entry->Name = AsciiStrDup("Force selinux to permissive");
   Entry->ShowToggle = TRUE;

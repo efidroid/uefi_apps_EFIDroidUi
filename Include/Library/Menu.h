@@ -162,6 +162,12 @@ MenuGetEntryById (
   UINTN               MenuNumber
   );
 
+MENU_ENTRY *
+MenuGetEntryByUiId (
+  MENU_OPTION         *Menu,
+  UINTN               MenuNumber
+  );
+
 VOID
 InvalidateMenu(
   MENU_OPTION  *Menu

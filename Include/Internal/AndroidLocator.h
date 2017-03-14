@@ -66,4 +66,10 @@ AndroidLocatorGetInternalROMIconPath (
   VOID
 );
 
+UINTN
+AndroidLocatorGetMenuIdFromLastBootEntry (
+  MENU_OPTION     *Menu,
+  LAST_BOOT_ENTRY *LastBootEntry
+);
+
 #endif /* __INTERNAL_ANDROIDLOCATOR_H__ */
