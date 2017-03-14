@@ -491,6 +491,34 @@ GetMenuEntryFromLastBootEntry (
   return NULL;
 }
 
+UINTN
+AndroidLocatorGetMenuIdFromLastBootEntry (
+  MENU_OPTION     *Menu,
+  LAST_BOOT_ENTRY *LastBootEntry
+)
+{
+  MENU_ENTRY   *LBEntry;
+  LIST_ENTRY   *Link;
+  MENU_ENTRY   *LinkEntry;
+  UINTN        Index;
+
+  LBEntry = GetMenuEntryFromLastBootEntryInternal(Menu, LastBootEntry);
+
+  Link = Menu->Head.ForwardLink;
+  Index = 0;
+  while (Link != NULL && Link != &Menu->Head) {
+    if (Link == &LBEntry->Link) {
+      return Index;
+    }
+    LinkEntry = CR (Link, MENU_ENTRY, Link, MENU_ENTRY_SIGNATURE);
+    if (!LinkEntry->Hidden && LinkEntry->Selectable) {
+      Index++;
+    }
+    Link = Link->ForwardLink;
+  }
+  return 0;
+}
+
 STATIC
 EFI_STATUS
 FindESP (

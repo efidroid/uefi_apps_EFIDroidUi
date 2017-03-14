@@ -310,6 +310,8 @@ main (
     SettingBoolSet("ui-show-uefi-options", FALSE);
   if(!UtilVariableExists(L"ui-show-fastboot", &gEFIDroidVariableGuid))
     SettingBoolSet("ui-show-fastboot", TRUE);
+  if(!UtilVariableExists(L"ui-autoselect-last-boot", &gEFIDroidVariableGuid))
+    SettingBoolSet("ui-autoselect-last-boot", FALSE);
   if(!UtilVariableExists(L"boot-force-permissive", &gEFIDroidVariableGuid))
     SettingBoolSet("boot-force-permissive", FALSE);
 
@@ -445,6 +447,11 @@ main (
     }
   }
 #endif
+
+  // select last booted entry
+  if (SettingBoolGet("ui-autoselect-last-boot")) {
+    mBootMenuMain->Selection = GetMenuIdFromLastBootEntry(mBootMenuMain, LastBootEntry);
+  }
 
   // free last boot entry
   if(LastBootEntry)
