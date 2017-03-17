@@ -450,7 +450,7 @@ main (
 
   // select last booted entry
   if (SettingBoolGet("ui-autoselect-last-boot")) {
-    mBootMenuMain->Selection = GetMenuIdFromLastBootEntry(mBootMenuMain, LastBootEntry);
+    mBootMenuMain->Selection = AndroidLocatorGetMenuIdFromLastBootEntry(mBootMenuMain, LastBootEntry);
   }
 
   // free last boot entry
