@@ -480,6 +480,42 @@ ERROR_FREE_RAMDISK:
 
   return Status;
 }
+#include <zlib.h>
+int zlib_compress(void *in, void *out, size_t inlen, size_t outlen)
+{
+	int err, ret;
+    z_stream stream;
+    stream.zalloc = Z_NULL;
+    stream.zfree = Z_NULL;
+    stream.opaque = Z_NULL;
+
+	ret = -1;
+	err = deflateInit2(&stream, Z_BEST_SPEED, Z_DEFLATED, MAX_WBITS|16, 8, Z_DEFAULT_STRATEGY);
+	if (err != Z_OK)
+		goto error;
+
+	stream.next_in = in;
+	stream.avail_in = inlen;
+	stream.total_in = 0;
+	stream.next_out = out;
+	stream.avail_out = outlen;
+	stream.total_out = 0;
+
+	err = deflate(&stream, Z_FINISH);
+	if (err != Z_STREAM_END)
+		goto error;
+
+	err = deflateEnd(&stream);
+	if (err != Z_OK)
+		goto error;
+
+	if (stream.total_out >= stream.total_in)
+		goto error;
+
+	ret = stream.total_out;
+error:
+	return ret;
+}
 
 EFI_STATUS
 LoaderBootContext (
@@ -661,10 +697,19 @@ LoaderBootContext (
       IsRecovery = TRUE;
     }
 
+    void *out = libboot_alloc(RamdiskUncompressedLen);
+    rc = zlib_compress(NewRamdisk, out, ((UINT32)cpiohd)-((UINT32)NewRamdisk), RamdiskUncompressedLen);
+    if (rc<0) {
+      AsciiSPrint(Buf, sizeof(Buf), "Can't compress ramdisk: %d", rc);
+      MenuShowMessage("Error", Buf);
+      goto CLEANUP;
+    }
+    libboot_free(NewRamdisk);
+
     // replace ramdisk data
     libboot_free(context->ramdisk_data);
-    context->ramdisk_data = NewRamdisk;
-    context->ramdisk_size = ((UINT32)cpiohd)-((UINT32)NewRamdisk);
+    context->ramdisk_data = out;
+    context->ramdisk_size = rc;
     NewRamdisk = NULL;
   }
 
